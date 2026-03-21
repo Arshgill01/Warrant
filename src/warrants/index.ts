@@ -9,3 +9,9 @@ export const warrantsBoundary: WorktreeBoundary = {
   notes: "Keep the logic inspectable and tied to visible demo behavior.",
   status: "reserved",
 };
+
+export * from "@/warrants/authorization";
+export * from "@/warrants/issuance";
+export * from "@/warrants/revocation";
+export * from "@/warrants/status";
+export * from "@/warrants/types";
