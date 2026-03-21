@@ -1203,6 +1203,96 @@ In scope:
 - strengthen seeded-demo invariant tests where they validate lineage alignment cleanly
 - update repo docs so the stricter gate is easy to run locally and in CI
 
+## ExecPlan — Wave 2 Provider Action Boundary (2026-03-22)
+
+### Objective
+
+Implement the provider-backed external action layer for Wave 2 so Calendar availability reads, Gmail draft preparation, and send-email execution all flow through one explicit Auth0-mediated boundary with stable structured result envelopes.
+
+### Demo relevance
+
+This strengthens the middle of the core demo path:
+
+1. Google is connected through Auth0 Token Vault
+2. child agents can reach real or honestly structured external action paths
+3. draft and send remain visibly separate
+4. provider disconnection or execution blocking stays legible instead of collapsing into vague "auth failed" states
+
+It also supports the seeded scenario: "Prepare my investor update for tomorrow and coordinate follow-ups."
+
+### Scope
+
+In scope:
+
+- extend the shared action contracts with stable provider-result envelopes and action-specific payloads
+- implement Google-backed action wrappers for calendar availability read, Gmail draft creation, and send-email execution
+- keep send execution intentionally separate from draft creation
+- reuse the existing Auth0 session and Google connection shell so provider state remains visible and load-bearing
+- surface disconnected, pending, unavailable, failed, and execution-blocked provider outcomes with human-readable messages
+- adapt the home auth shell to consume the new result envelopes
+- add focused tests that prove result-shape stability and provider-state handling
+
+Out of scope:
+
+- local Warrant authorization decisions
+- branch revocation or warrant-engine checks
+- full approval UI or approval persistence
+- graph UI integration
+- additional providers beyond Google
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md`
+- `src/contracts/action.ts`
+- `src/contracts/index.ts`
+- `src/actions/*`
+- `src/connections/google.ts`
+- `src/app/page.tsx`
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/demo-fixtures/auth-shell.ts`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep Auth0 and Token Vault visibly load-bearing for external provider access.
+- Keep provider access concerns separate from local Warrant policy and approval-state decisions.
+- Keep Gmail draft and Gmail send as distinct capabilities and execution paths.
+- Return explicit, strongly typed envelopes rather than UI-shaped ad hoc objects.
+- Degrade honestly when Auth0 config, provider connection, token access, or live provider execution is unavailable.
+
+### Implementation steps
+
+1. Extend the shared action contracts with explicit provider-result states, failure codes, and action-specific payload types for calendar, draft, and send.
+2. Refactor the Google action layer around a provider boundary that first resolves connection or delegated-token readiness, then either executes the live request or returns an honest non-success envelope.
+3. Implement the three Wave 2 wrappers:
+   - calendar availability read
+   - Gmail draft preparation
+   - Gmail send execution boundary with explicit execution-release input
+4. Update the auth shell page and component to render provider-backed result envelopes directly so other layers can consume the same shapes.
+5. Add focused tests for disconnected, unavailable, execution-blocked, and success envelopes using injected fetch stubs instead of real network calls.
+6. Run lint, typecheck, test, and build, plus a targeted wrapper exercise in the current env as far as the sandbox and local Auth0 config allow.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Focused execution checks:
+
+- provider wrappers return `disconnected` when Google is not linked
+- send wrapper returns `execution-blocked` without explicit release
+- calendar and draft wrappers produce stable `success` envelopes with mocked provider responses
+- homepage compiles while consuming the new provider-result shapes
+
+### Risks
+
+- Real Google API execution still depends on valid Auth0 connected-account state and outbound network access, so local verification may stop at honest unavailable or disconnected envelopes.
+- The existing auth shell UI was built around readiness snapshots, so adapting it to richer envelopes could expose layout assumptions that need a later polish pass.
+- Gmail send is intentionally separated from approval logic here; the later approval-track integration must provide the explicit execution release without collapsing boundaries.
+
 Out of scope:
 
 - new linting ecosystems or heavy test dependencies
@@ -1316,3 +1406,72 @@ Out of scope:
 - The current graph UI still owns local revoked-state mutations, so contract cleanup must not break the visible branch-revocation demo behavior.
 - Action-path helpers are currently UI-oriented placeholders; introducing a result envelope should stay minimal so later provider work can extend it instead of replace it.
 - There is already a Wave 1 shared-contract layer, so this pass must stabilize and clarify it rather than create a second parallel contract system.
+
+## ExecPlan — Deterministic Planner-To-Child Orchestration (2026-03-22)
+
+### Objective
+
+Implement the main Warrant orchestration slice for “Prepare my investor update for tomorrow and coordinate follow-ups.” using the real warrant engine, deterministic task decomposition, and provider-action adapters that stay separate from raw provider plumbing.
+
+### Demo relevance
+
+This is the core of Milestone 3 and the clearest proof of the thesis before overreach, approval, and revocation. Judges need to see the planner issue narrower child warrants, the child agents do useful but limited work, and the resulting lineage show up in graph and timeline views.
+
+### Scope
+
+In scope:
+
+- deterministic planner flow for the investor-update scenario
+- planner-owned root warrant plus narrower Calendar and Comms child warrants
+- one allowed calendar read action through a provider-action interface
+- one allowed comms draft action through a provider-action interface
+- lineage-aware action and warrant records compatible with shared graph, timeline, and display contracts
+- deterministic test coverage and repeat-run stability checks for the seeded flow
+
+Out of scope:
+
+- forbidden overreach action handling beyond preserving compatibility with later integration
+- approval-request creation for send-email
+- branch revocation behavior
+- generic workflow engines, model-driven planning, or extra agent types
+- direct UI rendering logic inside orchestration modules
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/*`
+- `src/actions/*`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- Child warrants can only narrow parent authority and must be issued through the real warrant-core logic.
+- Meaningful actions must preserve root request, warrant id, parent warrant id, and acting agent identity.
+- Orchestration must stay deterministic and demo-friendly; no uncontrolled planning or provider behavior.
+- Provider execution must be invoked through interfaces/adapters, not by importing raw provider plumbing into agents.
+- Output must remain consumable by graph/timeline/display layers without ad hoc UI-only transforms.
+
+### Implementation steps
+
+1. Inspect existing warrant issuance, authorization, demo fixture, and action-path code to identify reusable contracts and gaps.
+2. Define a narrow orchestration model for the seeded investor-update scenario, including deterministic task decomposition and planner-to-child role mapping.
+3. Add provider-action interfaces plus deterministic calendar and comms adapters that can execute one allowed action each without leaking provider-specific internals into the agents layer.
+4. Implement planner orchestration that issues real child warrants, invokes child action execution through the adapters, and emits lineage-aware warrants, action attempts, and timeline records.
+5. Rebuild the seeded main scenario from the orchestration output and keep display/view-model helpers consuming the shared contracts.
+6. Add targeted tests for warrant narrowing, action lineage, adapter routing, and repeated-run stability before running the broader validation set.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- repeat the deterministic scenario assertions multiple times within tests or a targeted orchestration spec to confirm stable output across runs
+
+### Risks
+
+- The current shared contracts do not yet include orchestration-specific execution metadata, so new types may be needed if the existing display shape proves too narrow.
+- The action layer already has Auth0-path helpers for connection readiness; the new execution adapters must not blur those concerns or duplicate policy logic inconsistently.
+- Replacing static demo fixtures with generated scenario data could expose latent assumptions in the demo UI or tests that currently rely on hard-coded ids or ordering.

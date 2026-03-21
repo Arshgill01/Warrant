@@ -63,6 +63,7 @@ export interface ActionAttemptDisplayRecord {
   kind: ActionKind;
   agentId: string;
   agentLabel: string;
+  rootRequestId: string;
   warrantId: string;
   parentWarrantId: string | null;
   requestedAt: string;
@@ -113,10 +114,8 @@ export interface DelegationGraphDTO {
 }
 
 export interface DisplayScenarioExampleSet {
-  validChildAction: ActionAttemptDisplayRecord;
-  blockedOverreachAction: ActionAttemptDisplayRecord;
-  approvalPendingAction: ActionAttemptDisplayRecord;
-  approvalPendingRequest: ApprovalStateDisplayRecord;
-  revokedBranchSummary: WarrantDisplaySummary;
-  revokedDescendantCount: number;
+  calendarChildWarrant: WarrantDisplaySummary;
+  commsChildWarrant: WarrantDisplaySummary;
+  calendarAction: ActionAttemptDisplayRecord;
+  commsDraftAction: ActionAttemptDisplayRecord;
 }

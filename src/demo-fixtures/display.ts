@@ -172,6 +172,7 @@ export function createActionAttemptDisplayRecords(
       agentsById.get(action.agentId),
       `Missing agent for action ${action.id}`,
     ).label,
+    rootRequestId: action.rootRequestId,
     warrantId: action.warrantId,
     parentWarrantId: action.parentWarrantId,
     requestedAt: action.requestedAt,
@@ -274,41 +275,26 @@ export function getDisplayScenarioExamples(
   const actionRecordsById = new Map(
     createActionAttemptDisplayRecords(scenario).map((action) => [action.id, action]),
   );
-  const approvalRecordsById = new Map(
-    createApprovalStateDisplayRecords(scenario).map((approval) => [approval.id, approval]),
-  );
   const warrantSummariesById = new Map(
     createWarrantDisplaySummaries(scenario).map((summary) => [summary.id, summary]),
   );
-  const revokedBranchId = required(
-    scenario.revocations.find((revocation) => revocation.id === scenario.examples.revokedBranchRecordId),
-    `Missing revocation ${scenario.examples.revokedBranchRecordId}`,
-  ).warrantId;
 
   return {
-    validChildAction: required(
-      actionRecordsById.get(scenario.examples.validChildActionId),
-      `Missing action ${scenario.examples.validChildActionId}`,
+    calendarChildWarrant: required(
+      warrantSummariesById.get(scenario.examples.calendarChildWarrantId),
+      `Missing warrant summary ${scenario.examples.calendarChildWarrantId}`,
     ),
-    blockedOverreachAction: required(
-      actionRecordsById.get(scenario.examples.blockedOverreachActionId),
-      `Missing action ${scenario.examples.blockedOverreachActionId}`,
+    commsChildWarrant: required(
+      warrantSummariesById.get(scenario.examples.commsChildWarrantId),
+      `Missing warrant summary ${scenario.examples.commsChildWarrantId}`,
     ),
-    approvalPendingAction: required(
-      actionRecordsById.get(scenario.examples.approvalPendingActionId),
-      `Missing action ${scenario.examples.approvalPendingActionId}`,
+    calendarAction: required(
+      actionRecordsById.get(scenario.examples.calendarActionId),
+      `Missing action ${scenario.examples.calendarActionId}`,
     ),
-    approvalPendingRequest: required(
-      approvalRecordsById.get(scenario.examples.approvalPendingRequestId),
-      `Missing approval ${scenario.examples.approvalPendingRequestId}`,
+    commsDraftAction: required(
+      actionRecordsById.get(scenario.examples.commsDraftActionId),
+      `Missing action ${scenario.examples.commsDraftActionId}`,
     ),
-    revokedBranchSummary: required(
-      warrantSummariesById.get(revokedBranchId),
-      `Missing warrant summary ${revokedBranchId}`,
-    ),
-    revokedDescendantCount: required(
-      scenario.revocations.find((revocation) => revocation.id === scenario.examples.revokedBranchRecordId),
-      `Missing revocation ${scenario.examples.revokedBranchRecordId}`,
-    ).cascadedWarrantIds.length,
   };
 }

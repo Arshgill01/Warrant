@@ -8,7 +8,6 @@ import {
   loadTimelineEvents,
 } from "@/demo-fixtures";
 import { DelegationGraph } from "@/graph";
-import type { DemoActionOutcome } from "@/contracts";
 
 export const metadata: Metadata = {
   title: "Warrant | Wave 1 Demo",
@@ -16,6 +15,7 @@ export const metadata: Metadata = {
 };
 
 const statusTone: Record<string, string> = {
+  active: "bg-[var(--accent-soft)] text-[var(--accent)]",
   allowed: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
   "approval-required": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
@@ -50,13 +50,15 @@ function formatDateTime(value: string, timeZone: string): string {
 function ExampleCard({
   eyebrow,
   title,
-  outcome,
+  statusKey,
+  statusLabel,
   detail,
   meta,
 }: {
   eyebrow: string;
   title: string;
-  outcome: DemoActionOutcome | "revoked";
+  statusKey: string;
+  statusLabel: string;
   detail: string;
   meta: string;
 }) {
@@ -67,7 +69,7 @@ function ExampleCard({
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{eyebrow}</p>
           <h3 className="text-base font-semibold text-[var(--foreground)]">{title}</h3>
         </div>
-        <StatusPill label={outcome.replace("-", " ")} tone={statusTone[outcome] || statusTone.revoked} />
+        <StatusPill label={statusLabel} tone={statusTone[statusKey] || statusTone.active} />
       </div>
       <p className="text-sm leading-relaxed text-[var(--muted)]">{detail}</p>
       <div className="mt-4 flex items-center gap-2 border-t border-[var(--panel-border)] pt-4">
@@ -181,35 +183,36 @@ export default function DemoPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <ExampleCard
+            eyebrow="Calendar Warrant"
+            title={examples.calendarChildWarrant.purpose}
+            statusKey={examples.calendarChildWarrant.status}
+            statusLabel={examples.calendarChildWarrant.status}
+            detail="Planner Agent delegates a narrower calendar-read warrant with a bounded April 18 time window."
+            meta={`Capabilities: ${examples.calendarChildWarrant.capabilities.join(", ")}`}
+          />
+          <ExampleCard
+            eyebrow="Comms Warrant"
+            title={examples.commsChildWarrant.purpose}
+            statusKey={examples.commsChildWarrant.status}
+            statusLabel={examples.commsChildWarrant.status}
+            detail="Planner Agent delegates drafting-only authority to Comms Agent so follow-ups stay inside a role-appropriate ceiling."
+            meta={`Capabilities: ${examples.commsChildWarrant.capabilities.join(", ")}`}
+          />
+          <ExampleCard
             eyebrow="Allowed Action"
-            title={examples.validChildAction.summary}
-            outcome={examples.validChildAction.outcome}
-            detail={examples.validChildAction.outcomeReason}
-            meta={examples.validChildAction.resource}
+            title={examples.calendarAction.summary}
+            statusKey={examples.calendarAction.outcome}
+            statusLabel={examples.calendarAction.outcome.replace("-", " ")}
+            detail={examples.calendarAction.outcomeReason}
+            meta={examples.calendarAction.resource}
           />
           <ExampleCard
-            eyebrow="Policy Block"
-            title={examples.blockedOverreachAction.summary}
-            outcome={examples.blockedOverreachAction.outcome}
-            detail={examples.blockedOverreachAction.outcomeReason}
-            meta={examples.blockedOverreachAction.resource}
-          />
-          <ExampleCard
-            eyebrow="Pending Approval"
-            title={examples.approvalPendingRequest.title}
-            outcome={examples.approvalPendingAction.outcome}
-            detail={examples.approvalPendingRequest.reason}
-            meta={`Radius: ${examples.approvalPendingRequest.blastRadius}`}
-          />
-          <ExampleCard
-            eyebrow="Branch Revocation"
-            title="Cascade Failure"
-            outcome="revoked"
-            detail={
-              examples.revokedBranchSummary.revocationReason ??
-              "This branch was revoked and its descendants lost authority immediately."
-            }
-            meta={`Cascades: ${examples.revokedDescendantCount} nodes`}
+            eyebrow="Allowed Action"
+            title={examples.commsDraftAction.summary}
+            statusKey={examples.commsDraftAction.outcome}
+            statusLabel={examples.commsDraftAction.outcome.replace("-", " ")}
+            detail={examples.commsDraftAction.outcomeReason}
+            meta={examples.commsDraftAction.resource}
           />
         </div>
       </section>

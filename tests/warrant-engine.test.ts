@@ -135,6 +135,52 @@ describe("warrant engine", () => {
     expect(validation.reasons[0]?.code).toBe("child_expiry_exceeds_parent");
   });
 
+  it("applies calendar window narrowing to calendar-read children", () => {
+    const parent = issueRootWarrant({
+      id: "warrant_calendar_parent",
+      rootRequestId: "root_request_calendar",
+      createdBy: "user_1",
+      agentId: "planner_agent",
+      purpose: "Coordinate schedule context",
+      capabilities: ["calendar.read", "warrant.issue"],
+      resourceConstraints: {
+        calendarWindow: {
+          startsAt: "2026-03-21T08:00:00.000Z",
+          endsAt: "2026-03-21T18:00:00.000Z",
+        },
+      },
+      canDelegate: true,
+      maxChildren: 1,
+      createdAt: NOW,
+      expiresAt: TOMORROW,
+    });
+
+    const validation = validateChildWarrant({
+      parent,
+      child: {
+        id: "warrant_calendar_child",
+        createdBy: parent.agentId,
+        agentId: "calendar_agent",
+        purpose: "Read tomorrow's schedule",
+        capabilities: ["calendar.read"],
+        resourceConstraints: {
+          calendarWindow: {
+            startsAt: "2026-03-21T07:00:00.000Z",
+            endsAt: "2026-03-21T12:00:00.000Z",
+          },
+        },
+        canDelegate: false,
+        maxChildren: 0,
+        expiresAt: LATER,
+      },
+      existingChildrenCount: 0,
+      now: NOW,
+    });
+
+    expect(validation.valid).toBe(false);
+    expect(validation.reasons[0]?.code).toBe("child_calendar_window_exceeds_parent");
+  });
+
   it("invalidates descendants when a parent branch is revoked", () => {
     const parent = createParentWarrant();
     const issued = issueChildWarrant({
@@ -218,6 +264,46 @@ describe("warrant engine", () => {
 
     expect(result.allowed).toBe(false);
     expect(result.code).toBe("recipient_not_allowed");
+  });
+
+  it("blocks calendar reads outside the warrant window", () => {
+    const parent = issueRootWarrant({
+      id: "warrant_calendar_read",
+      rootRequestId: "root_request_calendar_read",
+      createdBy: "user_1",
+      agentId: "calendar_agent",
+      purpose: "Read schedule context",
+      capabilities: ["calendar.read"],
+      resourceConstraints: {
+        calendarWindow: {
+          startsAt: "2026-03-21T08:00:00.000Z",
+          endsAt: "2026-03-21T18:00:00.000Z",
+        },
+      },
+      canDelegate: false,
+      maxChildren: 0,
+      createdAt: NOW,
+      expiresAt: TOMORROW,
+    });
+
+    const result = authorizeAction({
+      warrant: parent,
+      warrants: [parent],
+      action: {
+        id: "action_calendar_1",
+        kind: "calendar.read",
+        agentId: parent.agentId,
+        warrantId: parent.id,
+        requestedAt: NOW,
+        target: {
+          scheduledFor: "2026-03-21T19:00:00.000Z",
+        },
+      },
+      now: NOW,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe("calendar_window_exceeded");
   });
 
   it("denies expired warrants", () => {
