@@ -50,8 +50,10 @@ export function DelegationGraph({
   const [nodes, setNodes, onNodesChange] = useNodesState(baseNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(baseEdges);
   const [selectedWarrantId, setSelectedWarrantId] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     setWarrants(initialWarrants);
     setNodes(baseNodes);
     setEdges(baseEdges);
@@ -116,48 +118,60 @@ export function DelegationGraph({
     );
   }, [delegationNodes, setEdges, setNodes]);
 
+  if (!isMounted) {
+    return (
+      <section className="flex flex-col overflow-hidden rounded-[2.5rem] border border-[var(--panel-border)] bg-white shadow-sm h-[750px] animate-pulse">
+        <div className="h-[100px] border-b border-[var(--panel-border)] bg-slate-50/50" />
+        <div className="flex-1 bg-[#fafbfc]" />
+      </section>
+    );
+  }
+
   return (
-    <div className="relative h-[600px] w-full overflow-hidden rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] shadow-[0_20px_80px_rgba(16,18,23,0.08)] backdrop-blur">
-      <div className="absolute left-8 top-8 z-10">
-        <p className="text-sm font-medium uppercase tracking-[0.22em] text-[var(--muted)]">{eyebrow}</p>
-        <h2 className="text-3xl font-serif">{title}</h2>
-      </div>
-
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
-        nodeTypes={nodeTypes}
-        fitView
-        className="bg-transparent"
-        // Disable zooming for a stable "diagram" feel in the demo
-        zoomOnScroll={false}
-        zoomOnPinch={false}
-        panOnScroll={false}
-        panOnDrag={true}
-      >
-        <Background color="#101217" gap={20} size={1} />
-        <Controls showInteractive={false} className="!left-8 !bottom-8" />
-      </ReactFlow>
-
-      <NodeDetailPanel 
-        warrant={selectedWarrant}
-        agent={selectedAgent}
-        onClose={() => setSelectedWarrantId(null)}
-        onRevoke={handleRevoke}
-      />
-
-      <div className="absolute right-8 bottom-8 flex flex-col items-end gap-2 text-right">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Stable Viewport</span>
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+    <section className="flex flex-col overflow-hidden rounded-[2.5rem] border border-[var(--panel-border)] bg-white shadow-sm transition-all hover:shadow-md">
+      <div className="flex flex-col gap-4 border-b border-[var(--panel-border)] bg-slate-50/50 p-8 lg:flex-row lg:items-center lg:justify-between lg:px-12">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">{eyebrow}</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-[var(--foreground)]">{title}</h2>
+          <p className="max-w-2xl text-sm leading-relaxed text-[var(--muted)]">{description}</p>
         </div>
-        <p className="max-w-[200px] text-[11px] leading-relaxed text-slate-400">
-          {description}
-        </p>
       </div>
-    </div>
+
+      <div className="relative h-[650px] w-full bg-[#fafbfc]">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          fitView
+          className="bg-transparent"
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          panOnScroll={false}
+          panOnDrag={true}
+        >
+          <Background color="#cbd5e1" gap={24} size={1} opacity={0.4} />
+          <Controls showInteractive={false} className="!left-8 !bottom-8 !shadow-none !border-[var(--panel-border)]" />
+        </ReactFlow>
+
+        <NodeDetailPanel 
+          warrant={selectedWarrant}
+          agent={selectedAgent}
+          onClose={() => setSelectedWarrantId(null)}
+          onRevoke={handleRevoke}
+        />
+
+        <div className="absolute bottom-8 right-8 flex items-center gap-3 rounded-full border border-[var(--panel-border)] bg-white/80 px-4 py-2 shadow-sm backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Active Trace</span>
+          </div>
+          <div className="h-4 w-px bg-[var(--panel-border)]" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Graph Stable</span>
+        </div>
+      </div>
+    </section>
   );
 }
