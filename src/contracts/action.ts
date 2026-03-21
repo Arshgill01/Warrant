@@ -1,5 +1,4 @@
-import type { ApprovalStatus } from "@/contracts/approval";
-import type { ProviderConnectionState } from "@/contracts/connection";
+import type { ProviderConnectionSnapshot } from "@/contracts/connection";
 
 export type ActionKind =
   | "calendar.read"
@@ -20,6 +19,23 @@ export interface ActionUsageSnapshot {
   draftsUsed?: number;
   sendsUsed?: number;
 }
+
+export type ProviderActionState =
+  | "success"
+  | "disconnected"
+  | "unavailable"
+  | "pending"
+  | "failed"
+  | "execution-blocked";
+
+export type ProviderActionFailureCode =
+  | "provider-disconnected"
+  | "provider-pending"
+  | "provider-unavailable"
+  | "token-unavailable"
+  | "execution-release-required"
+  | "provider-request-failed"
+  | "provider-response-invalid";
 
 export type ActionGate = "policy" | "auth0" | "approval";
 
@@ -42,6 +58,117 @@ export interface LocalPolicyCheck {
   reason: string;
 }
 
+export interface ProviderActionFailure {
+  code: ProviderActionFailureCode;
+  message: string;
+  detail: string;
+  retryable: boolean;
+}
+
+export interface CalendarAvailabilityReadInput {
+  calendarId?: string;
+  startsAt: string;
+  endsAt: string;
+  timeZone?: string | null;
+  maxResults?: number;
+}
+
+export interface CalendarBusySlot {
+  startsAt: string;
+  endsAt: string;
+  summary: string;
+}
+
+export interface CalendarAvailabilityEvent {
+  id: string;
+  status: string;
+  summary: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  attendees: string[];
+  hangoutLink: string | null;
+}
+
+export interface CalendarAvailabilityPayload {
+  calendarId: string;
+  calendarLabel: string;
+  startsAt: string;
+  endsAt: string;
+  timeZone: string | null;
+  busySlots: CalendarBusySlot[];
+  events: CalendarAvailabilityEvent[];
+}
+
+export interface GmailDraftInput {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  bodyText: string;
+  bodyHtml?: string | null;
+  threadId?: string | null;
+}
+
+export interface GmailDraftPayload {
+  endpoint: "gmail.drafts.create";
+  draftId: string | null;
+  messageId: string | null;
+  threadId: string | null;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  previewText: string;
+  createdAt: string | null;
+}
+
+export interface ExternalActionExecutionRelease {
+  execute: true;
+  releasedBy: "approval-layer" | "manual" | "demo";
+  reason: string;
+}
+
+export interface GmailSendInput extends GmailDraftInput {
+  draftId?: string | null;
+}
+
+export interface GmailSendPayload {
+  endpoint: "gmail.messages.send" | "gmail.drafts.send";
+  messageId: string | null;
+  threadId: string | null;
+  draftId: string | null;
+  to: string[];
+  cc: string[];
+  bcc: string[];
+  subject: string;
+  sentAt: string | null;
+}
+
+export interface ProviderActionEnvelope<Kind extends ActionKind, Input, Payload> {
+  kind: Kind;
+  state: ProviderActionState;
+  provider: "google";
+  connection: ProviderConnectionSnapshot;
+  request: Input;
+  headline: string;
+  detail: string;
+  data: Payload | null;
+  failure: ProviderActionFailure | null;
+  nextStep: string | null;
+}
+
+export type CalendarAvailabilityResult = ProviderActionEnvelope<
+  "calendar.read",
+  CalendarAvailabilityReadInput,
+  CalendarAvailabilityPayload
+>;
+
+export type GmailDraftResult = ProviderActionEnvelope<"gmail.draft", GmailDraftInput, GmailDraftPayload>;
+
+export type GmailSendResult = ProviderActionEnvelope<"gmail.send", GmailSendInput, GmailSendPayload>;
+
+export type ProviderActionResult = CalendarAvailabilityResult | GmailDraftResult | GmailSendResult;
+
 export interface ActionPathSnapshot {
   kind: ActionKind;
   label: string;
@@ -50,12 +177,4 @@ export interface ActionPathSnapshot {
   headline: string;
   detail: string;
   nextStep: string | null;
-}
-
-export interface ProviderActionResultEnvelope {
-  provider: "google";
-  connectionState: ProviderConnectionState;
-  policy: LocalPolicyCheck;
-  approvalStatus: ApprovalStatus | null;
-  path: ActionPathSnapshot;
 }

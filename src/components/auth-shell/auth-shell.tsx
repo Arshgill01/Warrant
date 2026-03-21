@@ -1,12 +1,12 @@
 import Link from "next/link";
-import type { ActionPathSnapshot, AuthSessionSnapshot, ProviderConnectionSnapshot } from "@/contracts";
+import type { AuthSessionSnapshot, ProviderActionResult, ProviderConnectionSnapshot } from "@/contracts";
 import { SectionCard } from "@/components/foundation/section-card";
 import { googleConnectionStateLegend } from "@/connections";
 
 type AuthShellProps = {
   session: AuthSessionSnapshot;
   googleConnection: ProviderConnectionSnapshot;
-  actionPaths: ActionPathSnapshot[];
+  providerResults: ProviderActionResult[];
 };
 
 const sessionTone: Record<AuthSessionSnapshot["state"], string> = {
@@ -22,10 +22,19 @@ const connectionTone: Record<ProviderConnectionSnapshot["state"], string> = {
   unavailable: "bg-[#7d2e2c] text-white",
 };
 
-const actionTone: Record<ActionPathSnapshot["state"], string> = {
-  ready: "bg-[var(--accent-soft)] text-[var(--accent)]",
+const providerResultTone: Record<ProviderActionResult["state"], string> = {
+  success: "bg-[var(--accent-soft)] text-[var(--accent)]",
   pending: "bg-[#f4e6c8] text-[#8a5b1f]",
-  blocked: "bg-[#f3d9d6] text-[#7d2e2c]",
+  disconnected: "bg-[#f3d9d6] text-[#7d2e2c]",
+  unavailable: "bg-[#f3d9d6] text-[#7d2e2c]",
+  failed: "bg-[#f3d9d6] text-[#7d2e2c]",
+  "execution-blocked": "bg-[#ece6ff] text-[#5b4aa1]",
+};
+
+const providerActionLabels: Record<ProviderActionResult["kind"], string> = {
+  "calendar.read": "Calendar availability",
+  "gmail.draft": "Gmail draft",
+  "gmail.send": "Send email",
 };
 
 function StatusPill({ label, tone }: { label: string; tone: string }) {
@@ -62,7 +71,36 @@ function AuthAction({ href, label }: { href: string | null; label: string | null
   );
 }
 
-export function AuthShell({ session, googleConnection, actionPaths }: AuthShellProps) {
+function formatProviderStateLabel(value: ProviderActionResult["state"]): string {
+  return value.replace("-", " ");
+}
+
+function renderProviderRequestSummary(result: ProviderActionResult): string {
+  switch (result.kind) {
+    case "calendar.read":
+      return `${result.request.startsAt} to ${result.request.endsAt}`;
+    case "gmail.draft":
+    case "gmail.send":
+      return result.request.to.join(", ");
+  }
+}
+
+function renderProviderSuccessSummary(result: ProviderActionResult): string | null {
+  if (result.state !== "success" || !result.data) {
+    return null;
+  }
+
+  switch (result.kind) {
+    case "calendar.read":
+      return `${result.data.busySlots.length} busy slots from ${result.data.calendarLabel}`;
+    case "gmail.draft":
+      return `Draft ${result.data.draftId ?? "created"} for ${result.data.to.join(", ")}`;
+    case "gmail.send":
+      return `Endpoint ${result.data.endpoint} executed for ${result.data.to.join(", ")}`;
+  }
+}
+
+export function AuthShell({ session, googleConnection, providerResults }: AuthShellProps) {
   const sessionAction =
     session.state === "signed-in"
       ? { href: session.logoutHref, label: "Log out" }
@@ -156,21 +194,35 @@ export function AuthShell({ session, googleConnection, actionPaths }: AuthShellP
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        {actionPaths.map((actionPath) => (
+        {providerResults.map((result) => (
           <article
-            key={actionPath.kind}
+            key={result.kind}
             className="rounded-[1.6rem] border border-[var(--panel-border)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(10,16,24,0.04)]"
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">{actionPath.gate} gate</p>
-                <h2 className="text-2xl font-semibold">{actionPath.label}</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+                  {result.connection.via.replaceAll("-", " ")}
+                </p>
+                <h2 className="text-2xl font-semibold">{providerActionLabels[result.kind]}</h2>
               </div>
-              <StatusPill label={actionPath.state} tone={actionTone[actionPath.state]} />
+              <StatusPill label={formatProviderStateLabel(result.state)} tone={providerResultTone[result.state]} />
             </div>
-            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">{actionPath.headline}</p>
-            <p className="mb-3 text-sm leading-6 text-[var(--muted)]">{actionPath.detail}</p>
-            {actionPath.nextStep ? <p className="text-sm font-medium text-[var(--foreground)]">Next: {actionPath.nextStep}</p> : null}
+            <p className="mb-3 text-sm font-medium text-[var(--foreground)]">{result.headline}</p>
+            <p className="mb-3 text-sm leading-6 text-[var(--muted)]">{result.detail}</p>
+            <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Request: {renderProviderRequestSummary(result)}</p>
+            <p className="mb-2 text-sm leading-6 text-[var(--muted)]">
+              Provider state: {result.connection.state.replace("-", " ")}
+            </p>
+            {renderProviderSuccessSummary(result) ? (
+              <p className="mb-2 text-sm font-medium text-[var(--foreground)]">{renderProviderSuccessSummary(result)}</p>
+            ) : null}
+            {result.failure ? (
+              <p className="mb-2 text-sm leading-6 text-[var(--muted)]">
+                {result.failure.message} {result.failure.detail}
+              </p>
+            ) : null}
+            {result.nextStep ? <p className="text-sm font-medium text-[var(--foreground)]">Next: {result.nextStep}</p> : null}
           </article>
         ))}
       </section>

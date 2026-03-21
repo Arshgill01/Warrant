@@ -51,8 +51,9 @@ Use the shell overrides only to rehearse UI states while the real Auth0 connecte
 
 - `/auth/login` and `/auth/logout` come from the Auth0 Next.js SDK middleware.
 - The home page shows three layers separately: app session, Google provider connection, and external action readiness.
-- Calendar read and Gmail draft use thin wrappers that only become ready when Auth0 can supply delegated Google access.
-- Gmail send stays pending behind an approval placeholder even when Auth0 and local policy are both ready.
+- Calendar availability, Gmail draft preparation, and send-email execution now flow through explicit provider-backed result envelopes.
+- Gmail draft and Gmail send stay distinct: draft can succeed without implying send is allowed to execute.
+- Gmail send remains a separate execution boundary that requires an explicit upstream release before it will hit the live provider path.
 
 To connect Google through Auth0, the shell uses the SDK connect-account route at `/auth/connect` with the Google Calendar read and Gmail compose or send scopes.
 
@@ -94,7 +95,19 @@ UI-facing graph, timeline, warrant-summary, action, and approval DTOs now live i
 Use adapters from `src/demo-fixtures/display.ts` to map canonical demo/domain data into those DTOs. Graph and demo surfaces should consume that adapter layer instead of raw warrant or fixture internals directly.
 
 Graph consumers should prefer `GraphNodeDTO`, `GraphEdgeDTO`, and `DelegationGraphDTO` from `src/contracts`.
-Provider-action wrappers should return `ProviderActionResultEnvelope` from `src/contracts/action.ts`, then hand the contained path snapshot to UI components.
+
+## Provider action contracts
+
+Wave 2 provider-backed actions use explicit result envelopes from `src/contracts/action.ts`.
+
+These envelopes answer:
+
+- whether Auth0-backed Google access is reachable for the requested action
+- what provider data came back on success
+- what provider-specific failure or execution-blocked state occurred
+
+They do not answer local Warrant authorization or approval-flow completion. Those concerns stay in separate layers.
+
 
 ## Intended worktree split
 

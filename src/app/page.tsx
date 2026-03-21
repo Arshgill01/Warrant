@@ -1,8 +1,8 @@
-import { getCalendarReadResult, getGmailDraftResult, getGmailSendResult } from "@/actions";
+import { executeSendEmail, prepareGmailDraft, readCalendarAvailability } from "@/actions";
 import { getAuthSessionSnapshot } from "@/auth";
 import { AuthShell } from "@/components/auth-shell/auth-shell";
 import { getGoogleConnectionSnapshot } from "@/connections";
-import { authShellPolicies, authShellSendApprovalStatus } from "@/demo-fixtures";
+import { authShellProviderRequests } from "@/demo-fixtures";
 
 export const dynamic = "force-dynamic";
 
@@ -10,22 +10,18 @@ export default async function Home() {
   const session = await getAuthSessionSnapshot();
   const googleConnection = await getGoogleConnectionSnapshot(session);
 
-  const actionResults = await Promise.all([
-    getCalendarReadResult({
+  const [calendarAvailability, gmailDraft, gmailSend] = await Promise.all([
+    readCalendarAvailability(authShellProviderRequests.calendarAvailability, {
       session,
       connection: googleConnection,
-      policy: authShellPolicies.calendarRead,
     }),
-    getGmailDraftResult({
+    prepareGmailDraft(authShellProviderRequests.gmailDraft, {
       session,
       connection: googleConnection,
-      policy: authShellPolicies.gmailDraft,
     }),
-    getGmailSendResult({
+    executeSendEmail(authShellProviderRequests.gmailSend, {
       session,
       connection: googleConnection,
-      policy: authShellPolicies.gmailSend,
-      approvalStatus: authShellSendApprovalStatus,
     }),
   ]);
 
@@ -33,7 +29,7 @@ export default async function Home() {
     <AuthShell
       session={session}
       googleConnection={googleConnection}
-      actionPaths={actionResults.map((result) => result.path)}
+      providerResults={[calendarAvailability, gmailDraft, gmailSend]}
     />
   );
 }

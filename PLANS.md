@@ -1203,6 +1203,96 @@ In scope:
 - strengthen seeded-demo invariant tests where they validate lineage alignment cleanly
 - update repo docs so the stricter gate is easy to run locally and in CI
 
+## ExecPlan — Wave 2 Provider Action Boundary (2026-03-22)
+
+### Objective
+
+Implement the provider-backed external action layer for Wave 2 so Calendar availability reads, Gmail draft preparation, and send-email execution all flow through one explicit Auth0-mediated boundary with stable structured result envelopes.
+
+### Demo relevance
+
+This strengthens the middle of the core demo path:
+
+1. Google is connected through Auth0 Token Vault
+2. child agents can reach real or honestly structured external action paths
+3. draft and send remain visibly separate
+4. provider disconnection or execution blocking stays legible instead of collapsing into vague "auth failed" states
+
+It also supports the seeded scenario: "Prepare my investor update for tomorrow and coordinate follow-ups."
+
+### Scope
+
+In scope:
+
+- extend the shared action contracts with stable provider-result envelopes and action-specific payloads
+- implement Google-backed action wrappers for calendar availability read, Gmail draft creation, and send-email execution
+- keep send execution intentionally separate from draft creation
+- reuse the existing Auth0 session and Google connection shell so provider state remains visible and load-bearing
+- surface disconnected, pending, unavailable, failed, and execution-blocked provider outcomes with human-readable messages
+- adapt the home auth shell to consume the new result envelopes
+- add focused tests that prove result-shape stability and provider-state handling
+
+Out of scope:
+
+- local Warrant authorization decisions
+- branch revocation or warrant-engine checks
+- full approval UI or approval persistence
+- graph UI integration
+- additional providers beyond Google
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md`
+- `src/contracts/action.ts`
+- `src/contracts/index.ts`
+- `src/actions/*`
+- `src/connections/google.ts`
+- `src/app/page.tsx`
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/demo-fixtures/auth-shell.ts`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep Auth0 and Token Vault visibly load-bearing for external provider access.
+- Keep provider access concerns separate from local Warrant policy and approval-state decisions.
+- Keep Gmail draft and Gmail send as distinct capabilities and execution paths.
+- Return explicit, strongly typed envelopes rather than UI-shaped ad hoc objects.
+- Degrade honestly when Auth0 config, provider connection, token access, or live provider execution is unavailable.
+
+### Implementation steps
+
+1. Extend the shared action contracts with explicit provider-result states, failure codes, and action-specific payload types for calendar, draft, and send.
+2. Refactor the Google action layer around a provider boundary that first resolves connection or delegated-token readiness, then either executes the live request or returns an honest non-success envelope.
+3. Implement the three Wave 2 wrappers:
+   - calendar availability read
+   - Gmail draft preparation
+   - Gmail send execution boundary with explicit execution-release input
+4. Update the auth shell page and component to render provider-backed result envelopes directly so other layers can consume the same shapes.
+5. Add focused tests for disconnected, unavailable, execution-blocked, and success envelopes using injected fetch stubs instead of real network calls.
+6. Run lint, typecheck, test, and build, plus a targeted wrapper exercise in the current env as far as the sandbox and local Auth0 config allow.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Focused execution checks:
+
+- provider wrappers return `disconnected` when Google is not linked
+- send wrapper returns `execution-blocked` without explicit release
+- calendar and draft wrappers produce stable `success` envelopes with mocked provider responses
+- homepage compiles while consuming the new provider-result shapes
+
+### Risks
+
+- Real Google API execution still depends on valid Auth0 connected-account state and outbound network access, so local verification may stop at honest unavailable or disconnected envelopes.
+- The existing auth shell UI was built around readiness snapshots, so adapting it to richer envelopes could expose layout assumptions that need a later polish pass.
+- Gmail send is intentionally separated from approval logic here; the later approval-track integration must provide the explicit execution release without collapsing boundaries.
+
 Out of scope:
 
 - new linting ecosystems or heavy test dependencies
