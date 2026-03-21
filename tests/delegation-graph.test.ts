@@ -1,18 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { createDefaultDemoScenario, createDelegationNodes } from "@/demo-fixtures";
+import { createDefaultDemoScenario, createDelegationGraphView } from "@/demo-fixtures";
 import {
   buildDelegationGraphEdges,
   buildDelegationGraphNodes,
-  collectDescendantWarrantIds,
+  collectDescendantNodeIds,
 } from "@/graph/view-model";
 
 describe("delegation graph view model", () => {
   it("builds graph nodes from the canonical seeded scenario with a stable shallow layout", () => {
     const scenario = createDefaultDemoScenario();
-    const delegationNodes = createDelegationNodes(scenario);
+    const graphView = createDelegationGraphView(scenario);
     const nodes = buildDelegationGraphNodes({
-      agents: scenario.agents,
-      delegationNodes,
+      graphNodes: graphView.nodes,
     });
 
     const planner = nodes.find((node) => node.id === "warrant-planner-root-001");
@@ -31,9 +30,9 @@ describe("delegation graph view model", () => {
 
   it("creates edges and descendant sets that preserve branch lineage", () => {
     const scenario = createDefaultDemoScenario();
-    const delegationNodes = createDelegationNodes(scenario);
-    const edges = buildDelegationGraphEdges(delegationNodes);
-    const revokedBranch = collectDescendantWarrantIds(delegationNodes, "warrant-comms-child-001");
+    const graphView = createDelegationGraphView(scenario);
+    const edges = buildDelegationGraphEdges(graphView.edges);
+    const revokedBranch = collectDescendantNodeIds(graphView.nodes, "warrant-comms-child-001");
 
     expect(edges).toHaveLength(3);
     expect(edges.map((edge) => [edge.source, edge.target])).toEqual(

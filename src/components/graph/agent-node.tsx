@@ -1,24 +1,24 @@
 import React, { memo } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { 
-  ShieldCheck, 
   User, 
   Brain, 
   Calendar, 
   Mail, 
   FileText, 
-  AlertCircle, 
-  Ban,
-  Clock,
   ChevronRight
 } from "lucide-react";
-import type { AgentRole, AgentStatus } from "@/contracts/agent";
+import type { DisplayStatus } from "@/contracts";
+import type { AgentRole } from "@/contracts/agent";
 
 export type AgentNodeData = {
   label: string;
   role: AgentRole;
-  status: AgentStatus | "pending" | "denied" | "expired";
+  status: DisplayStatus;
   capabilities: string[];
+  purpose: string;
+  canDelegate: boolean;
+  expiresAt: string;
   isRevoked?: boolean;
 };
 
@@ -31,13 +31,12 @@ const roleIcons: Record<AgentRole, React.ReactNode> = {
   docs: <FileText className="size-4" />,
 };
 
-const statusColors: Record<NonNullable<AgentNodeData["status"]>, string> = {
+const statusColors: Record<AgentNodeData["status"], string> = {
   active: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)] border-[var(--status-allowed-text)]/20",
   idle: "bg-slate-50 text-slate-500 border-slate-200",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)] border-[var(--status-blocked-text)]/20",
   revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-[var(--status-revoked-text)]/20",
   pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-[var(--status-pending-text)]/20",
-  denied: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)] border-[var(--status-blocked-text)]/20",
   expired: "bg-slate-100 text-slate-400 border-slate-200",
 };
 

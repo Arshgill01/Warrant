@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   createDefaultDemoScenario,
-  getScenarioExamples,
-  loadDelegationNodes,
+  getDisplayScenarioExamples,
+  loadDelegationGraphView,
   loadDemoState,
   loadTimelineEvents,
   replaceDemoState,
@@ -29,7 +29,7 @@ describe("demo fixtures", () => {
 
   it("covers the required demo beats with concrete seeded examples", () => {
     const scenario = createDefaultDemoScenario();
-    const examples = getScenarioExamples(scenario);
+    const examples = getDisplayScenarioExamples(scenario);
 
     expect(examples.validChildAction.outcome).toBe("allowed");
     expect(examples.validChildAction.kind).toBe("calendar.read");
@@ -44,9 +44,9 @@ describe("demo fixtures", () => {
       "finance@northstar.vc",
     ]);
 
-    expect(examples.revokedBranchRecord.cascadedWarrantIds).toEqual(["warrant-docs-child-001"]);
-    expect(examples.revokedBranchAction.agentId).toBe("agent-docs-001");
-    expect(examples.revokedBranchAction.outcomeReason).toContain("ancestor Comms warrant");
+    expect(examples.revokedBranchSummary.status).toBe("revoked");
+    expect(examples.revokedDescendantCount).toBe(1);
+    expect(examples.revokedBranchSummary.revocationReason).toContain("overreach attempt");
   });
 
   it("loads graph and timeline views from the same canonical state and resets safely", () => {
@@ -58,11 +58,11 @@ describe("demo fixtures", () => {
     snapshot.agents[0]!.label = "Modified Planner";
     replaceDemoState(snapshot);
 
-    const nodes = loadDelegationNodes();
+    const graphView = loadDelegationGraphView();
     const timeline = loadTimelineEvents();
 
-    expect(nodes.find((node) => node.warrantId === "warrant-comms-child-001")?.status).toBe("revoked");
-    expect(nodes.find((node) => node.warrantId === "warrant-docs-child-001")?.parentWarrantId).toBe(
+    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("revoked");
+    expect(graphView.nodes.find((node) => node.id === "warrant-docs-child-001")?.parentId).toBe(
       "warrant-comms-child-001",
     );
     expect(timeline.map((event) => event.at)).toEqual([...timeline.map((event) => event.at)].sort());
