@@ -42,6 +42,22 @@ Copy `.env.example` to a local env file and replace the placeholder values befor
 - `src/audit`: Lineage, receipts, and event log boundary
 - `src/demo-fixtures`: Deterministic demo fixtures and shared placeholder data
 
+## Canonical demo fixtures
+
+The default deterministic scenario lives in `src/demo-fixtures` and is centered on:
+
+`"Prepare my investor update for tomorrow and coordinate follow-ups."`
+
+Shared consumers should prefer these exports:
+
+- `createDefaultDemoScenario()` for a fresh canonical snapshot
+- `loadDemoState()` and `resetDemoState()` for in-memory rehearsal state
+- `loadDelegationNodes()` for graph-ready delegation data
+- `loadTimelineEvents()` for human-readable timeline data
+- `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
+
+This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
+
 ## Intended worktree split
 
 - Auth worktree: `src/auth`, `src/connections`

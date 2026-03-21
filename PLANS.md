@@ -612,3 +612,72 @@ Out of scope:
 - Shared contract changes could create merge pressure for other worktrees; keep them narrowly additive and boring.
 - Resource constraints will start intentionally small and explicit, so later integrations may need new fields without weakening current invariants.
 - Revocation is domain-level only in this slice; persistence and concurrent updates remain a later integration concern.
+
+## ExecPlan — Deterministic Demo Scenario Fixtures (2026-03-21)
+
+### Objective
+
+Create a canonical, deterministic demo scenario and fixture/event layer for the prompt: “Prepare my investor update for tomorrow and coordinate follow-ups.”
+
+### Demo relevance
+
+This work supports Milestone 3 through Milestone 5 by making the core story boringly repeatable: useful child action, blocked overreach, approval-pending action, branch revocation, and timeline-ready lineage.
+
+### Scope
+
+In scope:
+
+- shared demo scenario contracts for seeded identities, warrants, actions, approvals, revocations, and timeline events
+- canonical fixture data for the default demo path
+- deterministic helper functions to load and reset demo state in memory
+- graph-friendly derived nodes and timeline-ready human-readable event entries
+- tests that prove deterministic shape, core demo beat coverage, and reset behavior
+
+Out of scope:
+
+- real Auth0, OAuth, or Token Vault integration
+- real warrant enforcement or issuance logic
+- real persistence or database seeding
+- UI-specific rendering assumptions
+- replacing future product behavior with mock-only business logic
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/action.ts`
+- `src/contracts/agent.ts`
+- `src/contracts/approval.ts`
+- `src/contracts/graph.ts`
+- `src/contracts/index.ts`
+- `src/demo-fixtures/*`
+- `tests/*`
+- `README.md`
+
+### Invariants to preserve
+
+- Keep fixtures demo-first, deterministic, and reusable across worktrees.
+- Do not fake or replace the real warrant or Auth0 enforcement layers.
+- Keep child authority narrower than parent authority in seeded data.
+- Ensure every important action, approval, and revocation remains lineage-aware.
+- Avoid hard-wiring graph or approval UI assumptions into shared fixture contracts.
+
+### Implementation steps
+
+1. Extend the shared contracts only where needed to support seeded demo data and timeline events.
+2. Define the canonical demo scenario shape and seed the default user, agents, warrants, actions, approvals, revocations, and timeline entries.
+3. Add deterministic loader/reset helpers that return isolated copies of the canonical state for other worktrees and tests.
+4. Add small derivations that make the fixture data directly usable by graph and timeline consumers without forcing a specific UI.
+5. Add tests covering repeatability, required demo beats, lineage consistency, and reset isolation.
+6. Update lightweight docs so other worktrees know where the canonical demo data lives.
+
+### Validation plan
+
+- `npm run test`
+- `npm run typecheck`
+- `npm run lint`
+
+### Risks
+
+- Shared contracts may still evolve when warrant-engine and graph-ui land, so keep this layer intentionally narrow and composable.
+- Human-readable timeline text can drift from future UI copy; treat it as demo fixture content, not final product wording.
+- In-memory reset helpers improve repeatability locally but do not replace future persistence reset paths.
