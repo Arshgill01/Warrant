@@ -518,6 +518,96 @@ Out of scope:
 - Keep shared coordination types narrow and boring.
 - Preserve the later two-layer enforcement invariant by not faking external capability logic into the scaffold.
 
+## ExecPlan — Auth0 Auth Shell (2026-03-20)
+
+### Objective
+
+Implement the Auth0-facing application shell for the auth-shell track so Warrant visibly supports sign-in, Google connection state, and Auth0-centered delegated external access setup.
+
+### Demo relevance
+
+This is Milestone 1 foundation-and-connection work for Workstream A. It strengthens the first two beats of the demo:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+
+It also sets the visible shell later work will plug into for delegated Calendar and Gmail actions.
+
+### Scope
+
+In scope:
+
+- Auth0 Next.js session wiring for App Router
+- signed-out, signed-in, and unavailable shell states
+- a Google connection panel with visible `connected`, `not connected`, `pending`, and `unavailable` states
+- thin Gmail and Calendar access wrappers that distinguish Auth0-backed external readiness from local Warrant policy
+- serious, legible user-facing copy
+- env placeholders and docs for local setup
+
+Out of scope:
+
+- warrant issuance or enforcement logic
+- delegation graph implementation
+- real approval workflow backend
+- broad multi-provider abstractions
+- non-Google external integrations
+
+### Files/modules likely affected
+
+- `package.json`
+- `package-lock.json`
+- `.env.example`
+- `README.md`
+- `PLANS.md`
+- `src/app/*`
+- `src/auth/*`
+- `src/connections/*`
+- `src/actions/*`
+- `src/components/*`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `src/app/globals.css`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep Auth0-backed external access separate from local Warrant policy.
+- Make Auth0 visibly load-bearing rather than generic OAuth plumbing.
+- Keep Google as the only provider in this slice.
+- Do not fake warrant-engine behavior into the auth shell.
+- Keep the shell runnable even when Auth0 env values are missing, with explicit unavailable states.
+- Use user-facing consequence language instead of low-level auth jargon.
+
+### Implementation steps
+
+1. Add a concrete auth-shell plan and inspect current shell/contracts for reuse points.
+2. Install and configure the Auth0 Next.js SDK in a way that degrades safely when env is incomplete.
+3. Replace the foundation landing page with an Auth0 shell that renders signed-out, signed-in, and unavailable states.
+4. Add a Google connection state model plus a focused connection panel that can accept real Auth0-backed state next.
+5. Add thin external action wrappers for Calendar read, Gmail draft, and Gmail send with structured disconnected, unavailable, pending, and approval-required outcomes.
+6. Document env requirements and update tests so the shell contracts are covered.
+
+### Validation steps
+
+- `npm run lint`
+- `npm run test`
+- `npm run typecheck`
+- `npm run build`
+- `npm run dev -- --port 3000`
+
+Manual shell checks during local run:
+
+- homepage renders without Auth0 env values
+- signed-out shell shows login affordance and unavailable messaging where appropriate
+- Google connection panel renders visible status copy
+- Calendar and Gmail action placeholders show distinct blocked or pending states
+
+### Known risks
+
+- Real Token Vault or connected-account status may need tenant-specific wiring beyond this slice, so the first pass may rely on explicit server-side placeholder state until the real callback path is connected.
+- Without real Auth0 and Google credentials in local env, end-to-end sign-in and provider connection cannot be fully exercised in this worktree.
+- Approval state is shell-only here; later approval-track work must replace placeholder approval handling with the real flow.
+
 ### Implementation steps
 
 1. Add the ExecPlan and inspect the empty repo baseline.
