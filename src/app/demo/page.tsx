@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAuth0Environment } from "@/auth/env";
 import {
-  createDelegationGraphView,
-  createTimelineEventDisplayRecords,
-  getDisplayScenarioExamples,
+  loadDelegationGraphView,
   loadDemoState,
+  loadScenarioExamples,
+  loadTimelineEvents,
 } from "@/demo-fixtures";
 import { DelegationGraph } from "@/graph";
 import type { DemoActionOutcome } from "@/contracts";
@@ -81,9 +81,9 @@ function ExampleCard({
 export default function DemoPage() {
   const authEnv = getAuth0Environment();
   const scenario = loadDemoState();
-  const graphView = createDelegationGraphView(scenario);
-  const timeline = createTimelineEventDisplayRecords(scenario);
-  const examples = getDisplayScenarioExamples(scenario);
+  const graphView = loadDelegationGraphView();
+  const timeline = loadTimelineEvents();
+  const examples = loadScenarioExamples();
   
   const agentCounts = scenario.agents.reduce<Record<string, number>>((counts, agent) => {
     counts[agent.status] = (counts[agent.status] ?? 0) + 1;

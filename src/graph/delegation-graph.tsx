@@ -14,8 +14,8 @@ import "@xyflow/react/dist/style.css";
 import { AgentNodeComponent, type AgentNode } from "@/components/graph/agent-node";
 import { NodeDetailPanel } from "@/components/graph/node-detail-panel";
 import type {
-  DelegationGraphEdgeRecord,
-  DelegationGraphNodeRecord,
+  GraphEdgeDTO,
+  GraphNodeDTO,
   WarrantDisplaySummary,
 } from "@/contracts";
 import {
@@ -29,8 +29,8 @@ const nodeTypes = {
 };
 
 type DelegationGraphProps = {
-  graphNodes: DelegationGraphNodeRecord[];
-  graphEdges: DelegationGraphEdgeRecord[];
+  graphNodes: GraphNodeDTO[];
+  graphEdges: GraphEdgeDTO[];
   warrantSummaries: WarrantDisplaySummary[];
   eyebrow?: string;
   title?: string;

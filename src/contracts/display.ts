@@ -36,6 +36,9 @@ export interface DelegationGraphEdgeRecord {
   status: DisplayStatus;
 }
 
+export type GraphNodeDTO = DelegationGraphNodeRecord;
+export type GraphEdgeDTO = DelegationGraphEdgeRecord;
+
 export interface WarrantDisplaySummary {
   id: string;
   parentId: string | null;
@@ -101,4 +104,19 @@ export interface TimelineEventDisplayRecord {
   revocationId: string | null;
   title: string;
   description: string;
+}
+
+export interface DelegationGraphDTO {
+  nodes: GraphNodeDTO[];
+  edges: GraphEdgeDTO[];
+  warrantSummaries: WarrantDisplaySummary[];
+}
+
+export interface DisplayScenarioExampleSet {
+  validChildAction: ActionAttemptDisplayRecord;
+  blockedOverreachAction: ActionAttemptDisplayRecord;
+  approvalPendingAction: ActionAttemptDisplayRecord;
+  approvalPendingRequest: ApprovalStateDisplayRecord;
+  revokedBranchSummary: WarrantDisplaySummary;
+  revokedDescendantCount: number;
 }

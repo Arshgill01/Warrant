@@ -1247,3 +1247,72 @@ Out of scope:
 - Route-render tests are still not a substitute for full browser-based demo rehearsal.
 - Stricter TypeScript unused-code checks may surface additional cleanup work as more branches merge.
 - The merge-conflict scan intentionally focuses on source-like files, so binary or generated artifacts remain out of scope.
+
+## ExecPlan — Wave 2 Contracts-Sync Stabilization (2026-03-22)
+
+### Objective
+
+Stabilize one shared contract path for Wave 2 so provider actions, orchestration, audit/timeline, approvals, graph binding, and demo fixtures can integrate against explicit DTOs and result envelopes without reaching into deep domain shapes.
+
+### Demo relevance
+
+This is merge-risk reduction work for the core three-minute story. The graph, blocked-overreach proof, approval state, and audit trail all need to describe the same lineage-aware scenario with low coupling before real orchestration and provider adapters land.
+
+### Scope
+
+In scope:
+
+- audit the current Wave 1 shared contracts and identify duplicated, conflicting, or demo-fixture-local DTO ownership
+- consolidate graph node, graph edge, warrant summary, action-attempt, approval-state, and timeline-event DTO ownership into one clear shared contract path
+- define a small shared graph-view bundle and demo-example bundle if consumers already need them
+- add a structured provider action result envelope contract for later real adapters to return instead of arbitrary objects
+- update adapter helpers so fixtures and UI consumers map through explicit boundaries
+- reduce duplicate or conflicting types where that can be done without invasive rewrites
+
+Out of scope:
+
+- orchestration implementation
+- provider API execution
+- warrant-engine behavioral redesign
+- new providers or broader architecture refactors
+- persistence changes
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `src/app/demo/page.tsx`
+- `src/components/foundation/foundation-shell.tsx`
+- `src/graph/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep domain models separate from display models.
+- Keep the graph fed by graph DTOs, not raw warrant state.
+- Preserve the current seeded scenario and visible lineage story.
+- Prefer additive adapters and aliases over large renames that would increase merge conflict risk.
+- Keep contracts product-facing, small, explicit, and easy to inspect.
+- Do not introduce orchestration or provider logic in this slice.
+
+### Implementation steps
+
+1. Move any shared view-bundle or example-set types that still live in `src/demo-fixtures` into `src/contracts` so there is one canonical DTO path.
+2. Add explicit DTO aliases or canonical names for graph-focused consumers where that improves Wave 2 readability without forcing a disruptive rename.
+3. Define a structured provider action result envelope in `src/contracts/action.ts` and align current provider-path helpers to return that envelope shape.
+4. Refactor demo-fixture adapters and UI consumers to import shared DTOs from `src/contracts` and keep fixture logic limited to mapping functions.
+5. Remove or reduce duplicate type definitions and add targeted tests that lock the shared contract path and adapter outputs.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+### Risks
+
+- The current graph UI still owns local revoked-state mutations, so contract cleanup must not break the visible branch-revocation demo behavior.
+- Action-path helpers are currently UI-oriented placeholders; introducing a result envelope should stay minimal so later provider work can extend it instead of replace it.
+- There is already a Wave 1 shared-contract layer, so this pass must stabilize and clarify it rather than create a second parallel contract system.

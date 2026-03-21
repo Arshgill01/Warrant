@@ -1,4 +1,12 @@
-import type { ApprovalStatus, ActionKind, ActionPathSnapshot, AuthSessionSnapshot, LocalPolicyCheck, ProviderConnectionSnapshot } from "@/contracts";
+import type {
+  ApprovalStatus,
+  ActionKind,
+  ActionPathSnapshot,
+  AuthSessionSnapshot,
+  LocalPolicyCheck,
+  ProviderActionResultEnvelope,
+  ProviderConnectionSnapshot,
+} from "@/contracts";
 import { getGoogleConnectionSnapshot } from "@/connections/google";
 
 interface ExternalActionContext {
@@ -61,55 +69,144 @@ function buildAuth0Snapshot(
   };
 }
 
-export async function getCalendarReadPath(context: ExternalActionContext): Promise<ActionPathSnapshot> {
+function createActionResultEnvelope(input: {
+  approvalStatus?: ApprovalStatus;
+  connection: ProviderConnectionSnapshot;
+  path: ActionPathSnapshot;
+  policy: LocalPolicyCheck;
+}): ProviderActionResultEnvelope {
+  return {
+    provider: input.connection.provider,
+    connectionState: input.connection.state,
+    policy: input.policy,
+    approvalStatus: input.approvalStatus ?? null,
+    path: input.path,
+  };
+}
+
+export async function getCalendarReadResult(
+  context: ExternalActionContext,
+): Promise<ProviderActionResultEnvelope> {
   if (!context.policy.allowed) {
-    return buildPolicyBlockedSnapshot("calendar.read", "Calendar read", context.policy.reason);
+    return createActionResultEnvelope({
+      connection:
+        context.connection ??
+        ({
+          provider: "google",
+          state: "unavailable",
+          headline: "Google access is unavailable.",
+          detail: "The delegated provider path was not checked because local policy blocked the action first.",
+          actionLabel: null,
+          actionHref: null,
+          accountLabel: null,
+          tokenExpiresAt: null,
+          via: "missing-config",
+        } satisfies ProviderConnectionSnapshot),
+      path: buildPolicyBlockedSnapshot(
+        "calendar.read",
+        "Calendar read",
+        context.policy.reason,
+      ),
+      policy: context.policy,
+    });
   }
 
   const connection = context.connection ?? (await getGoogleConnectionSnapshot(context.session));
 
-  return buildAuth0Snapshot(
-    "calendar.read",
-    "Calendar read",
+  return createActionResultEnvelope({
     connection,
-    "The local policy check is separate from Auth0. Once both are present, a Calendar agent can read availability through delegated Google access.",
-  );
+    path: buildAuth0Snapshot(
+      "calendar.read",
+      "Calendar read",
+      connection,
+      "The local policy check is separate from Auth0. Once both are present, a Calendar agent can read availability through delegated Google access.",
+    ),
+    policy: context.policy,
+  });
 }
 
-export async function getGmailDraftPath(context: ExternalActionContext): Promise<ActionPathSnapshot> {
+export async function getGmailDraftResult(
+  context: ExternalActionContext,
+): Promise<ProviderActionResultEnvelope> {
   if (!context.policy.allowed) {
-    return buildPolicyBlockedSnapshot("gmail.draft", "Gmail draft", context.policy.reason);
+    return createActionResultEnvelope({
+      connection:
+        context.connection ??
+        ({
+          provider: "google",
+          state: "unavailable",
+          headline: "Google access is unavailable.",
+          detail: "The delegated provider path was not checked because local policy blocked the action first.",
+          actionLabel: null,
+          actionHref: null,
+          accountLabel: null,
+          tokenExpiresAt: null,
+          via: "missing-config",
+        } satisfies ProviderConnectionSnapshot),
+      path: buildPolicyBlockedSnapshot("gmail.draft", "Gmail draft", context.policy.reason),
+      policy: context.policy,
+    });
   }
 
   const connection = context.connection ?? (await getGoogleConnectionSnapshot(context.session));
 
-  return buildAuth0Snapshot(
-    "gmail.draft",
-    "Gmail draft",
+  return createActionResultEnvelope({
     connection,
-    "Draft creation can use the delegated Google path after Auth0 confirms the connection, while send remains a separate sensitive action.",
-  );
+    path: buildAuth0Snapshot(
+      "gmail.draft",
+      "Gmail draft",
+      connection,
+      "Draft creation can use the delegated Google path after Auth0 confirms the connection, while send remains a separate sensitive action.",
+    ),
+    policy: context.policy,
+  });
 }
 
-export async function getGmailSendPath(context: ExternalActionContext): Promise<ActionPathSnapshot> {
+export async function getGmailSendResult(
+  context: ExternalActionContext,
+): Promise<ProviderActionResultEnvelope> {
   if (!context.policy.allowed) {
-    return buildPolicyBlockedSnapshot("gmail.send", "Gmail send", context.policy.reason);
+    return createActionResultEnvelope({
+      connection:
+        context.connection ??
+        ({
+          provider: "google",
+          state: "unavailable",
+          headline: "Google access is unavailable.",
+          detail: "The delegated provider path was not checked because local policy blocked the action first.",
+          actionLabel: null,
+          actionHref: null,
+          accountLabel: null,
+          tokenExpiresAt: null,
+          via: "missing-config",
+        } satisfies ProviderConnectionSnapshot),
+      path: buildPolicyBlockedSnapshot("gmail.send", "Gmail send", context.policy.reason),
+      policy: context.policy,
+      approvalStatus: context.approvalStatus,
+    });
   }
 
   const connection = context.connection ?? (await getGoogleConnectionSnapshot(context.session));
 
   if (connection.state !== "connected") {
-    return buildAuth0Snapshot(
-      "gmail.send",
-      "Gmail send",
+    return createActionResultEnvelope({
       connection,
-      "The delegated Google path is available, but send still needs a separate approval decision.",
-    );
+      path: buildAuth0Snapshot(
+        "gmail.send",
+        "Gmail send",
+        connection,
+        "The delegated Google path is available, but send still needs a separate approval decision.",
+      ),
+      policy: context.policy,
+      approvalStatus: context.approvalStatus,
+    });
   }
+
+  let path: ActionPathSnapshot;
 
   switch (context.approvalStatus) {
     case "approved":
-      return {
+      path = {
         kind: "gmail.send",
         label: "Gmail send",
         state: "ready",
@@ -118,8 +215,9 @@ export async function getGmailSendPath(context: ExternalActionContext): Promise<
         detail: "Local policy and Auth0-backed Google access are already in place. The remaining guardrail is the explicit send approval state.",
         nextStep: "Approval-track work will attach the exact message preview and recipient blast radius.",
       };
+      break;
     case "denied":
-      return {
+      path = {
         kind: "gmail.send",
         label: "Gmail send",
         state: "blocked",
@@ -128,8 +226,9 @@ export async function getGmailSendPath(context: ExternalActionContext): Promise<
         detail: "Sensitive external actions stay blocked even when the local policy allows them and Auth0 can supply delegated access.",
         nextStep: "A later approval flow will show the exact draft, recipients, and reason for the send.",
       };
+      break;
     case "expired":
-      return {
+      path = {
         kind: "gmail.send",
         label: "Gmail send",
         state: "blocked",
@@ -138,9 +237,10 @@ export async function getGmailSendPath(context: ExternalActionContext): Promise<
         detail: "The external action can only proceed after a fresh approval, even though the Auth0 path remains available.",
         nextStep: "Request approval again with the latest draft preview.",
       };
+      break;
     case "pending":
     default:
-      return {
+      path = {
         kind: "gmail.send",
         label: "Gmail send",
         state: "pending",
@@ -149,5 +249,31 @@ export async function getGmailSendPath(context: ExternalActionContext): Promise<
         detail: "This is intentional. Auth0-backed access makes the external path real, while approval keeps sensitive sends legible and reversible.",
         nextStep: "Approval-track work will render the send preview and capture the decision.",
       };
+      break;
   }
+
+  return createActionResultEnvelope({
+    connection,
+    path,
+    policy: context.policy,
+    approvalStatus: context.approvalStatus,
+  });
+}
+
+export async function getCalendarReadPath(
+  context: ExternalActionContext,
+): Promise<ActionPathSnapshot> {
+  return (await getCalendarReadResult(context)).path;
+}
+
+export async function getGmailDraftPath(
+  context: ExternalActionContext,
+): Promise<ActionPathSnapshot> {
+  return (await getGmailDraftResult(context)).path;
+}
+
+export async function getGmailSendPath(
+  context: ExternalActionContext,
+): Promise<ActionPathSnapshot> {
+  return (await getGmailSendResult(context)).path;
 }

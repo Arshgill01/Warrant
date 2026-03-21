@@ -1,4 +1,6 @@
 import type {
+  DelegationGraphDTO,
+  DisplayScenarioExampleSet,
   DemoScenario,
   TimelineEventDisplayRecord,
 } from "@/contracts";
@@ -7,8 +9,6 @@ import {
   createDelegationGraphView,
   createTimelineEventDisplayRecords,
   getDisplayScenarioExamples,
-  type DelegationGraphViewData,
-  type DisplayScenarioExampleSet,
 } from "@/demo-fixtures/display";
 
 const cloneScenario = <Value>(value: Value): Value => structuredClone(value);
@@ -29,7 +29,7 @@ export function resetDemoState(): DemoScenario {
   return loadDemoState();
 }
 
-export function loadDelegationGraphView(): DelegationGraphViewData {
+export function loadDelegationGraphView(): DelegationGraphDTO {
   return createDelegationGraphView(loadDemoState());
 }
 

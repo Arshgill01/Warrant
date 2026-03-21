@@ -93,6 +93,9 @@ UI-facing graph, timeline, warrant-summary, action, and approval DTOs now live i
 
 Use adapters from `src/demo-fixtures/display.ts` to map canonical demo/domain data into those DTOs. Graph and demo surfaces should consume that adapter layer instead of raw warrant or fixture internals directly.
 
+Graph consumers should prefer `GraphNodeDTO`, `GraphEdgeDTO`, and `DelegationGraphDTO` from `src/contracts`.
+Provider-action wrappers should return `ProviderActionResultEnvelope` from `src/contracts/action.ts`, then hand the contained path snapshot to UI components.
+
 ## Intended worktree split
 
 - Auth worktree: `src/auth`, `src/connections`

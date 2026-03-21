@@ -2,11 +2,13 @@ import type {
   ActionAttemptDisplayRecord,
   ActionKind,
   ApprovalStateDisplayRecord,
-  DelegationGraphEdgeRecord,
-  DelegationGraphNodeRecord,
+  DelegationGraphDTO,
   DemoScenario,
   DisplayField,
+  DisplayScenarioExampleSet,
   DisplayStatus,
+  GraphEdgeDTO,
+  GraphNodeDTO,
   TimelineEventDisplayRecord,
   WarrantDisplaySummary,
 } from "@/contracts";
@@ -28,21 +30,6 @@ const required = <Value>(value: Value | undefined, message: string): Value => {
 
   return value;
 };
-
-export interface DelegationGraphViewData {
-  nodes: DelegationGraphNodeRecord[];
-  edges: DelegationGraphEdgeRecord[];
-  warrantSummaries: WarrantDisplaySummary[];
-}
-
-export interface DisplayScenarioExampleSet {
-  validChildAction: ActionAttemptDisplayRecord;
-  blockedOverreachAction: ActionAttemptDisplayRecord;
-  approvalPendingAction: ActionAttemptDisplayRecord;
-  approvalPendingRequest: ApprovalStateDisplayRecord;
-  revokedBranchSummary: WarrantDisplaySummary;
-  revokedDescendantCount: number;
-}
 
 function formatDateTime(value: string): string {
   return value.replace(".000Z", "Z").replace("T", " ");
@@ -253,11 +240,11 @@ export function createTimelineEventDisplayRecords(
 
 export function createDelegationGraphView(
   scenario: DemoScenario,
-): DelegationGraphViewData {
+): DelegationGraphDTO {
   const warrantSummaries = createWarrantDisplaySummaries(scenario);
 
   return {
-    nodes: warrantSummaries.map((summary) => ({
+    nodes: warrantSummaries.map<GraphNodeDTO>((summary) => ({
       id: summary.id,
       agentId: summary.agentId,
       parentId: summary.parentId,
@@ -271,7 +258,7 @@ export function createDelegationGraphView(
     })),
     edges: warrantSummaries
       .filter((summary) => summary.parentId)
-      .map((summary) => ({
+      .map<GraphEdgeDTO>((summary) => ({
         id: `e-${summary.parentId}-${summary.id}`,
         sourceId: summary.parentId!,
         targetId: summary.id,
