@@ -6,6 +6,9 @@ export const agentsBoundary: WorktreeBoundary = {
   path: "src/agents",
   purpose: "Own planner and child-agent orchestration, task routing, and warrant-aware execution flow.",
   futureWorktree: "Planner, Calendar Agent, and Comms Agent",
-  notes: "Do not generalize beyond the demo path until the core agent tree works.",
+  notes: "Keep the orchestration deterministic, scenario-specific, and grounded in real warrant issuance.",
   status: "reserved",
 };
+
+export * from "@/agents/main-scenario";
+export * from "@/agents/types";

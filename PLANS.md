@@ -1247,3 +1247,72 @@ Out of scope:
 - Route-render tests are still not a substitute for full browser-based demo rehearsal.
 - Stricter TypeScript unused-code checks may surface additional cleanup work as more branches merge.
 - The merge-conflict scan intentionally focuses on source-like files, so binary or generated artifacts remain out of scope.
+
+## ExecPlan — Deterministic Planner-To-Child Orchestration (2026-03-22)
+
+### Objective
+
+Implement the main Warrant orchestration slice for “Prepare my investor update for tomorrow and coordinate follow-ups.” using the real warrant engine, deterministic task decomposition, and provider-action adapters that stay separate from raw provider plumbing.
+
+### Demo relevance
+
+This is the core of Milestone 3 and the clearest proof of the thesis before overreach, approval, and revocation. Judges need to see the planner issue narrower child warrants, the child agents do useful but limited work, and the resulting lineage show up in graph and timeline views.
+
+### Scope
+
+In scope:
+
+- deterministic planner flow for the investor-update scenario
+- planner-owned root warrant plus narrower Calendar and Comms child warrants
+- one allowed calendar read action through a provider-action interface
+- one allowed comms draft action through a provider-action interface
+- lineage-aware action and warrant records compatible with shared graph, timeline, and display contracts
+- deterministic test coverage and repeat-run stability checks for the seeded flow
+
+Out of scope:
+
+- forbidden overreach action handling beyond preserving compatibility with later integration
+- approval-request creation for send-email
+- branch revocation behavior
+- generic workflow engines, model-driven planning, or extra agent types
+- direct UI rendering logic inside orchestration modules
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/*`
+- `src/actions/*`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- Child warrants can only narrow parent authority and must be issued through the real warrant-core logic.
+- Meaningful actions must preserve root request, warrant id, parent warrant id, and acting agent identity.
+- Orchestration must stay deterministic and demo-friendly; no uncontrolled planning or provider behavior.
+- Provider execution must be invoked through interfaces/adapters, not by importing raw provider plumbing into agents.
+- Output must remain consumable by graph/timeline/display layers without ad hoc UI-only transforms.
+
+### Implementation steps
+
+1. Inspect existing warrant issuance, authorization, demo fixture, and action-path code to identify reusable contracts and gaps.
+2. Define a narrow orchestration model for the seeded investor-update scenario, including deterministic task decomposition and planner-to-child role mapping.
+3. Add provider-action interfaces plus deterministic calendar and comms adapters that can execute one allowed action each without leaking provider-specific internals into the agents layer.
+4. Implement planner orchestration that issues real child warrants, invokes child action execution through the adapters, and emits lineage-aware warrants, action attempts, and timeline records.
+5. Rebuild the seeded main scenario from the orchestration output and keep display/view-model helpers consuming the shared contracts.
+6. Add targeted tests for warrant narrowing, action lineage, adapter routing, and repeated-run stability before running the broader validation set.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- repeat the deterministic scenario assertions multiple times within tests or a targeted orchestration spec to confirm stable output across runs
+
+### Risks
+
+- The current shared contracts do not yet include orchestration-specific execution metadata, so new types may be needed if the existing display shape proves too narrow.
+- The action layer already has Auth0-path helpers for connection readiness; the new execution adapters must not blur those concerns or duplicate policy logic inconsistently.
+- Replacing static demo fixtures with generated scenario data could expose latent assumptions in the demo UI or tests that currently rely on hard-coded ids or ordering.

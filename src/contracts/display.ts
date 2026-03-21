@@ -60,6 +60,7 @@ export interface ActionAttemptDisplayRecord {
   kind: ActionKind;
   agentId: string;
   agentLabel: string;
+  rootRequestId: string;
   warrantId: string;
   parentWarrantId: string | null;
   requestedAt: string;

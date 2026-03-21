@@ -17,13 +17,11 @@ describe("delegation graph view model", () => {
     const planner = nodes.find((node) => node.id === "warrant-planner-root-001");
     const calendar = nodes.find((node) => node.id === "warrant-calendar-child-001");
     const comms = nodes.find((node) => node.id === "warrant-comms-child-001");
-    const docs = nodes.find((node) => node.id === "warrant-docs-child-001");
 
-    expect(nodes).toHaveLength(4);
+    expect(nodes).toHaveLength(3);
     expect(planner?.data.label).toBe("Planner Agent");
     expect(calendar?.data.role).toBe("calendar");
-    expect(comms?.data.status).toBe("revoked");
-    expect(docs?.position.y).toBeGreaterThan(comms?.position.y ?? 0);
+    expect(comms?.data.status).toBe("active");
     expect(calendar?.position.y).toBe(comms?.position.y);
     expect(planner?.position.y).toBeLessThan(calendar?.position.y ?? Number.MAX_SAFE_INTEGER);
   });
@@ -32,16 +30,15 @@ describe("delegation graph view model", () => {
     const scenario = createDefaultDemoScenario();
     const graphView = createDelegationGraphView(scenario);
     const edges = buildDelegationGraphEdges(graphView.edges);
-    const revokedBranch = collectDescendantNodeIds(graphView.nodes, "warrant-comms-child-001");
+    const commsBranch = collectDescendantNodeIds(graphView.nodes, "warrant-comms-child-001");
 
-    expect(edges).toHaveLength(3);
+    expect(edges).toHaveLength(2);
     expect(edges.map((edge) => [edge.source, edge.target])).toEqual(
       expect.arrayContaining([
         ["warrant-planner-root-001", "warrant-calendar-child-001"],
         ["warrant-planner-root-001", "warrant-comms-child-001"],
-        ["warrant-comms-child-001", "warrant-docs-child-001"],
       ]),
     );
-    expect(revokedBranch).toEqual(["warrant-comms-child-001", "warrant-docs-child-001"]);
+    expect(commsBranch).toEqual(["warrant-comms-child-001"]);
   });
 });
