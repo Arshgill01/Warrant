@@ -1,4 +1,3 @@
-import React from "react";
 import { 
   X, 
   Shield, 
@@ -104,8 +103,36 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
                 <span className="text-slate-400">Max Children</span>
                 <span className="font-medium text-slate-700">{warrant.maxChildren}</span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Can Delegate</span>
+                <span className="font-medium text-slate-700">{warrant.canDelegate ? "Yes" : "No"}</span>
+              </div>
             </div>
           </section>
+
+          {warrant.revocationReason ? (
+            <section>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="size-4 text-slate-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Revocation</h3>
+              </div>
+              <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-4 space-y-2">
+                {warrant.revokedAt ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Revoked At</span>
+                    <span className="font-medium text-slate-700">{new Date(warrant.revokedAt).toLocaleString()}</span>
+                  </div>
+                ) : null}
+                {warrant.revokedBy ? (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-400">Revoked By</span>
+                    <span className="font-medium text-slate-700">{warrant.revokedBy}</span>
+                  </div>
+                ) : null}
+                <p className="text-sm leading-6 text-slate-600">{warrant.revocationReason}</p>
+              </div>
+            </section>
+          ) : null}
 
           <section>
             <div className="flex items-center gap-2 mb-3">

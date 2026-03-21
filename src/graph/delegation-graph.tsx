@@ -1,69 +1,64 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ReactFlow,
   Background,
   Controls,
   useNodesState,
   useEdgesState,
-  type Edge,
-  MarkerType,
+  type NodeMouseHandler,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
 import { AgentNodeComponent, type AgentNode } from "@/components/graph/agent-node";
 import { NodeDetailPanel } from "@/components/graph/node-detail-panel";
-import { mockDelegationNodes, mockWarrants, mockAgents } from "@/demo-fixtures/graph-data";
-import type { AgentStatus } from "@/contracts/agent";
+import type { AgentIdentity, DelegationNode, WarrantContract } from "@/contracts";
+import {
+  buildDelegationGraphEdges,
+  buildDelegationGraphNodes,
+  collectDescendantWarrantIds,
+} from "@/graph/view-model";
 
 const nodeTypes = {
   agent: AgentNodeComponent,
 };
 
-const initialNodes: AgentNode[] = mockDelegationNodes.map((node, index) => {
-  const agent = mockAgents.find((a) => a.id === node.agentId);
-  
-  return {
-    id: node.warrantId,
-    type: "agent",
-    data: {
-      label: agent?.label || "Unknown Agent",
-      role: agent?.role || "planner",
-      status: node.status,
-      capabilities: node.capabilitySummary,
-      isRevoked: node.status === "revoked",
-    },
-    // Simple manual positioning for tree layout
-    position: { 
-      x: node.parentWarrantId ? (index % 2 === 0 ? 100 : 500) : 300, 
-      y: node.parentWarrantId ? (index > 1 ? 400 : 200) : 0 
-    },
-  };
-});
+type DelegationGraphProps = {
+  warrants: WarrantContract[];
+  agents: AgentIdentity[];
+  delegationNodes: DelegationNode[];
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+};
 
-const initialEdges: Edge[] = mockDelegationNodes
-  .filter((node) => node.parentWarrantId)
-  .map((node) => ({
-    id: `e-${node.parentWarrantId}-${node.warrantId}`,
-    source: node.parentWarrantId!,
-    target: node.warrantId,
-    animated: true,
-    style: { stroke: "var(--accent)", strokeWidth: 2 },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: "var(--accent)",
-    },
-  }));
-
-export function DelegationGraph() {
-  const [warrants, setWarrants] = useState(mockWarrants);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+export function DelegationGraph({
+  warrants: initialWarrants,
+  agents,
+  delegationNodes,
+  eyebrow = "Authority Graph",
+  title = "Delegation Tree",
+  description = "Nodes represent warrants. Revoking a node invalidates its entire branch.",
+}: DelegationGraphProps) {
+  const baseNodes = useMemo(
+    () => buildDelegationGraphNodes({ agents, delegationNodes }),
+    [agents, delegationNodes],
+  );
+  const baseEdges = useMemo(() => buildDelegationGraphEdges(delegationNodes), [delegationNodes]);
+  const [warrants, setWarrants] = useState(initialWarrants);
+  const [nodes, setNodes, onNodesChange] = useNodesState(baseNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(baseEdges);
   const [selectedWarrantId, setSelectedWarrantId] = useState<string | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onNodeClick = useCallback((_: any, node: any) => {
+  useEffect(() => {
+    setWarrants(initialWarrants);
+    setNodes(baseNodes);
+    setEdges(baseEdges);
+    setSelectedWarrantId(null);
+  }, [baseEdges, baseNodes, initialWarrants, setEdges, setNodes]);
+
+  const onNodeClick = useCallback<NodeMouseHandler<AgentNode>>((_, node) => {
     setSelectedWarrantId(node.id);
   }, []);
 
@@ -73,22 +68,12 @@ export function DelegationGraph() {
   );
 
   const selectedAgent = useMemo(
-    () => (selectedWarrant ? mockAgents.find((a) => a.id === selectedWarrant.agentId) || null : null),
-    [selectedWarrant]
+    () => (selectedWarrant ? agents.find((agent) => agent.id === selectedWarrant.agentId) ?? null : null),
+    [agents, selectedWarrant]
   );
 
   const handleRevoke = useCallback((warrantId: string) => {
-    // Find all descendants to revoke them too
-    const toRevoke = new Set<string>([warrantId]);
-    const findDescendants = (parentId: string) => {
-      mockDelegationNodes
-        .filter((n) => n.parentWarrantId === parentId)
-        .forEach((n) => {
-          toRevoke.add(n.warrantId);
-          findDescendants(n.warrantId);
-        });
-    };
-    findDescendants(warrantId);
+    const toRevoke = new Set(collectDescendantWarrantIds(delegationNodes, warrantId));
 
     setWarrants((currentWarrants) =>
       currentWarrants.map((warrant) =>
@@ -108,7 +93,7 @@ export function DelegationGraph() {
             ...node,
             data: {
               ...node.data,
-              status: "revoked" as AgentStatus,
+              status: "revoked",
               isRevoked: true,
             },
           };
@@ -129,13 +114,13 @@ export function DelegationGraph() {
         return edge;
       })
     );
-  }, [setNodes, setEdges]);
+  }, [delegationNodes, setEdges, setNodes]);
 
   return (
     <div className="relative h-[600px] w-full overflow-hidden rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] shadow-[0_20px_80px_rgba(16,18,23,0.08)] backdrop-blur">
       <div className="absolute left-8 top-8 z-10">
-        <p className="text-sm font-medium uppercase tracking-[0.22em] text-[var(--muted)]">Authority Graph</p>
-        <h2 className="text-3xl font-serif">Delegation Tree</h2>
+        <p className="text-sm font-medium uppercase tracking-[0.22em] text-[var(--muted)]">{eyebrow}</p>
+        <h2 className="text-3xl font-serif">{title}</h2>
       </div>
 
       <ReactFlow
@@ -170,7 +155,7 @@ export function DelegationGraph() {
           <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
         </div>
         <p className="max-w-[200px] text-[11px] leading-relaxed text-slate-400">
-          Nodes represent warrants. Revoking a node invalidates its entire branch.
+          {description}
         </p>
       </div>
     </div>
