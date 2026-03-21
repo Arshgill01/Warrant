@@ -9,7 +9,8 @@ import {
   FileText, 
   AlertCircle, 
   Ban,
-  Clock
+  Clock,
+  ChevronRight
 } from "lucide-react";
 import type { AgentRole, AgentStatus } from "@/contracts/agent";
 
@@ -24,30 +25,20 @@ export type AgentNodeData = {
 export type AgentNode = Node<AgentNodeData>;
 
 const roleIcons: Record<AgentRole, React.ReactNode> = {
-  planner: <Brain className="size-5" />,
-  calendar: <Calendar className="size-5" />,
-  comms: <Mail className="size-5" />,
-  docs: <FileText className="size-5" />,
-};
-
-const statusIcons: Record<NonNullable<AgentNodeData["status"]>, React.ReactNode> = {
-  active: <ShieldCheck className="size-3.5" />,
-  idle: <Clock className="size-3.5" />,
-  blocked: <Ban className="size-3.5" />,
-  revoked: <AlertCircle className="size-3.5" />,
-  pending: <Clock className="size-3.5" />,
-  denied: <Ban className="size-3.5" />,
-  expired: <Clock className="size-3.5" />,
+  planner: <Brain className="size-4" />,
+  calendar: <Calendar className="size-4" />,
+  comms: <Mail className="size-4" />,
+  docs: <FileText className="size-4" />,
 };
 
 const statusColors: Record<NonNullable<AgentNodeData["status"]>, string> = {
-  active: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-  idle: "bg-slate-100 text-slate-500 border-slate-200",
-  blocked: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-  revoked: "bg-rose-500/10 text-rose-600 border-rose-500/20",
-  pending: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  denied: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-  expired: "bg-slate-500/10 text-slate-600 border-slate-500/20",
+  active: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)] border-[var(--status-allowed-text)]/20",
+  idle: "bg-slate-50 text-slate-500 border-slate-200",
+  blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)] border-[var(--status-blocked-text)]/20",
+  revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-[var(--status-revoked-text)]/20",
+  pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-[var(--status-pending-text)]/20",
+  denied: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)] border-[var(--status-blocked-text)]/20",
+  expired: "bg-slate-100 text-slate-400 border-slate-200",
 };
 
 export const AgentNodeComponent = memo(({ data, selected }: NodeProps<AgentNode>) => {
@@ -56,52 +47,67 @@ export const AgentNodeComponent = memo(({ data, selected }: NodeProps<AgentNode>
 
   return (
     <div className={`
-      relative min-w-[240px] rounded-2xl border bg-white p-4 shadow-sm transition-all
-      ${selected ? "border-[var(--accent)] ring-2 ring-[var(--accent-soft)]" : "border-[var(--panel-border)]"}
-      ${isRevoked ? "opacity-60 grayscale-[0.5]" : ""}
+      relative min-w-[260px] overflow-hidden rounded-2xl border bg-white p-0 shadow-sm transition-all duration-200
+      ${selected ? "border-[var(--accent)] ring-4 ring-[var(--accent-soft)] shadow-md" : "border-[var(--panel-border)]"}
+      ${isRevoked ? "opacity-75 grayscale-[0.4]" : "hover:shadow-md hover:border-[var(--muted)]/30"}
     `}>
       {!isRoot && (
         <Handle
           type="target"
           position={Position.Top}
-          className="!h-2 !w-2 !border-2 !border-white !bg-[var(--accent)]"
+          className="!h-2.5 !w-2.5 !border-2 !border-white !bg-[var(--accent)] !opacity-100"
         />
       )}
       
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`
-            flex size-10 items-center justify-center rounded-xl border
-            ${isRoot ? "bg-slate-900 text-white border-slate-900" : "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--panel-border)]"}
-          `}>
-            {isRoot ? <User className="size-6" /> : roleIcons[data.role]}
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900">{data.label}</h3>
-            <div className={`mt-1 flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusColors[data.status]}`}>
-              {statusIcons[data.status]}
-              {data.status}
-            </div>
+      {/* Node Header */}
+      <div className="flex items-center gap-3 border-b border-[var(--panel-border)] bg-slate-50/30 p-4">
+        <div className={`
+          flex size-10 shrink-0 items-center justify-center rounded-xl border
+          ${isRoot ? "bg-slate-900 text-white border-slate-800 shadow-sm" : "bg-white text-[var(--accent)] border-[var(--panel-border)] shadow-sm"}
+        `}>
+          {isRoot ? <User className="size-5" /> : roleIcons[data.role]}
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <h3 className="truncate font-bold tracking-tight text-[var(--foreground)]">{data.label}</h3>
+          <div className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusColors[data.status]}`}>
+            {data.status}
           </div>
         </div>
+        {selected && <ChevronRight className="size-4 text-[var(--accent)]" />}
       </div>
 
-      <div className="mt-4 space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">Capabilities</p>
-        <div className="flex flex-wrap gap-1.5">
-          {data.capabilities.map((cap) => (
-            <span key={cap} className="rounded-md bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-600 border border-slate-100">
-              {cap}
-            </span>
-          ))}
+      {/* Node Body */}
+      <div className="p-4 space-y-3">
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Capabilities</p>
+          <div className="flex flex-wrap gap-1">
+            {data.capabilities.length > 0 ? (
+              data.capabilities.map((cap) => (
+                <span key={cap} className="inline-flex items-center rounded-md bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 border border-slate-200/60">
+                  {cap}
+                </span>
+              ))
+            ) : (
+              <span className="text-[10px] italic text-slate-400">No active capabilities</span>
+            )}
+          </div>
         </div>
       </div>
 
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!h-2 !w-2 !border-2 !border-white !bg-[var(--accent)]"
+        className="!h-2.5 !w-2.5 !border-2 !border-white !bg-[var(--accent)] !opacity-100"
       />
+      
+      {/* Revoked Overlay */}
+      {isRevoked && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/10 pointer-events-none">
+          <div className="rotate-[-12deg] rounded-md border-2 border-rose-500/30 bg-rose-50/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-rose-600 shadow-sm">
+            Revoked
+          </div>
+        </div>
+      )}
     </div>
   );
 });
