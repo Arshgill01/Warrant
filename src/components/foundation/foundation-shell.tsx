@@ -1,6 +1,18 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import type { WorktreeBoundary } from "@/contracts";
 import { SectionCard } from "@/components/foundation/section-card";
 import { WorktreeGrid } from "@/components/foundation/worktree-grid";
+import { createDefaultDemoScenario, createDelegationNodes } from "@/demo-fixtures";
+
+const DelegationGraph = dynamic(() => import("@/graph").then((mod) => mod.DelegationGraph), {
+  ssr: false,
+  loading: () => <div className="h-[600px] w-full animate-pulse rounded-[2rem] bg-slate-100/50" />,
+});
+
+const foundationScenario = createDefaultDemoScenario();
+const foundationDelegationNodes = createDelegationNodes(foundationScenario);
 
 type FoundationShellProps = {
   boundaries: WorktreeBoundary[];
@@ -14,8 +26,8 @@ const statusItems = [
   },
   {
     label: "Product logic",
-    value: "Deferred",
-    detail: "No Auth0, warrant engine, agent, or graph implementation exists yet.",
+    value: "In Progress",
+    detail: "Delegation graph UI is being implemented with React Flow.",
   },
   {
     label: "Parallel work",
@@ -55,17 +67,11 @@ export function FoundationShell({ boundaries }: FoundationShellProps) {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard title="Current scope" eyebrow="Skeleton only">
-          The scaffold includes product-boundary directories, shared contracts, placeholder fixtures, and a landing
-          page that explains the intended ownership split. It does not yet wire Auth0, Token Vault, Google, LangGraph,
-          persistence, or a graph library.
-        </SectionCard>
-        <SectionCard title="Shared contracts" eyebrow="Cross-worktree">
-          `src/contracts` contains the initial shared types for agents, warrants, actions, approvals, graph state, and
-          worktree ownership. The goal is coordination, not abstraction.
-        </SectionCard>
-      </section>
+      <DelegationGraph
+        warrants={foundationScenario.warrants}
+        agents={foundationScenario.agents}
+        delegationNodes={foundationDelegationNodes}
+      />
 
       <WorktreeGrid boundaries={boundaries} />
     </main>

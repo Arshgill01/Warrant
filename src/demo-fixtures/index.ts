@@ -9,3 +9,7 @@ export const demoFixturesBoundary: WorktreeBoundary = {
   notes: "Keep the scenario stable enough for a reliable three-minute demo.",
   status: "reserved",
 };
+
+export * from "@/demo-fixtures/auth-shell";
+export * from "@/demo-fixtures/scenario";
+export * from "@/demo-fixtures/state";

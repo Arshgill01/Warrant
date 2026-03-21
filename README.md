@@ -4,7 +4,7 @@ Warrant is a demo-first Auth0 for AI Agents hackathon project built around one t
 
 **OAuth was designed for apps. AI agents need warrants.**
 
-This scaffold establishes the shared repo foundation only. It intentionally does not implement product behavior yet.
+This worktree implements the Auth0-facing shell for the foundation milestone. It makes sign-in, Google connection state, and delegated Gmail or Calendar access setup visible before the warrant engine and graph land.
 
 ## Stack
 
@@ -27,6 +27,35 @@ Open `http://localhost:3000`.
 
 Copy `.env.example` to a local env file and replace the placeholder values before wiring Auth0, OpenAI, or database integrations.
 
+Required for the auth shell:
+
+- `AUTH0_DOMAIN`
+- `AUTH0_CLIENT_ID`
+- `AUTH0_CLIENT_SECRET`
+- `AUTH0_SECRET`
+- `APP_BASE_URL`
+
+Recommended for Google delegated access:
+
+- `AUTH0_GOOGLE_CONNECTION_NAME`
+- `AUTH0_TOKEN_VAULT_CONNECTION_ID`
+
+Optional shell-only overrides:
+
+- `WARRANT_GOOGLE_CONNECTION_STATE`
+- `WARRANT_GOOGLE_CONNECTION_EMAIL`
+
+Use the shell overrides only to rehearse UI states while the real Auth0 connected-account callback is still being wired. The real path should use Auth0 sign-in plus `/auth/connect`.
+
+## Auth0 shell behavior
+
+- `/auth/login` and `/auth/logout` come from the Auth0 Next.js SDK middleware.
+- The home page shows three layers separately: app session, Google provider connection, and external action readiness.
+- Calendar read and Gmail draft use thin wrappers that only become ready when Auth0 can supply delegated Google access.
+- Gmail send stays pending behind an approval placeholder even when Auth0 and local policy are both ready.
+
+To connect Google through Auth0, the shell uses the SDK connect-account route at `/auth/connect` with the Google Calendar read and Gmail compose or send scopes.
+
 ## Directory guide
 
 - `src/app`: App Router entrypoints and page shell
@@ -42,6 +71,22 @@ Copy `.env.example` to a local env file and replace the placeholder values befor
 - `src/audit`: Lineage, receipts, and event log boundary
 - `src/demo-fixtures`: Deterministic demo fixtures and shared placeholder data
 
+## Canonical demo fixtures
+
+The default deterministic scenario lives in `src/demo-fixtures` and is centered on:
+
+`"Prepare my investor update for tomorrow and coordinate follow-ups."`
+
+Shared consumers should prefer these exports:
+
+- `createDefaultDemoScenario()` for a fresh canonical snapshot
+- `loadDemoState()` and `resetDemoState()` for in-memory rehearsal state
+- `loadDelegationNodes()` for graph-ready delegation data
+- `loadTimelineEvents()` for human-readable timeline data
+- `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
+
+This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
+
 ## Intended worktree split
 
 - Auth worktree: `src/auth`, `src/connections`
@@ -55,7 +100,7 @@ Copy `.env.example` to a local env file and replace the placeholder values befor
 
 ## Validation
 
-Foundation validation commands:
+Auth-shell validation commands:
 
 ```bash
 npm run lint
