@@ -2,10 +2,12 @@ import type { WorktreeBoundary } from "@/contracts";
 
 export const graphBoundary: WorktreeBoundary = {
   key: "graph",
-  label: "Graph",
+  label: "Delegation Graph UI",
   path: "src/graph",
-  purpose: "Own the delegation tree, node detail UI, status states, and branch revoke affordances.",
+  purpose: "Own the visual representation of the delegation tree, node cards, and branch status.",
   futureWorktree: "Delegation graph UI",
-  notes: "Optimize for fast comprehension of who can do what and why a branch is blocked or revoked.",
+  notes: "The most important visual artifact for the demo.",
   status: "reserved",
 };
+
+export * from "./delegation-graph";
