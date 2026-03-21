@@ -100,11 +100,18 @@ This layer is demo infrastructure only. It does not replace future Auth0 integra
 
 ## Validation
 
-Auth-shell validation commands:
+Use the same baseline locally and in CI:
 
 ```bash
-npm run lint
-npm run test
-npm run typecheck
-npm run build
+npm ci
+npm run validate
 ```
+
+`npm run validate` runs the repo quality gates in this order:
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+The GitHub Actions workflow at `.github/workflows/validate.yml` runs the same command so worktrees merge against one shared gate definition.

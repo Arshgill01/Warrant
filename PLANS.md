@@ -929,3 +929,65 @@ Out of scope:
 - The current graph component keeps local mutable state and graph-local mock imports, so converting it to canonical fixture inputs may expose type or interaction drift.
 - Manual smoke checks may rely on local browser automation or terminal fetches rather than a full end-to-end test harness.
 - If the auth shell assumes live Auth0 affordances in more places than expected, linking it cleanly to a no-env demo route may require small fallback copy changes.
+
+## ExecPlan — Quality Gates Validation Baseline (2026-03-22)
+
+### Objective
+
+Strengthen repo-level validation so parallel worktrees can merge against a shared, predictable baseline with consistent lint, typecheck, test, and build entry points.
+
+### Demo relevance
+
+This supports Milestone 7 packaging and overall technical execution. A stable validation baseline reduces merge breakage across worktrees and makes the demo path easier to keep releasable while feature branches land in parallel.
+
+### Scope
+
+In scope:
+
+- verify the current repo scripts for lint, typecheck, test, and build exist and match the installed tooling
+- tighten script naming or composition only where it improves consistency and merge safety
+- add minimal validation guidance or lightweight CI if it uses the existing toolchain
+- run the improved validation commands and record exact outcomes
+
+Out of scope:
+
+- product behavior changes
+- broad tooling migration or formatter adoption
+- dependency churn beyond what is required for script consistency
+- large CI matrices, caching optimization, or release automation
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `package.json`
+- `README.md`
+- `.github/workflows/*`
+
+### Invariants to preserve
+
+- Do not change user-facing product behavior.
+- Keep package-manager and config changes minimal and merge-friendly for this wave.
+- Reuse the current npm, Next.js, ESLint, TypeScript, and Vitest setup rather than introducing new tooling.
+- Avoid broad formatting churn or repo-wide refactors.
+- Validation entry points should stay obvious enough for both local use and CI reuse.
+
+### Implementation steps
+
+1. Inspect the existing scripts, config files, and repo docs to identify inconsistencies or missing validation entry points.
+2. Add the smallest script or workflow changes needed to make lint, typecheck, test, and build run through a consistent baseline command set.
+3. Add brief local or CI guidance only if it materially improves merge safety without expanding tooling scope.
+4. Run the relevant validation commands against the updated baseline and capture exact pass/fail results.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- any new aggregate validation command added as part of this slice
+
+### Risks
+
+- Existing scripts may already be semantically correct but still fail because of unrelated branch-level code issues, limiting how much “tightening” is appropriate in this slice.
+- Adding even a minimal CI workflow can create maintenance overhead if local scripts and workflow steps drift later.
+- Next.js build behavior can be slower or more environment-sensitive than the other gates, so a single aggregate command must remain easy to diagnose when one step fails.
