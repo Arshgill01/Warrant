@@ -1,7 +1,7 @@
 import { MarkerType, type Edge, type XYPosition } from "@xyflow/react";
 import type {
-  DelegationGraphEdgeRecord,
-  DelegationGraphNodeRecord,
+  GraphEdgeDTO,
+  GraphNodeDTO,
 } from "@/contracts";
 import type { AgentNode } from "@/components/graph/agent-node";
 
@@ -11,11 +11,11 @@ const LEVEL_Y_GAP = 200;
 const LEVEL_X_GAP = 280;
 
 type GraphViewModelInput = {
-  graphNodes: DelegationGraphNodeRecord[];
+  graphNodes: GraphNodeDTO[];
 };
 
 export function collectDescendantNodeIds(
-  graphNodes: DelegationGraphNodeRecord[],
+  graphNodes: GraphNodeDTO[],
   rootNodeId: string,
 ): string[] {
   const childrenByParent = new Map<string, string[]>();
@@ -56,7 +56,7 @@ export function collectDescendantNodeIds(
 }
 
 export function buildStableGraphPositions(
-  graphNodes: DelegationGraphNodeRecord[],
+  graphNodes: GraphNodeDTO[],
 ): Record<string, XYPosition> {
   const orderByNodeId = new Map(graphNodes.map((node, index) => [node.id, index]));
   const sortedNodes = [...graphNodes].sort(
@@ -64,9 +64,9 @@ export function buildStableGraphPositions(
       (orderByNodeId.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
       (orderByNodeId.get(right.id) ?? Number.MAX_SAFE_INTEGER),
   );
-  const childrenByParent = new Map<string, DelegationGraphNodeRecord[]>();
+  const childrenByParent = new Map<string, GraphNodeDTO[]>();
   const roots = sortedNodes.filter((node) => node.parentId === null);
-  const levels = new Map<number, DelegationGraphNodeRecord[]>();
+  const levels = new Map<number, GraphNodeDTO[]>();
   const queue = roots.map((node) => ({ depth: 0, node }));
 
   sortedNodes.forEach((node) => {
@@ -137,7 +137,7 @@ export function buildDelegationGraphNodes({
 }
 
 export function buildDelegationGraphEdges(
-  graphEdges: DelegationGraphEdgeRecord[],
+  graphEdges: GraphEdgeDTO[],
 ): Edge[] {
   return graphEdges.map((edge) => ({
     id: edge.id,

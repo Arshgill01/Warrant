@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getCalendarReadPath, getGmailSendPath } from "@/actions";
+import { getCalendarReadResult, getGmailSendResult } from "@/actions";
 import { readAuth0Environment } from "@/auth/env";
 import { buildGoogleConnectHref } from "@/connections/google";
 import type { AuthSessionSnapshot, ProviderConnectionSnapshot } from "@/contracts";
@@ -59,7 +59,7 @@ describe("auth shell environment", () => {
 
 describe("auth shell action paths", () => {
   it("blocks calendar reads when Auth0-backed Google access is unavailable", async () => {
-    const path = await getCalendarReadPath({
+    const result = await getCalendarReadResult({
       session: signedInSession,
       connection: {
         ...connectedGoogle,
@@ -72,12 +72,14 @@ describe("auth shell action paths", () => {
       },
     });
 
-    expect(path.state).toBe("blocked");
-    expect(path.gate).toBe("auth0");
+    expect(result.provider).toBe("google");
+    expect(result.connectionState).toBe("unavailable");
+    expect(result.path.state).toBe("blocked");
+    expect(result.path.gate).toBe("auth0");
   });
 
   it("keeps Gmail send pending until approval is granted", async () => {
-    const path = await getGmailSendPath({
+    const result = await getGmailSendResult({
       session: signedInSession,
       connection: connectedGoogle,
       policy: {
@@ -87,7 +89,9 @@ describe("auth shell action paths", () => {
       approvalStatus: "pending",
     });
 
-    expect(path.state).toBe("pending");
-    expect(path.gate).toBe("approval");
+    expect(result.approvalStatus).toBe("pending");
+    expect(result.connectionState).toBe("connected");
+    expect(result.path.state).toBe("pending");
+    expect(result.path.gate).toBe("approval");
   });
 });

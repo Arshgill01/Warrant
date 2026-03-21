@@ -1,4 +1,4 @@
-import { getCalendarReadPath, getGmailDraftPath, getGmailSendPath } from "@/actions";
+import { getCalendarReadResult, getGmailDraftResult, getGmailSendResult } from "@/actions";
 import { getAuthSessionSnapshot } from "@/auth";
 import { AuthShell } from "@/components/auth-shell/auth-shell";
 import { getGoogleConnectionSnapshot } from "@/connections";
@@ -10,18 +10,18 @@ export default async function Home() {
   const session = await getAuthSessionSnapshot();
   const googleConnection = await getGoogleConnectionSnapshot(session);
 
-  const [calendarReadPath, gmailDraftPath, gmailSendPath] = await Promise.all([
-    getCalendarReadPath({
+  const actionResults = await Promise.all([
+    getCalendarReadResult({
       session,
       connection: googleConnection,
       policy: authShellPolicies.calendarRead,
     }),
-    getGmailDraftPath({
+    getGmailDraftResult({
       session,
       connection: googleConnection,
       policy: authShellPolicies.gmailDraft,
     }),
-    getGmailSendPath({
+    getGmailSendResult({
       session,
       connection: googleConnection,
       policy: authShellPolicies.gmailSend,
@@ -33,7 +33,7 @@ export default async function Home() {
     <AuthShell
       session={session}
       googleConnection={googleConnection}
-      actionPaths={[calendarReadPath, gmailDraftPath, gmailSendPath]}
+      actionPaths={actionResults.map((result) => result.path)}
     />
   );
 }

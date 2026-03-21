@@ -1,3 +1,6 @@
+import type { ApprovalStatus } from "@/contracts/approval";
+import type { ProviderConnectionState } from "@/contracts/connection";
+
 export type ActionKind =
   | "calendar.read"
   | "calendar.schedule"
@@ -47,4 +50,12 @@ export interface ActionPathSnapshot {
   headline: string;
   detail: string;
   nextStep: string | null;
+}
+
+export interface ProviderActionResultEnvelope {
+  provider: "google";
+  connectionState: ProviderConnectionState;
+  policy: LocalPolicyCheck;
+  approvalStatus: ApprovalStatus | null;
+  path: ActionPathSnapshot;
 }
