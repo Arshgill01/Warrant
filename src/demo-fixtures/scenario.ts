@@ -1,30 +1,4 @@
-import type {
-  ActionKind,
-  DelegationNode,
-  DemoActionAttempt,
-  DemoApprovalRequest,
-  DemoScenario,
-  LedgerEvent,
-  RevocationRecord,
-} from "@/contracts";
-
-const capabilityLabels: Record<ActionKind, string> = {
-  "calendar.read": "Read calendar",
-  "calendar.schedule": "Schedule meetings",
-  "docs.read": "Read docs",
-  "gmail.draft": "Draft email",
-  "gmail.send": "Send email",
-  "warrant.issue": "Delegate child warrants",
-  "warrant.revoke": "Revoke warrants",
-};
-
-const required = <Value>(value: Value | undefined, message: string): Value => {
-  if (value === undefined) {
-    throw new Error(message);
-  }
-
-  return value;
-};
+import type { DemoScenario } from "@/contracts";
 
 const cloneScenario = <Value>(value: Value): Value => structuredClone(value);
 
@@ -423,70 +397,8 @@ const defaultDemoScenario: DemoScenario = {
   },
 };
 
-export interface DemoScenarioExampleSet {
-  validChildAction: DemoActionAttempt;
-  blockedOverreachAction: DemoActionAttempt;
-  approvalPendingAction: DemoActionAttempt;
-  approvalPendingRequest: DemoApprovalRequest;
-  revokedBranchAction: DemoActionAttempt;
-  revokedBranchRecord: RevocationRecord;
-}
-
 export const DEFAULT_DEMO_SCENARIO_ID = defaultDemoScenario.id;
 
 export function createDefaultDemoScenario(): DemoScenario {
   return cloneScenario(defaultDemoScenario);
-}
-
-export function createDelegationNodes(scenario: DemoScenario): DelegationNode[] {
-  const agentsById = new Map(scenario.agents.map((agent) => [agent.id, agent]));
-
-  return scenario.warrants.map((warrant) => {
-    const agent = required(agentsById.get(warrant.agentId), `Missing agent for warrant ${warrant.id}`);
-
-    return {
-      warrantId: warrant.id,
-      agentId: warrant.agentId,
-      parentWarrantId: warrant.parentId,
-      status: agent.status,
-      capabilitySummary: warrant.capabilities.map((capability) => capabilityLabels[capability]),
-    };
-  });
-}
-
-export function createTimelineEvents(scenario: DemoScenario): LedgerEvent[] {
-  return [...scenario.timeline].sort((left, right) => left.at.localeCompare(right.at));
-}
-
-export function getScenarioExamples(scenario: DemoScenario): DemoScenarioExampleSet {
-  const actionsById = new Map(scenario.actionAttempts.map((action) => [action.id, action]));
-  const approvalsById = new Map(scenario.approvals.map((approval) => [approval.id, approval]));
-  const revocationsById = new Map(scenario.revocations.map((revocation) => [revocation.id, revocation]));
-
-  return {
-    validChildAction: required(
-      actionsById.get(scenario.examples.validChildActionId),
-      `Missing example action ${scenario.examples.validChildActionId}`,
-    ),
-    blockedOverreachAction: required(
-      actionsById.get(scenario.examples.blockedOverreachActionId),
-      `Missing example action ${scenario.examples.blockedOverreachActionId}`,
-    ),
-    approvalPendingAction: required(
-      actionsById.get(scenario.examples.approvalPendingActionId),
-      `Missing example action ${scenario.examples.approvalPendingActionId}`,
-    ),
-    approvalPendingRequest: required(
-      approvalsById.get(scenario.examples.approvalPendingRequestId),
-      `Missing example approval ${scenario.examples.approvalPendingRequestId}`,
-    ),
-    revokedBranchAction: required(
-      actionsById.get(scenario.examples.revokedBranchActionId),
-      `Missing example action ${scenario.examples.revokedBranchActionId}`,
-    ),
-    revokedBranchRecord: required(
-      revocationsById.get(scenario.examples.revokedBranchRecordId),
-      `Missing example revocation ${scenario.examples.revokedBranchRecordId}`,
-    ),
-  };
 }

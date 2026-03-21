@@ -1,11 +1,11 @@
-import type { ActionAttempt } from "@/contracts/action";
+import type { ActionAttempt, ActionAttemptOutcome } from "@/contracts/action";
 import type { AgentIdentity, AgentStatus } from "@/contracts/agent";
 import type { ApprovalRequest } from "@/contracts/approval";
 import type { LedgerEvent, RevocationRecord } from "@/contracts/audit";
 import type { WarrantContract } from "@/contracts/warrant";
 
 export type ExternalSystem = "gmail" | "google-calendar" | "google-docs";
-export type DemoActionOutcome = "allowed" | "blocked" | "approval-required";
+export type DemoActionOutcome = ActionAttemptOutcome;
 
 export interface DemoUser {
   id: string;

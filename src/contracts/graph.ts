@@ -7,3 +7,8 @@ export interface DelegationNode {
   status: AgentStatus;
   capabilitySummary: string[];
 }
+
+export type {
+  DelegationGraphEdgeRecord,
+  DelegationGraphNodeRecord,
+} from "@/contracts/display";

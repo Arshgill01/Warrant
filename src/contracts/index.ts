@@ -5,6 +5,7 @@ export * from "@/contracts/audit";
 export * from "@/contracts/auth";
 export * from "@/contracts/connection";
 export * from "@/contracts/demo";
+export * from "@/contracts/display";
 export * from "@/contracts/graph";
 export * from "@/contracts/warrant";
 export * from "@/contracts/worktree";

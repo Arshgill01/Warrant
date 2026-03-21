@@ -1,5 +1,8 @@
 import { MarkerType, type Edge, type XYPosition } from "@xyflow/react";
-import type { AgentIdentity, DelegationNode } from "@/contracts";
+import type {
+  DelegationGraphEdgeRecord,
+  DelegationGraphNodeRecord,
+} from "@/contracts";
 import type { AgentNode } from "@/components/graph/agent-node";
 
 const GRAPH_CENTER_X = 320;
@@ -8,25 +11,27 @@ const LEVEL_Y_GAP = 200;
 const LEVEL_X_GAP = 280;
 
 type GraphViewModelInput = {
-  agents: AgentIdentity[];
-  delegationNodes: DelegationNode[];
+  graphNodes: DelegationGraphNodeRecord[];
 };
 
-export function collectDescendantWarrantIds(delegationNodes: DelegationNode[], rootWarrantId: string): string[] {
+export function collectDescendantNodeIds(
+  graphNodes: DelegationGraphNodeRecord[],
+  rootNodeId: string,
+): string[] {
   const childrenByParent = new Map<string, string[]>();
 
-  delegationNodes.forEach((node) => {
-    if (!node.parentWarrantId) {
+  graphNodes.forEach((node) => {
+    if (!node.parentId) {
       return;
     }
 
-    const currentChildren = childrenByParent.get(node.parentWarrantId) ?? [];
-    currentChildren.push(node.warrantId);
-    childrenByParent.set(node.parentWarrantId, currentChildren);
+    const currentChildren = childrenByParent.get(node.parentId) ?? [];
+    currentChildren.push(node.id);
+    childrenByParent.set(node.parentId, currentChildren);
   });
 
-  const descendants = new Set<string>([rootWarrantId]);
-  const queue = [rootWarrantId];
+  const descendants = new Set<string>([rootNodeId]);
+  const queue = [rootNodeId];
 
   while (queue.length > 0) {
     const currentId = queue.shift();
@@ -50,26 +55,28 @@ export function collectDescendantWarrantIds(delegationNodes: DelegationNode[], r
   return [...descendants];
 }
 
-export function buildStableGraphPositions(delegationNodes: DelegationNode[]): Record<string, XYPosition> {
-  const orderByWarrantId = new Map(delegationNodes.map((node, index) => [node.warrantId, index]));
-  const sortedNodes = [...delegationNodes].sort(
+export function buildStableGraphPositions(
+  graphNodes: DelegationGraphNodeRecord[],
+): Record<string, XYPosition> {
+  const orderByNodeId = new Map(graphNodes.map((node, index) => [node.id, index]));
+  const sortedNodes = [...graphNodes].sort(
     (left, right) =>
-      (orderByWarrantId.get(left.warrantId) ?? Number.MAX_SAFE_INTEGER) -
-      (orderByWarrantId.get(right.warrantId) ?? Number.MAX_SAFE_INTEGER),
+      (orderByNodeId.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+      (orderByNodeId.get(right.id) ?? Number.MAX_SAFE_INTEGER),
   );
-  const childrenByParent = new Map<string, DelegationNode[]>();
-  const roots = sortedNodes.filter((node) => node.parentWarrantId === null);
-  const levels = new Map<number, DelegationNode[]>();
+  const childrenByParent = new Map<string, DelegationGraphNodeRecord[]>();
+  const roots = sortedNodes.filter((node) => node.parentId === null);
+  const levels = new Map<number, DelegationGraphNodeRecord[]>();
   const queue = roots.map((node) => ({ depth: 0, node }));
 
   sortedNodes.forEach((node) => {
-    if (!node.parentWarrantId) {
+    if (!node.parentId) {
       return;
     }
 
-    const currentChildren = childrenByParent.get(node.parentWarrantId) ?? [];
+    const currentChildren = childrenByParent.get(node.parentId) ?? [];
     currentChildren.push(node);
-    childrenByParent.set(node.parentWarrantId, currentChildren);
+    childrenByParent.set(node.parentId, currentChildren);
   });
 
   while (queue.length > 0) {
@@ -83,7 +90,7 @@ export function buildStableGraphPositions(delegationNodes: DelegationNode[]): Re
     levelNodes.push(current.node);
     levels.set(current.depth, levelNodes);
 
-    const children = childrenByParent.get(current.node.warrantId) ?? [];
+    const children = childrenByParent.get(current.node.id) ?? [];
 
     children.forEach((child) => {
       queue.push({ depth: current.depth + 1, node: child });
@@ -97,7 +104,7 @@ export function buildStableGraphPositions(delegationNodes: DelegationNode[]): Re
     const levelStartX = GRAPH_CENTER_X - totalWidth / 2;
 
     nodesAtDepth.forEach((node, index) => {
-      positions[node.warrantId] = {
+      positions[node.id] = {
         x: levelStartX + index * LEVEL_X_GAP,
         y: ROOT_Y + depth * LEVEL_Y_GAP,
       };
@@ -107,40 +114,44 @@ export function buildStableGraphPositions(delegationNodes: DelegationNode[]): Re
   return positions;
 }
 
-export function buildDelegationGraphNodes({ agents, delegationNodes }: GraphViewModelInput): AgentNode[] {
-  const positions = buildStableGraphPositions(delegationNodes);
-  const agentsById = new Map(agents.map((agent) => [agent.id, agent]));
+export function buildDelegationGraphNodes({
+  graphNodes,
+}: GraphViewModelInput): AgentNode[] {
+  const positions = buildStableGraphPositions(graphNodes);
 
-  return delegationNodes.map((node) => {
-    const agent = agentsById.get(node.agentId);
-
-    return {
-      id: node.warrantId,
-      type: "agent",
-      data: {
-        label: agent?.label ?? "Unknown Agent",
-        role: agent?.role ?? "planner",
-        status: node.status,
-        capabilities: node.capabilitySummary,
-        isRevoked: node.status === "revoked",
-      },
-      position: positions[node.warrantId] ?? { x: GRAPH_CENTER_X, y: ROOT_Y },
-    };
-  });
+  return graphNodes.map((node) => ({
+    id: node.id,
+    type: "agent",
+    data: {
+      label: node.label,
+      role: node.role,
+      status: node.status,
+      capabilities: node.capabilityBadges,
+      purpose: node.purpose,
+      canDelegate: node.canDelegate,
+      expiresAt: node.expiresAt,
+      isRevoked: node.status === "revoked",
+    },
+    position: positions[node.id] ?? { x: GRAPH_CENTER_X, y: ROOT_Y },
+  }));
 }
 
-export function buildDelegationGraphEdges(delegationNodes: DelegationNode[]): Edge[] {
-  return delegationNodes
-    .filter((node) => node.parentWarrantId)
-    .map((node) => ({
-      id: `e-${node.parentWarrantId}-${node.warrantId}`,
-      source: node.parentWarrantId!,
-      target: node.warrantId,
-      animated: true,
-      style: { stroke: "var(--accent)", strokeWidth: 2 },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: "var(--accent)",
-      },
-    }));
+export function buildDelegationGraphEdges(
+  graphEdges: DelegationGraphEdgeRecord[],
+): Edge[] {
+  return graphEdges.map((edge) => ({
+    id: edge.id,
+    source: edge.sourceId,
+    target: edge.targetId,
+    animated: edge.status !== "revoked",
+    style: {
+      stroke: edge.status === "revoked" ? "#cbd5e1" : "var(--accent)",
+      strokeWidth: 2,
+      opacity: edge.status === "revoked" ? 0.5 : 1,
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: edge.status === "revoked" ? "#cbd5e1" : "var(--accent)",
+    },
+  }));
 }
