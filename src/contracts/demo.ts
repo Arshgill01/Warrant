@@ -5,6 +5,7 @@ import type { LedgerEvent, RevocationRecord } from "@/contracts/audit";
 import type { WarrantContract } from "@/contracts/warrant";
 
 export type ExternalSystem = "gmail" | "google-calendar" | "google-docs";
+export type DemoActionOutcome = "allowed" | "blocked" | "approval-required";
 
 export interface DemoUser {
   id: string;
@@ -27,6 +28,7 @@ export interface DemoActionAttempt extends ActionAttempt {
   createdAt: string;
   summary: string;
   resource: string;
+  outcome: DemoActionOutcome;
   outcomeReason: string;
   approvalRequestId?: string;
 }

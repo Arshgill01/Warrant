@@ -771,3 +771,84 @@ Out of scope:
 - Shared contracts may still evolve when warrant-engine and graph-ui land, so keep this layer intentionally narrow and composable.
 - Human-readable timeline text can drift from future UI copy; treat it as demo fixture content, not final product wording.
 - In-memory reset helpers improve repeatability locally but do not replace future persistence reset paths.
+
+## ExecPlan — Wave 1 Post-Merge Stabilization (2026-03-21)
+
+### Objective
+
+Resolve the post-merge integration errors across the four completed Wave 1 branches so the repo reaches a clean baseline where tests pass, typecheck is green, and the merged demo slices remain aligned.
+
+### Demo relevance
+
+This is stabilization work across Milestone 1 and Milestone 2 outputs. It matters because the Wave 1 demo path is only credible if the merged shell, warrant engine, graph slice, and deterministic fixtures can coexist without import failures or contract drift.
+
+### Scope
+
+In scope:
+
+- install and verify merged dependencies required by the auth shell and graph UI slices
+- fix Auth0 SDK import or usage mismatches introduced by the merge
+- reconcile shared contract drift between the warrant-engine, graph, and demo-fixtures branches
+- update fixture data so seeded warrants, actions, and timeline objects match the current shared contracts
+- restore a passing automated test suite and clean typecheck baseline
+
+Out of scope:
+
+- new product features beyond what the four Wave 1 branches already intended
+- broad refactors to architecture or ownership boundaries
+- replacing placeholder Auth0 or approval behavior with production-grade integrations
+- redesigning graph or shell UX beyond changes required to restore correctness
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `package.json`
+- `package-lock.json`
+- `src/auth/*`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `src/graph/*`
+- `src/components/graph/*`
+- `src/app/*`
+- `tests/*`
+- `README.md`
+
+### Invariants to preserve
+
+- Keep Auth0-backed external access separate from local Warrant policy.
+- Preserve the warrant-engine invariants: narrowing only, expiry awareness, and descendant invalidation on revocation.
+- Keep deterministic demo fixtures lineage-aware and representative of the core hackathon story.
+- Do not introduce broad refactors or new abstractions before reviewing them.
+- Prefer owner-aligned, minimal fixes in shared surfaces rather than expanding overlap further.
+
+### Current failure checklist
+
+- `@auth0/nextjs-auth0` is declared in the merged manifests but not installed in `node_modules`, so auth-shell tests cannot load the Auth0 module tree.
+- `src/auth/auth0.ts` may also be using Auth0 SDK subpath imports that do not match the installed package layout and need verification after install.
+- Graph dependencies from the graph branch (`@xyflow/react`, `lucide-react`) also need install verification in the merged workspace.
+- `src/contracts/warrant.ts` now requires fields like `rootRequestId`, `createdBy`, `createdAt`, `revokedAt`, `revocationReason`, `revocationSourceId`, and `revokedBy`, but seeded warrants in `src/demo-fixtures/*` do not populate them.
+- `WarrantResourceConstraints.calendarWindow` is now structured as `{ startsAt, endsAt }`, but fixtures still use a string interval.
+- `DemoActionAttempt` defines `outcomeReason` but fixture/test data still expects an `outcome` field.
+- Graph and fixture consumers need to be checked against the merged contract types so node rendering and sample data agree again.
+
+### Implementation steps
+
+1. Install the merged dependency set and rerun the narrow validation commands to separate missing-install failures from real code incompatibilities.
+2. Verify the Auth0 Next.js SDK API surface in the installed version and make the smallest import or usage corrections needed in `src/auth/*`.
+3. Reconcile the shared contracts by choosing one canonical shape per merged DTO and updating fixtures/tests to match, without broad redesign.
+4. Update deterministic scenario and graph fixture data so warrants, action attempts, and derived graph inputs satisfy the current contract requirements.
+5. Fix any remaining type errors in graph or shell consumers caused by the merged contract changes.
+6. Rerun tests, typecheck, and lint; only consider follow-up cleanup after the baseline is green.
+
+### Validation plan
+
+- `npm install`
+- `npm run test`
+- `npm run typecheck`
+- `npm run lint`
+
+### Risks
+
+- The Auth0 SDK may require small API adjustments beyond installation if the branch targeted a different package version or subpath layout.
+- Shared DTO conflicts are a symptom of branch overlap; forcing every consumer to conform to one canonical contract may expose additional mismatches after the first fixes land.
+- Keeping the fix scope tight means some longer-term ownership cleanup should stay deferred until after the merged Wave 1 baseline is stable.
