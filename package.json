@@ -10,10 +10,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --max-warnings=0",
-    "typecheck": "next typegen && tsc --noEmit",
+    "check:merge-conflicts": "node ./scripts/check-merge-conflicts.mjs",
+    "lint": "eslint . --max-warnings=0 --report-unused-disable-directives",
+    "typecheck": "next typegen && tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "test": "vitest run",
-    "validate": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "validate": "npm run check:merge-conflicts && npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.16.0",

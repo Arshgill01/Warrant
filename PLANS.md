@@ -930,7 +930,6 @@ Out of scope:
 - Manual smoke checks may rely on local browser automation or terminal fetches rather than a full end-to-end test harness.
 - If the auth shell assumes live Auth0 affordances in more places than expected, linking it cleanly to a no-env demo route may require small fallback copy changes.
 
-<<<<<<< HEAD
 ## ExecPlan — Wave 1 Shared Contract Unification (2026-03-22)
 
 ### Objective
@@ -940,23 +939,11 @@ Unify the merged Wave 1 shared contracts so graph, timeline, approvals, actions,
 ### Demo relevance
 
 This supports Milestone 3 through Milestone 5 by reducing merge friction before later integration work lands. The demo path depends on the graph, approval state, blocked action proof, and timeline all telling the same lineage-aware story without contract drift or UI-only type forks.
-=======
-## ExecPlan — Quality Gates Validation Baseline (2026-03-22)
-
-### Objective
-
-Strengthen repo-level validation so parallel worktrees can merge against a shared, predictable baseline with consistent lint, typecheck, test, and build entry points.
-
-### Demo relevance
-
-This supports Milestone 7 packaging and overall technical execution. A stable validation baseline reduces merge breakage across worktrees and makes the demo path easier to keep releasable while feature branches land in parallel.
->>>>>>> feat/quality-gates
 
 ### Scope
 
 In scope:
 
-<<<<<<< HEAD
 - inspect the merged contract and fixture shapes from warrant-core, graph-ui, demo-fixtures, and auth-shell
 - define one canonical shared contract path for graph and timeline display DTOs
 - add small adapter functions that map demo/domain data into those DTOs
@@ -971,24 +958,10 @@ Out of scope:
 - new providers, new integrations, or broader product scope
 - broad UI redesign or route architecture changes
 - persistence or orchestration refactors
-=======
-- verify the current repo scripts for lint, typecheck, test, and build exist and match the installed tooling
-- tighten script naming or composition only where it improves consistency and merge safety
-- add minimal validation guidance or lightweight CI if it uses the existing toolchain
-- run the improved validation commands and record exact outcomes
-
-Out of scope:
-
-- product behavior changes
-- broad tooling migration or formatter adoption
-- dependency churn beyond what is required for script consistency
-- large CI matrices, caching optimization, or release automation
->>>>>>> feat/quality-gates
 
 ### Files/modules likely affected
 
 - `PLANS.md`
-<<<<<<< HEAD
 - `src/contracts/*`
 - `src/demo-fixtures/*`
 - `src/graph/*`
@@ -1026,7 +999,36 @@ Out of scope:
 - Some existing DTOs are already halfway between domain and presentation concerns, so tightening the boundary may expose more coupling than expected in graph or demo consumers.
 - The graph currently performs local revocation UI state updates; keeping that behavior while moving to display DTOs needs care so the visible demo interaction does not regress.
 - If later tracks need richer timeline or approval metadata, the shared DTOs may need additive fields, so this slice should stay intentionally minimal rather than speculative.
-=======
+
+## ExecPlan — Quality Gates Validation Baseline (2026-03-22)
+
+### Objective
+
+Strengthen repo-level validation so parallel worktrees can merge against a shared, predictable baseline with consistent lint, typecheck, test, and build entry points.
+
+### Demo relevance
+
+This supports Milestone 7 packaging and overall technical execution. A stable validation baseline reduces merge breakage across worktrees and makes the demo path easier to keep releasable while feature branches land in parallel.
+
+### Scope
+
+In scope:
+
+- verify the current repo scripts for lint, typecheck, test, and build exist and match the installed tooling
+- tighten script naming or composition only where it improves consistency and merge safety
+- add minimal validation guidance or lightweight CI if it uses the existing toolchain
+- run the improved validation commands and record exact outcomes
+
+Out of scope:
+
+- product behavior changes
+- broad tooling migration or formatter adoption
+- dependency churn beyond what is required for script consistency
+- large CI matrices, caching optimization, or release automation
+
+### Files/modules likely affected
+
+- `PLANS.md`
 - `package.json`
 - `README.md`
 - `.github/workflows/*`
@@ -1120,4 +1122,128 @@ Out of scope:
 
 - The graph surface may have additional latent issues that only appear after the current lint/type blockers are removed.
 - Next.js build still surfaces Auth0 Edge-runtime warnings, so a fully clean build log may require a separate auth-focused slice later.
->>>>>>> feat/quality-gates
+
+## ExecPlan — Post-Merge Validation Recovery (2026-03-22)
+
+### Objective
+
+Restore a working shared validation baseline after the recent feature-branch merge by removing unresolved conflicts, reconciling overlapping graph changes, and fixing whatever additional lint, typecheck, test, or build failures surface next.
+
+### Demo relevance
+
+This is directly demo-critical. A broken merged `master` branch blocks the graph, the shared demo route, and every later feature slice from being trusted for the three-minute walkthrough.
+
+### Scope
+
+In scope:
+
+- run the repo validation baseline and capture exact failures in the merged branch
+- resolve merge conflict markers in code and planning artifacts
+- reconcile graph UI changes against the current shared display-contract layer
+- rerun validation after each recovery slice and fix the next highest-signal blocker
+- keep `PLANS.md` aligned with the actual recovery sequence and current repo status
+
+Out of scope:
+
+- new product features unrelated to merge fallout
+- broad graph redesigns or warrant-engine redesigns
+- dependency or tooling churn unless a gate cannot be restored without it
+- speculative cleanup that does not affect the failing validation path
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/components/graph/*`
+- `src/graph/*`
+- any additional files surfaced by `npm run validate`
+
+### Invariants to preserve
+
+- Keep the current display-contract adapter model intact for graph and demo surfaces.
+- Keep delegation-graph revoke behavior and status transitions demo-legible.
+- Keep fix slices narrow, reviewable, and grounded in actual gate failures.
+- Do not claim a clean baseline until `npm run validate` completes successfully.
+
+### Implementation steps
+
+1. Run `npm run validate` and record the first failing gate with exact errors.
+2. Remove unresolved merge conflict markers and reconcile the affected files to the current repo contracts and component interfaces.
+3. Rerun validation immediately after each fix to surface the next blocker instead of guessing.
+4. Fix remaining lint, typecheck, test, or build failures in priority order, keeping each change scoped to the reported breakage.
+5. Finish with one full `npm run validate` pass and a concise status report of any remaining risks.
+
+### Validation plan
+
+- `npm run validate`
+- narrower reruns as needed: `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
+
+### Risks
+
+- The current parse failures may be masking deeper contract drift from the merged branches, especially around graph and demo surfaces.
+- Once lint is green, typecheck or build may expose additional incompatible changes that were not visible during the first pass.
+- Build output may still contain Auth0-related warnings or environment-sensitive behavior that needs a separate follow-up slice after the branch is stable again.
+
+## ExecPlan — Validation Hardening Baseline (2026-03-22)
+
+### Objective
+
+Make the shared validation baseline more merge-resistant by catching unresolved conflict markers, tightening existing lint and typecheck checks, and adding smoke coverage for the critical demo and auth routes.
+
+### Demo relevance
+
+This directly protects the three-minute story. If `/` or `/demo` stops rendering, or if a merge leaves hidden repo damage outside the existing unit tests, judges will see instability before they see the thesis.
+
+### Scope
+
+In scope:
+
+- add a repository-level check that fails on unresolved merge conflict markers
+- tighten the existing ESLint and TypeScript commands using the current installed toolchain
+- add route-render smoke tests for the home auth shell and the `/demo` surface
+- strengthen seeded-demo invariant tests where they validate lineage alignment cleanly
+- update repo docs so the stricter gate is easy to run locally and in CI
+
+Out of scope:
+
+- new linting ecosystems or heavy test dependencies
+- browser E2E automation in the shared baseline
+- production monitoring or deployment checks
+- feature work unrelated to validation confidence
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `package.json`
+- `README.md`
+- `scripts/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep the validation stack dependency-light and based on the repo’s current npm, ESLint, TypeScript, Vitest, and Next.js tooling.
+- Keep `/demo` renderable without real Auth0 configuration.
+- Keep auth-shell fallback behavior explicit when Auth0 is not configured.
+- Add checks that improve merge confidence without forcing a broad refactor of working code.
+
+### Implementation steps
+
+1. Probe stricter lint and TypeScript options against the current codebase before changing scripts.
+2. Add a small repository script that fails when unresolved merge conflict markers remain in tracked source-like files.
+3. Tighten `lint`, `typecheck`, and `validate` to include the stronger checks without introducing new dependencies.
+4. Add smoke tests that render the demo and auth-shell routes to static markup and assert critical seeded content is present.
+5. Extend fixture tests with a small lineage-alignment invariant and rerun the full baseline.
+
+### Validation plan
+
+- `npm run check:merge-conflicts`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run validate`
+
+### Risks
+
+- Route-render tests are still not a substitute for full browser-based demo rehearsal.
+- Stricter TypeScript unused-code checks may surface additional cleanup work as more branches merge.
+- The merge-conflict scan intentionally focuses on source-like files, so binary or generated artifacts remain out of scope.

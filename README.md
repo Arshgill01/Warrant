@@ -115,9 +115,17 @@ npm run validate
 
 `npm run validate` runs the repo quality gates in this order:
 
+- `npm run check:merge-conflicts`
 - `npm run lint`
 - `npm run typecheck`
 - `npm run test`
 - `npm run build`
+
+The baseline is intentionally strict:
+
+- `npm run check:merge-conflicts` fails on unresolved Git conflict markers in source, test, config, and docs files.
+- `npm run lint` reports warnings as failures and also fails on unused ESLint disable directives.
+- `npm run typecheck` generates Next route types and runs TypeScript with `noUnusedLocals` and `noUnusedParameters`.
+- `npm run test` includes fixture, graph, auth-shell, and route-render smoke coverage for the seeded demo surfaces.
 
 The GitHub Actions workflow at `.github/workflows/validate.yml` runs the same command so worktrees merge against one shared gate definition.

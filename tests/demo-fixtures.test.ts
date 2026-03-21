@@ -72,4 +72,30 @@ describe("demo fixtures", () => {
 
     expect(loadDemoState().agents[0]?.label).toBe("Planner Agent");
   });
+
+  it("keeps graph, timeline, and warrant summaries aligned to the same scenario lineage", () => {
+    const graphView = loadDelegationGraphView();
+    const timeline = loadTimelineEvents();
+    const warrantIds = new Set(graphView.warrantSummaries.map((summary) => summary.id));
+
+    expect(graphView.nodes).toHaveLength(graphView.warrantSummaries.length);
+    expect(graphView.edges).toHaveLength(
+      graphView.warrantSummaries.filter((summary) => summary.parentId !== null).length,
+    );
+    expect(graphView.nodes.every((node) => warrantIds.has(node.id))).toBe(true);
+    expect(
+      timeline.every(
+        (event) =>
+          event.warrantId === null ||
+          warrantIds.has(event.warrantId),
+      ),
+    ).toBe(true);
+    expect(
+      timeline.every(
+        (event) =>
+          event.parentWarrantId === null ||
+          warrantIds.has(event.parentWarrantId),
+      ),
+    ).toBe(true);
+  });
 });
