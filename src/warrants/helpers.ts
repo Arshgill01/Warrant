@@ -158,7 +158,10 @@ export function capabilitiesUseRecipients(
 export function capabilitiesUseCalendar(
   capabilities: readonly ActionKind[],
 ): boolean {
-  return capabilities.includes("calendar.schedule");
+  return (
+    capabilities.includes("calendar.read") ||
+    capabilities.includes("calendar.schedule")
+  );
 }
 
 export function capabilitiesUseFolders(

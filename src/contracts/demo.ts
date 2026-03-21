@@ -24,6 +24,7 @@ export interface DemoAgent extends AgentIdentity {
 }
 
 export interface DemoActionAttempt extends ActionAttempt {
+  rootRequestId: string;
   parentWarrantId: string | null;
   createdAt: string;
   summary: string;
@@ -45,12 +46,10 @@ export interface DemoApprovalRequest extends ApprovalRequest {
 }
 
 export interface DemoScenarioExamples {
-  validChildActionId: string;
-  blockedOverreachActionId: string;
-  approvalPendingActionId: string;
-  approvalPendingRequestId: string;
-  revokedBranchActionId: string;
-  revokedBranchRecordId: string;
+  calendarChildWarrantId: string;
+  commsChildWarrantId: string;
+  calendarActionId: string;
+  commsDraftActionId: string;
 }
 
 export interface DemoScenario {

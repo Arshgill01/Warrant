@@ -133,7 +133,10 @@ function denyIfResourceBlocked(
     }
   }
 
-  if (action.kind === "calendar.schedule" && constraints.calendarWindow) {
+  if (
+    (action.kind === "calendar.read" || action.kind === "calendar.schedule") &&
+    constraints.calendarWindow
+  ) {
     if (!action.target?.scheduledFor) {
       return buildDeniedResult(
         warrant,
