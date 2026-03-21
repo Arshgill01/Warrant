@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ActionPathSnapshot, AuthSessionSnapshot, ProviderConnectionSnapshot } from "@/contracts";
 import { SectionCard } from "@/components/foundation/section-card";
 import { googleConnectionStateLegend } from "@/connections";
@@ -89,6 +90,12 @@ export function AuthShell({ session, googleConnection, actionPaths }: AuthShellP
           <div className="flex flex-wrap items-center gap-3">
             <StatusPill label={session.state.replace("-", " ")} tone={sessionTone[session.state]} />
             <StatusPill label={googleConnection.state.replace("-", " ")} tone={connectionTone[googleConnection.state]} />
+            <Link
+              href="/demo"
+              className="inline-flex rounded-full border border-[var(--panel-border)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              Open Wave 1 demo
+            </Link>
           </div>
         </div>
 

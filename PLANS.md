@@ -852,3 +852,80 @@ Out of scope:
 - The Auth0 SDK may require small API adjustments beyond installation if the branch targeted a different package version or subpath layout.
 - Shared DTO conflicts are a symptom of branch overlap; forcing every consumer to conform to one canonical contract may expose additional mismatches after the first fixes land.
 - Keeping the fix scope tight means some longer-term ownership cleanup should stay deferred until after the merged Wave 1 baseline is stable.
+
+## ExecPlan — Wave 1 Compose Demo Surface (2026-03-21)
+
+### Objective
+
+Compose the already-merged Wave 1 auth shell, delegation graph, warrant fixtures, and timeline data into one coherent visible demo surface by adding a dedicated `/demo` route while preserving `/` as the auth/setup entry page.
+
+### Demo relevance
+
+This supports Milestone 3 and Milestone 4 presentation readiness. Judges need to see the seeded scenario, the delegation tree, and the lineage-aware event trail in one place without requiring live Auth0 configuration just to render the demo story.
+
+### Scope
+
+In scope:
+
+- add a dedicated `/demo` route that renders a unified Wave 1 surface
+- keep `/` focused on auth/setup and preserve its current behavior
+- replace orphaned graph-only mock wiring with canonical demo fixture/state data where practical
+- surface the seeded scenario summary, fixture-backed vs auth-backed boundaries, delegation graph, and timeline/event data on `/demo`
+- make the demo route resilient when Auth0 env vars are absent
+- run full validation plus a local app smoke check for `/` and `/demo`
+
+Out of scope:
+
+- new provider integrations or external API behavior
+- Wave 2 orchestration or live agent execution
+- approval-flow implementation beyond showing existing fixture-backed pending state
+- warrant-engine rewrites or new authorization rules
+- broad route architecture changes or major styling churn
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/page.tsx`
+- `src/app/demo/page.tsx`
+- `src/components/auth-shell/*`
+- `src/components/foundation/*`
+- `src/components/graph/*`
+- `src/graph/delegation-graph.tsx`
+- `src/demo-fixtures/*`
+- `src/contracts/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- `/` must remain useful as the auth/setup surface and should keep its current Auth0 shell behavior.
+- `/demo` must render without requiring real Auth0 environment variables.
+- The graph must stay shallow, legible, and obviously lineage-driven.
+- Demo copy must clearly distinguish fixture-backed scenario state from auth-backed setup state.
+- Child authority and revocation lineage shown in the UI must continue to reflect the canonical seeded scenario, not ad hoc view-only data.
+- Avoid introducing new product scope or broad routing abstractions.
+
+### Implementation steps
+
+1. Audit the current graph component and identify where it still depends on stale, graph-local mock data instead of the canonical demo scenario.
+2. Adapt the graph composition layer to accept canonical fixture/state inputs and preserve branch revocation behavior in the visible UI.
+3. Create a dedicated `/demo` page that loads the seeded scenario, derived delegation nodes, and timeline events from `src/demo-fixtures`.
+4. Compose the demo page from existing cards/components where possible, adding only the minimal new scaffolding needed to explain scenario context, auth-backed versus fixture-backed sections, and event history.
+5. Add a low-risk navigation affordance between `/` and `/demo` only where it improves discoverability without changing the auth shell’s role.
+6. Add or update tests for the new route/composition behavior if the current test suite covers these surfaces.
+7. Run lint, typecheck, tests, build, then start the app and manually verify `/` and `/demo`.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run dev`
+- manually verify `http://localhost:3000/`
+- manually verify `http://localhost:3000/demo`
+
+### Risks
+
+- The current graph component keeps local mutable state and graph-local mock imports, so converting it to canonical fixture inputs may expose type or interaction drift.
+- Manual smoke checks may rely on local browser automation or terminal fetches rather than a full end-to-end test harness.
+- If the auth shell assumes live Auth0 affordances in more places than expected, linking it cleanly to a no-env demo route may require small fallback copy changes.
