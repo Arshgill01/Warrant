@@ -117,46 +117,51 @@ export function DelegationGraph({
   }, [delegationNodes, setEdges, setNodes]);
 
   return (
-    <div className="relative h-[600px] w-full overflow-hidden rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] shadow-[0_20px_80px_rgba(16,18,23,0.08)] backdrop-blur">
-      <div className="absolute left-8 top-8 z-10">
-        <p className="text-sm font-medium uppercase tracking-[0.22em] text-[var(--muted)]">{eyebrow}</p>
-        <h2 className="text-3xl font-serif">{title}</h2>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="relative min-h-[560px] overflow-hidden rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] shadow-[0_20px_80px_rgba(16,18,23,0.08)] backdrop-blur">
+        <div className="absolute left-6 top-6 z-10 max-w-[16rem] rounded-2xl border border-[var(--panel-border)] bg-white/80 px-4 py-3 shadow-[0_10px_30px_rgba(16,18,23,0.05)] backdrop-blur">
+          <p className="text-sm font-medium uppercase tracking-[0.22em] text-[var(--muted)]">{eyebrow}</p>
+          <h2 className="mt-1 text-3xl font-serif">{title}</h2>
+        </div>
+
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.24 }}
+          className="bg-transparent"
+          // Disable zooming for a stable "diagram" feel in the demo
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          panOnScroll={false}
+          panOnDrag={true}
+        >
+          <Background color="#101217" gap={20} size={1} />
+          <Controls showInteractive={false} className="!left-6 !bottom-6" />
+        </ReactFlow>
+
+        <div className="absolute bottom-6 right-6 z-10 max-w-[14rem] rounded-2xl border border-[var(--panel-border)] bg-[#101217]/90 px-4 py-3 text-right shadow-[0_10px_30px_rgba(16,18,23,0.12)]">
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">Stable Viewport</span>
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
+            {description}
+          </p>
+        </div>
       </div>
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={onNodeClick}
-        nodeTypes={nodeTypes}
-        fitView
-        className="bg-transparent"
-        // Disable zooming for a stable "diagram" feel in the demo
-        zoomOnScroll={false}
-        zoomOnPinch={false}
-        panOnScroll={false}
-        panOnDrag={true}
-      >
-        <Background color="#101217" gap={20} size={1} />
-        <Controls showInteractive={false} className="!left-8 !bottom-8" />
-      </ReactFlow>
-
-      <NodeDetailPanel 
-        warrant={selectedWarrant}
-        agent={selectedAgent}
-        onClose={() => setSelectedWarrantId(null)}
-        onRevoke={handleRevoke}
-      />
-
-      <div className="absolute right-8 bottom-8 flex flex-col items-end gap-2 text-right">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Stable Viewport</span>
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-        </div>
-        <p className="max-w-[200px] text-[11px] leading-relaxed text-slate-400">
-          {description}
-        </p>
+      <div className="xl:sticky xl:top-6 xl:self-start">
+        <NodeDetailPanel 
+          warrant={selectedWarrant}
+          agent={selectedAgent}
+          onClose={() => setSelectedWarrantId(null)}
+          onRevoke={handleRevoke}
+        />
       </div>
     </div>
   );

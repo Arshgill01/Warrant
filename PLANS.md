@@ -929,3 +929,62 @@ Out of scope:
 - The current graph component keeps local mutable state and graph-local mock imports, so converting it to canonical fixture inputs may expose type or interaction drift.
 - Manual smoke checks may rely on local browser automation or terminal fetches rather than a full end-to-end test harness.
 - If the auth shell assumes live Auth0 affordances in more places than expected, linking it cleanly to a no-env demo route may require small fallback copy changes.
+
+## ExecPlan — Wave 1 Demo Surface Layout Polish (2026-03-21)
+
+### Objective
+
+Polish the newly composed Wave 1 demo surface so the layout stays legible and stable, especially around the delegation graph, detail panel, and supporting demo sections.
+
+### Demo relevance
+
+This is pure Milestone 4 polish work. The graph is the primary visual proof of the thesis, so the layout cannot feel cramped, overlapping, or fragile during the demo.
+
+### Scope
+
+In scope:
+
+- improve graph/detail layout so selection details do not awkwardly cover the graph
+- tighten `/demo` section spacing and responsiveness where the current composition feels crowded
+- preserve all current behavior, data, and route structure
+
+Out of scope:
+
+- new graph states, data model changes, or approval-flow behavior
+- rewriting the `/demo` information architecture
+- broad restyling of unrelated surfaces
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/demo/page.tsx`
+- `src/graph/delegation-graph.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/components/graph/agent-node.tsx`
+
+### Invariants to preserve
+
+- Keep `/` as the auth/setup surface and `/demo` as the fixture-backed demo route.
+- Keep the graph shallow, stable, and clearly lineage-driven.
+- Do not hide critical status, revocation, or capability information behind extra clicks.
+- Avoid broad styling churn outside the demo surface and graph UI.
+
+### Implementation steps
+
+1. Move the node detail panel into a responsive composition that does not obscure the graph canvas.
+2. Reduce node/card density where needed so the graph remains readable at a glance.
+3. Adjust `/demo` section spacing and column behavior where the current layout feels visually unbalanced.
+4. Re-run validation and do a manual visual check on the updated route if the local browser harness cooperates.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run dev`
+
+### Risks
+
+- Layout polish without a reliable automated visual diff still depends partly on manual inspection.
+- Tightening graph layout too aggressively could harm readability if node density increases again in later waves.

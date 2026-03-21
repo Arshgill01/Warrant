@@ -20,13 +20,29 @@ type NodeDetailPanelProps = {
 };
 
 export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetailPanelProps) {
-  if (!warrant || !agent) return null;
+  if (!warrant || !agent) {
+    return (
+      <aside className="rounded-[1.6rem] border border-[var(--panel-border)] bg-white/85 p-6 shadow-[0_10px_30px_rgba(16,18,23,0.05)]">
+        <div className="mb-6 flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
+            <Shield className="size-3.5" />
+          </div>
+          <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Warrant Details</span>
+        </div>
+        <h3 className="text-2xl font-serif text-slate-900">Select a node</h3>
+        <p className="mt-3 text-sm leading-6 text-slate-500">
+          Pick a warrant in the graph to inspect its capabilities, constraints, expiry, and revocation status without
+          covering the rest of the delegation tree.
+        </p>
+      </aside>
+    );
+  }
 
   const isRevoked = warrant.status === "revoked";
-  const isRoot = agent.label === "Root User";
+  const isRoot = warrant.parentId === null;
 
   return (
-    <div className="absolute right-6 top-6 bottom-6 w-96 overflow-y-auto rounded-3xl border border-[var(--panel-border)] bg-white/95 p-6 shadow-[0_20px_80px_rgba(16,18,23,0.12)] backdrop-blur-xl transition-all">
+    <aside className="max-h-[560px] overflow-y-auto rounded-[1.6rem] border border-[var(--panel-border)] bg-white/95 p-6 shadow-[0_20px_80px_rgba(16,18,23,0.08)] backdrop-blur-xl transition-all">
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
@@ -175,6 +191,6 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
           </div>
         )}
       </div>
-    </div>
+    </aside>
   );
 }
