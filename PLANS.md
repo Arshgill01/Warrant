@@ -930,6 +930,7 @@ Out of scope:
 - Manual smoke checks may rely on local browser automation or terminal fetches rather than a full end-to-end test harness.
 - If the auth shell assumes live Auth0 affordances in more places than expected, linking it cleanly to a no-env demo route may require small fallback copy changes.
 
+<<<<<<< HEAD
 ## ExecPlan — Wave 1 Shared Contract Unification (2026-03-22)
 
 ### Objective
@@ -939,11 +940,23 @@ Unify the merged Wave 1 shared contracts so graph, timeline, approvals, actions,
 ### Demo relevance
 
 This supports Milestone 3 through Milestone 5 by reducing merge friction before later integration work lands. The demo path depends on the graph, approval state, blocked action proof, and timeline all telling the same lineage-aware story without contract drift or UI-only type forks.
+=======
+## ExecPlan — Quality Gates Validation Baseline (2026-03-22)
+
+### Objective
+
+Strengthen repo-level validation so parallel worktrees can merge against a shared, predictable baseline with consistent lint, typecheck, test, and build entry points.
+
+### Demo relevance
+
+This supports Milestone 7 packaging and overall technical execution. A stable validation baseline reduces merge breakage across worktrees and makes the demo path easier to keep releasable while feature branches land in parallel.
+>>>>>>> feat/quality-gates
 
 ### Scope
 
 In scope:
 
+<<<<<<< HEAD
 - inspect the merged contract and fixture shapes from warrant-core, graph-ui, demo-fixtures, and auth-shell
 - define one canonical shared contract path for graph and timeline display DTOs
 - add small adapter functions that map demo/domain data into those DTOs
@@ -958,10 +971,24 @@ Out of scope:
 - new providers, new integrations, or broader product scope
 - broad UI redesign or route architecture changes
 - persistence or orchestration refactors
+=======
+- verify the current repo scripts for lint, typecheck, test, and build exist and match the installed tooling
+- tighten script naming or composition only where it improves consistency and merge safety
+- add minimal validation guidance or lightweight CI if it uses the existing toolchain
+- run the improved validation commands and record exact outcomes
+
+Out of scope:
+
+- product behavior changes
+- broad tooling migration or formatter adoption
+- dependency churn beyond what is required for script consistency
+- large CI matrices, caching optimization, or release automation
+>>>>>>> feat/quality-gates
 
 ### Files/modules likely affected
 
 - `PLANS.md`
+<<<<<<< HEAD
 - `src/contracts/*`
 - `src/demo-fixtures/*`
 - `src/graph/*`
@@ -999,3 +1026,98 @@ Out of scope:
 - Some existing DTOs are already halfway between domain and presentation concerns, so tightening the boundary may expose more coupling than expected in graph or demo consumers.
 - The graph currently performs local revocation UI state updates; keeping that behavior while moving to display DTOs needs care so the visible demo interaction does not regress.
 - If later tracks need richer timeline or approval metadata, the shared DTOs may need additive fields, so this slice should stay intentionally minimal rather than speculative.
+=======
+- `package.json`
+- `README.md`
+- `.github/workflows/*`
+
+### Invariants to preserve
+
+- Do not change user-facing product behavior.
+- Keep package-manager and config changes minimal and merge-friendly for this wave.
+- Reuse the current npm, Next.js, ESLint, TypeScript, and Vitest setup rather than introducing new tooling.
+- Avoid broad formatting churn or repo-wide refactors.
+- Validation entry points should stay obvious enough for both local use and CI reuse.
+
+### Implementation steps
+
+1. Inspect the existing scripts, config files, and repo docs to identify inconsistencies or missing validation entry points.
+2. Add the smallest script or workflow changes needed to make lint, typecheck, test, and build run through a consistent baseline command set.
+3. Add brief local or CI guidance only if it materially improves merge safety without expanding tooling scope.
+4. Run the relevant validation commands against the updated baseline and capture exact pass/fail results.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- any new aggregate validation command added as part of this slice
+
+### Risks
+
+- Existing scripts may already be semantically correct but still fail because of unrelated branch-level code issues, limiting how much “tightening” is appropriate in this slice.
+- Adding even a minimal CI workflow can create maintenance overhead if local scripts and workflow steps drift later.
+- Next.js build behavior can be slower or more environment-sensitive than the other gates, so a single aggregate command must remain easy to diagnose when one step fails.
+
+## ExecPlan — Validation Baseline Cleanup (2026-03-22)
+
+### Objective
+
+Fix the current lint and typecheck blockers so the repo-level validation baseline added in the previous slice actually passes.
+
+### Demo relevance
+
+This strengthens Milestone 7 packaging and protects the demo path from merge instability. A red baseline on the shared demo and graph surface makes parallel worktree integration risky even when product behavior is otherwise unchanged.
+
+### Scope
+
+In scope:
+
+- remove unused imports and other lint blockers in the demo and graph UI files
+- replace the explicit `any` in the node detail panel with a typed constraint formatter
+- correct the React Flow background props so typecheck and build succeed
+- rerun the validation commands until the baseline status is clear
+
+Out of scope:
+
+- graph UX redesign
+- auth or middleware fixes unrelated to the current validation failures
+- broad refactors across contracts, fixtures, or component structure
+- warning cleanup that does not affect the shared validation gates
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/demo/page.tsx`
+- `src/components/graph/agent-node.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/graph/delegation-graph.tsx`
+
+### Invariants to preserve
+
+- Do not change product behavior or seeded demo semantics.
+- Keep the delegation graph interactions and revoke behavior intact.
+- Keep the fix scope narrow and merge-friendly.
+- Do not expand validation/tooling scope while fixing these code issues.
+
+### Implementation steps
+
+1. Remove unused imports and dead code flagged by ESLint in the affected demo and graph files.
+2. Replace the `any`-typed resource-constraint formatter with a type derived from the warrant contract.
+3. Adjust the React Flow background usage to match the installed component types without changing the visual direction materially.
+4. Run lint, typecheck, tests, build, and the aggregate validate command to confirm the repo baseline.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run validate`
+
+### Risks
+
+- The graph surface may have additional latent issues that only appear after the current lint/type blockers are removed.
+- Next.js build still surfaces Auth0 Edge-runtime warnings, so a fully clean build log may require a separate auth-focused slice later.
+>>>>>>> feat/quality-gates

@@ -11,7 +11,12 @@ import {
   Activity,
   UserCheck
 } from "lucide-react";
+<<<<<<< HEAD
 import type { WarrantDisplaySummary } from "@/contracts";
+=======
+import type { WarrantContract, WarrantResourceConstraints } from "@/contracts/warrant";
+import type { AgentIdentity } from "@/contracts/agent";
+>>>>>>> feat/quality-gates
 
 type NodeDetailPanelProps = {
   warrant: WarrantDisplaySummary | null;
@@ -19,11 +24,33 @@ type NodeDetailPanelProps = {
   onRevoke: (warrantId: string) => void;
 };
 
+<<<<<<< HEAD
 export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelProps) {
   if (!warrant) return null;
 
   const isRevoked = warrant.status === "revoked";
   const isRoot = warrant.agentLabel === "Root User";
+=======
+type ResourceConstraintValue = WarrantResourceConstraints[keyof WarrantResourceConstraints];
+
+function renderConstraintValue(value: ResourceConstraintValue): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "object") {
+    if (Array.isArray(value)) return value.join(", ");
+    return JSON.stringify(value).replace(/[{}"]/g, "");
+  }
+  return String(value);
+}
+
+export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetailPanelProps) {
+  if (!warrant || !agent) return null;
+
+  const isRevoked = warrant.status === "revoked";
+  const isRoot = agent.label === "Root User";
+  const constraintEntries = Object.entries(warrant.resourceConstraints) as Array<
+    [keyof WarrantResourceConstraints, ResourceConstraintValue]
+  >;
+>>>>>>> feat/quality-gates
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-20 w-[420px] flex flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
@@ -94,7 +121,11 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
         </section>
 
         {/* Constraints Section */}
+<<<<<<< HEAD
         {warrant.constraints.length > 0 && (
+=======
+        {constraintEntries.length > 0 && (
+>>>>>>> feat/quality-gates
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Activity className="size-4 text-[var(--accent)]" />
@@ -103,8 +134,13 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
             <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
               <table className="w-full text-left text-sm">
                 <tbody className="divide-y divide-slate-50">
+<<<<<<< HEAD
                   {warrant.constraints.map((constraint) => (
                     <tr key={constraint.label} className="group">
+=======
+                  {constraintEntries.map(([key, value]) => (
+                    <tr key={key} className="group">
+>>>>>>> feat/quality-gates
                       <td className="px-4 py-3 font-medium text-[var(--muted)] capitalize bg-slate-50/30 w-1/3">
                         {constraint.label}
                       </td>
