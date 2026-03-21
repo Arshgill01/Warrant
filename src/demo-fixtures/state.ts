@@ -1,11 +1,15 @@
-import type { DelegationNode, DemoScenario, LedgerEvent } from "@/contracts";
+import type {
+  DemoScenario,
+  TimelineEventDisplayRecord,
+} from "@/contracts";
+import { createDefaultDemoScenario } from "@/demo-fixtures/scenario";
 import {
-  createDefaultDemoScenario,
-  createDelegationNodes,
-  createTimelineEvents,
-  getScenarioExamples,
-  type DemoScenarioExampleSet,
-} from "@/demo-fixtures/scenario";
+  createDelegationGraphView,
+  createTimelineEventDisplayRecords,
+  getDisplayScenarioExamples,
+  type DelegationGraphViewData,
+  type DisplayScenarioExampleSet,
+} from "@/demo-fixtures/display";
 
 const cloneScenario = <Value>(value: Value): Value => structuredClone(value);
 
@@ -25,14 +29,14 @@ export function resetDemoState(): DemoScenario {
   return loadDemoState();
 }
 
-export function loadDelegationNodes(): DelegationNode[] {
-  return createDelegationNodes(loadDemoState());
+export function loadDelegationGraphView(): DelegationGraphViewData {
+  return createDelegationGraphView(loadDemoState());
 }
 
-export function loadTimelineEvents(): LedgerEvent[] {
-  return createTimelineEvents(loadDemoState());
+export function loadTimelineEvents(): TimelineEventDisplayRecord[] {
+  return createTimelineEventDisplayRecords(loadDemoState());
 }
 
-export function loadScenarioExamples(): DemoScenarioExampleSet {
-  return getScenarioExamples(loadDemoState());
+export function loadScenarioExamples(): DisplayScenarioExampleSet {
+  return getDisplayScenarioExamples(loadDemoState());
 }

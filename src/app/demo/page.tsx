@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAuth0Environment } from "@/auth/env";
-import { SectionCard } from "@/components/foundation/section-card";
 import {
-  createDelegationNodes,
-  createTimelineEvents,
-  getScenarioExamples,
+  createDelegationGraphView,
+  createTimelineEventDisplayRecords,
+  getDisplayScenarioExamples,
   loadDemoState,
 } from "@/demo-fixtures";
 import { DelegationGraph } from "@/graph";
-import type { DemoActionOutcome, LedgerEventKind } from "@/contracts";
+import type { DemoActionOutcome } from "@/contracts";
 
 export const metadata: Metadata = {
   title: "Warrant | Wave 1 Demo",
@@ -82,9 +81,9 @@ function ExampleCard({
 export default function DemoPage() {
   const authEnv = getAuth0Environment();
   const scenario = loadDemoState();
-  const delegationNodes = createDelegationNodes(scenario);
-  const timeline = createTimelineEvents(scenario);
-  const examples = getScenarioExamples(scenario);
+  const graphView = createDelegationGraphView(scenario);
+  const timeline = createTimelineEventDisplayRecords(scenario);
+  const examples = getDisplayScenarioExamples(scenario);
   
   const agentCounts = scenario.agents.reduce<Record<string, number>>((counts, agent) => {
     counts[agent.status] = (counts[agent.status] ?? 0) + 1;
@@ -157,9 +156,9 @@ export default function DemoPage() {
       {/* 2. Full-Width Delegation Graph */}
       <section className="w-full">
         <DelegationGraph
-          warrants={scenario.warrants}
-          agents={scenario.agents}
-          delegationNodes={delegationNodes}
+          graphNodes={graphView.nodes}
+          graphEdges={graphView.edges}
+          warrantSummaries={graphView.warrantSummaries}
           eyebrow="Visual Hierarchy"
           title="Delegation Tree"
           description="A real-time map of issued warrants and branch status. Select a node to inspect lineage and capabilities."
@@ -206,8 +205,11 @@ export default function DemoPage() {
             eyebrow="Branch Revocation"
             title="Cascade Failure"
             outcome="revoked"
-            detail={examples.revokedBranchRecord.reason}
-            meta={`Cascades: ${examples.revokedBranchRecord.cascadedWarrantIds.length} nodes`}
+            detail={
+              examples.revokedBranchSummary.revocationReason ??
+              "This branch was revoked and its descendants lost authority immediately."
+            }
+            meta={`Cascades: ${examples.revokedDescendantCount} nodes`}
           />
         </div>
       </section>
@@ -243,7 +245,7 @@ export default function DemoPage() {
               <div className="flex flex-col gap-2 rounded-xl border border-[var(--panel-border)] bg-slate-50/50 p-4 font-mono text-[10px] text-[var(--muted)] transition-all group-hover:bg-white md:min-w-[300px]">
                 <div className="flex justify-between border-b border-[var(--panel-border)]/50 pb-2">
                   <span className="font-bold uppercase tracking-tighter opacity-50">Actor</span>
-                  <span className="font-semibold text-[var(--foreground)]">{event.actorId}</span>
+                  <span className="font-semibold text-[var(--foreground)]">{event.actorLabel}</span>
                 </div>
                 <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
                   <span className="font-bold uppercase tracking-tighter opacity-50">Warrant</span>

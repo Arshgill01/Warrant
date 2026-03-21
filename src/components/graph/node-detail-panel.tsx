@@ -3,7 +3,6 @@ import {
   Shield, 
   Target, 
   Clock, 
-  History, 
   ChevronRight,
   Trash2,
   AlertTriangle,
@@ -12,30 +11,19 @@ import {
   Activity,
   UserCheck
 } from "lucide-react";
-import type { WarrantContract } from "@/contracts/warrant";
-import type { AgentIdentity } from "@/contracts/agent";
+import type { WarrantDisplaySummary } from "@/contracts";
 
 type NodeDetailPanelProps = {
-  warrant: WarrantContract | null;
-  agent: AgentIdentity | null;
+  warrant: WarrantDisplaySummary | null;
   onClose: () => void;
   onRevoke: (warrantId: string) => void;
 };
 
-function renderConstraintValue(value: any): string {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "object") {
-    if (Array.isArray(value)) return value.join(", ");
-    return JSON.stringify(value).replace(/[{}"]/g, "");
-  }
-  return String(value);
-}
-
-export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetailPanelProps) {
-  if (!warrant || !agent) return null;
+export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelProps) {
+  if (!warrant) return null;
 
   const isRevoked = warrant.status === "revoked";
-  const isRoot = agent.label === "Root User";
+  const isRoot = warrant.agentLabel === "Root User";
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-20 w-[420px] flex flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
@@ -76,7 +64,7 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
           
           <div className="space-y-2">
             <h3 className="text-3xl font-bold tracking-tight text-[var(--foreground)]" style={{ fontFamily: "var(--font-serif)" }}>
-              {agent.label}
+              {warrant.agentLabel}
             </h3>
             <p className="text-sm leading-relaxed text-[var(--muted)]">
               {warrant.purpose}
@@ -106,7 +94,7 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
         </section>
 
         {/* Constraints Section */}
-        {Object.keys(warrant.resourceConstraints).length > 0 && (
+        {warrant.constraints.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Activity className="size-4 text-[var(--accent)]" />
@@ -115,13 +103,13 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
             <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
               <table className="w-full text-left text-sm">
                 <tbody className="divide-y divide-slate-50">
-                  {Object.entries(warrant.resourceConstraints).map(([key, value]) => (
-                    <tr key={key} className="group">
+                  {warrant.constraints.map((constraint) => (
+                    <tr key={constraint.label} className="group">
                       <td className="px-4 py-3 font-medium text-[var(--muted)] capitalize bg-slate-50/30 w-1/3">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
+                        {constraint.label}
                       </td>
                       <td className="px-4 py-3 font-mono text-[11px] font-bold text-[var(--foreground)]">
-                        {renderConstraintValue(value)}
+                        {constraint.value}
                       </td>
                     </tr>
                   ))}
@@ -144,7 +132,7 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs font-medium text-[var(--muted)]">Delegation Depth</span>
-              <span className="text-xs font-bold text-[var(--foreground)]">{warrant.maxChildren} levels</span>
+              <span className="text-xs font-bold text-[var(--foreground)]">{warrant.maxChildren} child warrants</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs font-medium text-[var(--muted)]">Redelegation</span>
@@ -181,7 +169,7 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
           {isRevoked ? (
             <div className="flex items-center gap-3 rounded-xl border border-rose-100 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
               <AlertTriangle className="size-5 shrink-0" />
-              <p>This warrant branch has been decommissioned and cannot be reactivated.</p>
+              <p>{warrant.revocationReason ?? "This warrant branch has been decommissioned and cannot be reactivated."}</p>
             </div>
           ) : (
             <div className="space-y-4">

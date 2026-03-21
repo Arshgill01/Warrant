@@ -13,11 +13,15 @@ import "@xyflow/react/dist/style.css";
 
 import { AgentNodeComponent, type AgentNode } from "@/components/graph/agent-node";
 import { NodeDetailPanel } from "@/components/graph/node-detail-panel";
-import type { AgentIdentity, DelegationNode, WarrantContract } from "@/contracts";
+import type {
+  DelegationGraphEdgeRecord,
+  DelegationGraphNodeRecord,
+  WarrantDisplaySummary,
+} from "@/contracts";
 import {
   buildDelegationGraphEdges,
   buildDelegationGraphNodes,
-  collectDescendantWarrantIds,
+  collectDescendantNodeIds,
 } from "@/graph/view-model";
 
 const nodeTypes = {
@@ -25,28 +29,28 @@ const nodeTypes = {
 };
 
 type DelegationGraphProps = {
-  warrants: WarrantContract[];
-  agents: AgentIdentity[];
-  delegationNodes: DelegationNode[];
+  graphNodes: DelegationGraphNodeRecord[];
+  graphEdges: DelegationGraphEdgeRecord[];
+  warrantSummaries: WarrantDisplaySummary[];
   eyebrow?: string;
   title?: string;
   description?: string;
 };
 
 export function DelegationGraph({
-  warrants: initialWarrants,
-  agents,
-  delegationNodes,
+  graphNodes,
+  graphEdges,
+  warrantSummaries: initialSummaries,
   eyebrow = "Authority Graph",
   title = "Delegation Tree",
   description = "Nodes represent warrants. Revoking a node invalidates its entire branch.",
 }: DelegationGraphProps) {
   const baseNodes = useMemo(
-    () => buildDelegationGraphNodes({ agents, delegationNodes }),
-    [agents, delegationNodes],
+    () => buildDelegationGraphNodes({ graphNodes }),
+    [graphNodes],
   );
-  const baseEdges = useMemo(() => buildDelegationGraphEdges(delegationNodes), [delegationNodes]);
-  const [warrants, setWarrants] = useState(initialWarrants);
+  const baseEdges = useMemo(() => buildDelegationGraphEdges(graphEdges), [graphEdges]);
+  const [summaries, setSummaries] = useState(initialSummaries);
   const [nodes, setNodes, onNodesChange] = useNodesState(baseNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(baseEdges);
   const [selectedWarrantId, setSelectedWarrantId] = useState<string | null>(null);
@@ -54,38 +58,37 @@ export function DelegationGraph({
 
   useEffect(() => {
     setIsMounted(true);
-    setWarrants(initialWarrants);
+    setSummaries(initialSummaries);
     setNodes(baseNodes);
     setEdges(baseEdges);
     setSelectedWarrantId(null);
-  }, [baseEdges, baseNodes, initialWarrants, setEdges, setNodes]);
+  }, [baseEdges, baseNodes, initialSummaries, setEdges, setNodes]);
 
   const onNodeClick = useCallback<NodeMouseHandler<AgentNode>>((_, node) => {
     setSelectedWarrantId(node.id);
   }, []);
 
   const selectedWarrant = useMemo(
-    () => warrants.find((w) => w.id === selectedWarrantId) || null,
-    [selectedWarrantId, warrants]
-  );
-
-  const selectedAgent = useMemo(
-    () => (selectedWarrant ? agents.find((agent) => agent.id === selectedWarrant.agentId) ?? null : null),
-    [agents, selectedWarrant]
+    () => summaries.find((summary) => summary.id === selectedWarrantId) || null,
+    [selectedWarrantId, summaries],
   );
 
   const handleRevoke = useCallback((warrantId: string) => {
-    const toRevoke = new Set(collectDescendantWarrantIds(delegationNodes, warrantId));
+    const toRevoke = new Set(collectDescendantNodeIds(graphNodes, warrantId));
 
-    setWarrants((currentWarrants) =>
-      currentWarrants.map((warrant) =>
-        toRevoke.has(warrant.id)
+    setSummaries((currentSummaries) =>
+      currentSummaries.map((summary) =>
+        toRevoke.has(summary.id)
           ? {
-              ...warrant,
+              ...summary,
               status: "revoked",
+              revokedAt: summary.revokedAt ?? new Date().toISOString(),
+              revocationReason:
+                summary.revocationReason ??
+                "This branch was revoked from the delegation graph.",
             }
-          : warrant
-      )
+          : summary,
+      ),
     );
 
     setNodes((nds) =>
@@ -116,7 +119,7 @@ export function DelegationGraph({
         return edge;
       })
     );
-  }, [delegationNodes, setEdges, setNodes]);
+  }, [graphNodes, setEdges, setNodes]);
 
   if (!isMounted) {
     return (
@@ -152,13 +155,12 @@ export function DelegationGraph({
           panOnScroll={false}
           panOnDrag={true}
         >
-          <Background color="#cbd5e1" gap={24} size={1} opacity={0.4} />
+          <Background color="#cbd5e1" gap={24} size={1} />
           <Controls showInteractive={false} className="!left-8 !bottom-8 !shadow-none !border-[var(--panel-border)]" />
         </ReactFlow>
 
         <NodeDetailPanel 
           warrant={selectedWarrant}
-          agent={selectedAgent}
           onClose={() => setSelectedWarrantId(null)}
           onRevoke={handleRevoke}
         />

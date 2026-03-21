@@ -929,3 +929,73 @@ Out of scope:
 - The current graph component keeps local mutable state and graph-local mock imports, so converting it to canonical fixture inputs may expose type or interaction drift.
 - Manual smoke checks may rely on local browser automation or terminal fetches rather than a full end-to-end test harness.
 - If the auth shell assumes live Auth0 affordances in more places than expected, linking it cleanly to a no-env demo route may require small fallback copy changes.
+
+## ExecPlan — Wave 1 Shared Contract Unification (2026-03-22)
+
+### Objective
+
+Unify the merged Wave 1 shared contracts so graph, timeline, approvals, actions, and demo fixtures all consume one small, explicit display-data contract layer with adapters instead of passing raw domain models directly into UI surfaces.
+
+### Demo relevance
+
+This supports Milestone 3 through Milestone 5 by reducing merge friction before later integration work lands. The demo path depends on the graph, approval state, blocked action proof, and timeline all telling the same lineage-aware story without contract drift or UI-only type forks.
+
+### Scope
+
+In scope:
+
+- inspect the merged contract and fixture shapes from warrant-core, graph-ui, demo-fixtures, and auth-shell
+- define one canonical shared contract path for graph and timeline display DTOs
+- add small adapter functions that map demo/domain data into those DTOs
+- update graph UI consumers to use the adapter-fed display contracts instead of raw warrant internals where practical
+- remove duplicate or conflicting local type definitions that overlap with the shared DTOs
+- keep seeded demo data aligned with the canonical contracts
+
+Out of scope:
+
+- warrant-engine rule changes or authorization-behavior redesign
+- approval-flow orchestration or new backend behavior
+- new providers, new integrations, or broader product scope
+- broad UI redesign or route architecture changes
+- persistence or orchestration refactors
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `src/graph/*`
+- `src/components/graph/*`
+- `src/app/demo/page.tsx`
+- `src/components/foundation/foundation-shell.tsx`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep domain models separate from UI view models.
+- Preserve warrant-engine invariants: narrowing only, expiry awareness, and descendant invalidation.
+- Keep the graph shallow, stable, and lineage-aware.
+- Keep demo fixtures deterministic and aligned with the core three-minute story.
+- Prefer adapters over invasive rewrites or new architecture layers.
+- Keep the shared contracts small, explicit, and easy to inspect.
+
+### Implementation steps
+
+1. Audit the current merged contracts and identify where raw warrant/demo domain models leak into graph and timeline UI surfaces.
+2. Define one canonical shared display-contract module for graph nodes, graph edges, warrant summaries, action attempt records, approval state records, and timeline events.
+3. Add adapter helpers that derive those display DTOs from the canonical demo scenario and existing domain contracts without changing the underlying warrant engine behavior.
+4. Update graph view-model and detail-panel wiring to consume the shared display DTOs instead of graph-local or domain-leaking shapes.
+5. Replace or remove duplicate local definitions that conflict with the shared contracts, keeping public imports boring and consistent.
+6. Update tests so demo fixtures and graph consumers validate against the unified contracts.
+
+### Validation plan
+
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+### Risks
+
+- Some existing DTOs are already halfway between domain and presentation concerns, so tightening the boundary may expose more coupling than expected in graph or demo consumers.
+- The graph currently performs local revocation UI state updates; keeping that behavior while moving to display DTOs needs care so the visible demo interaction does not regress.
+- If later tracks need richer timeline or approval metadata, the shared DTOs may need additive fields, so this slice should stay intentionally minimal rather than speculative.

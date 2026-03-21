@@ -81,11 +81,17 @@ Shared consumers should prefer these exports:
 
 - `createDefaultDemoScenario()` for a fresh canonical snapshot
 - `loadDemoState()` and `resetDemoState()` for in-memory rehearsal state
-- `loadDelegationNodes()` for graph-ready delegation data
-- `loadTimelineEvents()` for human-readable timeline data
-- `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
+- `createDelegationGraphView()` or `loadDelegationGraphView()` for graph-ready display data
+- `createTimelineEventDisplayRecords()` or `loadTimelineEvents()` for timeline-ready display data
+- `getDisplayScenarioExamples()` or `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
 
 This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
+
+## Shared display contracts
+
+UI-facing graph, timeline, warrant-summary, action, and approval DTOs now live in `src/contracts/display.ts`.
+
+Use adapters from `src/demo-fixtures/display.ts` to map canonical demo/domain data into those DTOs. Graph and demo surfaces should consume that adapter layer instead of raw warrant or fixture internals directly.
 
 ## Intended worktree split
 

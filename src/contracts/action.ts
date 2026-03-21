@@ -22,6 +22,8 @@ export type ActionGate = "policy" | "auth0" | "approval";
 
 export type ActionPathState = "ready" | "blocked" | "pending";
 
+export type ActionAttemptOutcome = "allowed" | "blocked" | "approval-required";
+
 export interface ActionAttempt {
   id: string;
   kind: ActionKind;
