@@ -9,3 +9,5 @@ export const connectionsBoundary: WorktreeBoundary = {
   notes: "This boundary should make Auth0 Token Vault visibly load-bearing.",
   status: "reserved",
 };
+
+export * from "@/connections/google";
