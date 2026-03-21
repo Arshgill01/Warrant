@@ -541,3 +541,74 @@ Out of scope:
 - Next.js config and lint setup can drift across versions; keep the initial config conventional and minimal.
 - Adding too many placeholder files can create noise; keep each boundary lightweight.
 - Auth0 and LangGraph are intentionally deferred here, so later worktrees will still need to integrate those dependencies carefully.
+
+## ExecPlan — Warrant Core Engine (2026-03-20)
+
+### Objective
+
+Build the pure Warrant engine that defines warrant contracts, parent-to-child narrowing rules, lineage-aware authorization decisions, and descendant revocation behavior.
+
+### Demo relevance
+
+This is Milestone 2 / Workstream B. It provides the proof that delegated authority can narrow, expire, and revoke in ways judges can inspect, including the required blocked-overreach beat in the demo.
+
+### Scope
+
+In scope:
+
+- shared warrant and action contract updates needed for the engine
+- core warrant domain types and resource-constraint structures
+- parent-to-child narrowing validation
+- warrant issuance helpers
+- active / expired / revoked evaluation
+- branch and descendant revocation logic at the domain level
+- one pure action-authorization function with structured allow/deny output
+- readable denial reasons and lineage-friendly audit metadata
+- automated tests for the core invariants
+
+Out of scope:
+
+- Auth0 or Token Vault integration
+- UI, routes, or app-shell behavior
+- persistence and database schema
+- agent orchestration and external API adapters
+- approval-flow implementation beyond contract-aware authorization results
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/warrant.ts`
+- `src/contracts/action.ts`
+- `src/contracts/index.ts`
+- `src/warrants/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- A child warrant must never exceed parent authority.
+- Revoking a warrant must invalidate descendants.
+- Expired warrants must deny authorization even without manual revocation.
+- Authorization decisions must be explainable with human-readable denial reasons.
+- Keep the engine framework-agnostic, pure, and independent from Auth0 logic.
+- Preserve existing repo boundary exports used by the scaffold.
+
+### Implementation steps
+
+1. Extend the bootstrap warrant/action contracts only where needed to support lineage, narrowing, and authorization results.
+2. Add pure warrant-domain modules for types, narrowing helpers, issuance, status evaluation, ancestry checks, and revocation.
+3. Implement one authorization entrypoint that evaluates status, ancestry, capability, and resource constraints and returns structured allow/deny data.
+4. Re-export the engine through `src/warrants` without breaking the existing worktree-boundary placeholder.
+5. Add focused Vitest coverage for the required proof cases and core invariants.
+6. Run targeted test and typecheck/lint validation for the warrant engine changes.
+
+### Validation plan
+
+- `npm run test`
+- `npm run typecheck`
+- `npm run lint`
+
+### Risks
+
+- Shared contract changes could create merge pressure for other worktrees; keep them narrowly additive and boring.
+- Resource constraints will start intentionally small and explicit, so later integrations may need new fields without weakening current invariants.
+- Revocation is domain-level only in this slice; persistence and concurrent updates remain a later integration concern.
