@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getCalendarReadPath, getGmailSendPath } from "@/actions";
+import { executeSendEmail, prepareGmailDraft, readCalendarAvailability } from "@/actions";
 import { readAuth0Environment } from "@/auth/env";
 import { buildGoogleConnectHref } from "@/connections/google";
+import { authShellProviderRequests, authShellSendReleasePreview } from "@/demo-fixtures";
 import type { AuthSessionSnapshot, ProviderConnectionSnapshot } from "@/contracts";
 
 const signedInSession: AuthSessionSnapshot = {
@@ -57,37 +58,98 @@ describe("auth shell environment", () => {
   });
 });
 
-describe("auth shell action paths", () => {
-  it("blocks calendar reads when Auth0-backed Google access is unavailable", async () => {
-    const path = await getCalendarReadPath({
+describe("provider-backed action wrappers", () => {
+  it("surfaces disconnected Google state on the calendar read path", async () => {
+    const result = await readCalendarAvailability(authShellProviderRequests.calendarAvailability, {
       session: signedInSession,
       connection: {
         ...connectedGoogle,
-        state: "unavailable",
-        detail: "Google access is unavailable.",
-      },
-      policy: {
-        allowed: true,
-        reason: "Allowed by local policy.",
+        state: "not-connected",
+        headline: "Google is not connected yet.",
+        detail: "Connect Google through Auth0 before the Calendar Agent reads availability.",
+        actionLabel: "Connect Google with Auth0",
+        actionHref: "/auth/connect",
       },
     });
 
-    expect(path.state).toBe("blocked");
-    expect(path.gate).toBe("auth0");
+    expect(result.state).toBe("disconnected");
+    expect(result.failure?.code).toBe("provider-disconnected");
+    expect(result.data).toBeNull();
   });
 
-  it("keeps Gmail send pending until approval is granted", async () => {
-    const path = await getGmailSendPath({
+  it("returns a structured Gmail draft success envelope", async () => {
+    const result = await prepareGmailDraft(authShellProviderRequests.gmailDraft, {
       session: signedInSession,
       connection: connectedGoogle,
-      policy: {
-        allowed: true,
-        reason: "Allowed by local policy.",
-      },
-      approvalStatus: "pending",
+      accessToken: "token",
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            id: "draft-123",
+            message: {
+              id: "message-123",
+              threadId: "thread-123",
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        ),
     });
 
-    expect(path.state).toBe("pending");
-    expect(path.gate).toBe("approval");
+    expect(result.state).toBe("success");
+    expect(result.data).toMatchObject({
+      endpoint: "gmail.drafts.create",
+      draftId: "draft-123",
+      messageId: "message-123",
+      threadId: "thread-123",
+      subject: authShellProviderRequests.gmailDraft.subject,
+    });
+    expect(result.failure).toBeNull();
+  });
+
+  it("keeps send execution blocked until another layer explicitly releases it", async () => {
+    const result = await executeSendEmail(authShellProviderRequests.gmailSend, {
+      session: signedInSession,
+      connection: connectedGoogle,
+    });
+
+    expect(result.state).toBe("execution-blocked");
+    expect(result.failure?.code).toBe("execution-release-required");
+    expect(result.data).toBeNull();
+  });
+
+  it("uses a distinct Gmail send execution path after release", async () => {
+    const result = await executeSendEmail(authShellProviderRequests.gmailSend, {
+      session: signedInSession,
+      connection: connectedGoogle,
+      accessToken: "token",
+      release: authShellSendReleasePreview,
+      fetchFn: async () =>
+        new Response(
+          JSON.stringify({
+            id: "message-456",
+            threadId: "thread-456",
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        ),
+    });
+
+    expect(result.state).toBe("success");
+    expect(result.data).toMatchObject({
+      endpoint: "gmail.messages.send",
+      messageId: "message-456",
+      threadId: "thread-456",
+      subject: authShellProviderRequests.gmailSend.subject,
+    });
+    expect(result.failure).toBeNull();
   });
 });
