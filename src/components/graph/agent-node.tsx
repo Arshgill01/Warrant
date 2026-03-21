@@ -1,15 +1,11 @@
 import React, { memo } from "react";
 import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { 
-  ShieldCheck, 
   User, 
   Brain, 
   Calendar, 
   Mail, 
   FileText, 
-  AlertCircle, 
-  Ban,
-  Clock,
   ChevronRight
 } from "lucide-react";
 import type { AgentRole, AgentStatus } from "@/contracts/agent";

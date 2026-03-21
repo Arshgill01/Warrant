@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAuth0Environment } from "@/auth/env";
-import { SectionCard } from "@/components/foundation/section-card";
 import {
   createDelegationNodes,
   createTimelineEvents,
@@ -9,7 +8,7 @@ import {
   loadDemoState,
 } from "@/demo-fixtures";
 import { DelegationGraph } from "@/graph";
-import type { DemoActionOutcome, LedgerEventKind } from "@/contracts";
+import type { DemoActionOutcome } from "@/contracts";
 
 export const metadata: Metadata = {
   title: "Warrant | Wave 1 Demo",

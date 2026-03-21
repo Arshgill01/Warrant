@@ -991,3 +991,64 @@ Out of scope:
 - Existing scripts may already be semantically correct but still fail because of unrelated branch-level code issues, limiting how much “tightening” is appropriate in this slice.
 - Adding even a minimal CI workflow can create maintenance overhead if local scripts and workflow steps drift later.
 - Next.js build behavior can be slower or more environment-sensitive than the other gates, so a single aggregate command must remain easy to diagnose when one step fails.
+
+## ExecPlan — Validation Baseline Cleanup (2026-03-22)
+
+### Objective
+
+Fix the current lint and typecheck blockers so the repo-level validation baseline added in the previous slice actually passes.
+
+### Demo relevance
+
+This strengthens Milestone 7 packaging and protects the demo path from merge instability. A red baseline on the shared demo and graph surface makes parallel worktree integration risky even when product behavior is otherwise unchanged.
+
+### Scope
+
+In scope:
+
+- remove unused imports and other lint blockers in the demo and graph UI files
+- replace the explicit `any` in the node detail panel with a typed constraint formatter
+- correct the React Flow background props so typecheck and build succeed
+- rerun the validation commands until the baseline status is clear
+
+Out of scope:
+
+- graph UX redesign
+- auth or middleware fixes unrelated to the current validation failures
+- broad refactors across contracts, fixtures, or component structure
+- warning cleanup that does not affect the shared validation gates
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/demo/page.tsx`
+- `src/components/graph/agent-node.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/graph/delegation-graph.tsx`
+
+### Invariants to preserve
+
+- Do not change product behavior or seeded demo semantics.
+- Keep the delegation graph interactions and revoke behavior intact.
+- Keep the fix scope narrow and merge-friendly.
+- Do not expand validation/tooling scope while fixing these code issues.
+
+### Implementation steps
+
+1. Remove unused imports and dead code flagged by ESLint in the affected demo and graph files.
+2. Replace the `any`-typed resource-constraint formatter with a type derived from the warrant contract.
+3. Adjust the React Flow background usage to match the installed component types without changing the visual direction materially.
+4. Run lint, typecheck, tests, build, and the aggregate validate command to confirm the repo baseline.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run validate`
+
+### Risks
+
+- The graph surface may have additional latent issues that only appear after the current lint/type blockers are removed.
+- Next.js build still surfaces Auth0 Edge-runtime warnings, so a fully clean build log may require a separate auth-focused slice later.

@@ -3,7 +3,6 @@ import {
   Shield, 
   Target, 
   Clock, 
-  History, 
   ChevronRight,
   Trash2,
   AlertTriangle,
@@ -12,7 +11,7 @@ import {
   Activity,
   UserCheck
 } from "lucide-react";
-import type { WarrantContract } from "@/contracts/warrant";
+import type { WarrantContract, WarrantResourceConstraints } from "@/contracts/warrant";
 import type { AgentIdentity } from "@/contracts/agent";
 
 type NodeDetailPanelProps = {
@@ -22,7 +21,9 @@ type NodeDetailPanelProps = {
   onRevoke: (warrantId: string) => void;
 };
 
-function renderConstraintValue(value: any): string {
+type ResourceConstraintValue = WarrantResourceConstraints[keyof WarrantResourceConstraints];
+
+function renderConstraintValue(value: ResourceConstraintValue): string {
   if (value === null || value === undefined) return "—";
   if (typeof value === "object") {
     if (Array.isArray(value)) return value.join(", ");
@@ -36,6 +37,9 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
 
   const isRevoked = warrant.status === "revoked";
   const isRoot = agent.label === "Root User";
+  const constraintEntries = Object.entries(warrant.resourceConstraints) as Array<
+    [keyof WarrantResourceConstraints, ResourceConstraintValue]
+  >;
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-20 w-[420px] flex flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
@@ -106,7 +110,7 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
         </section>
 
         {/* Constraints Section */}
-        {Object.keys(warrant.resourceConstraints).length > 0 && (
+        {constraintEntries.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Activity className="size-4 text-[var(--accent)]" />
@@ -115,7 +119,7 @@ export function NodeDetailPanel({ warrant, agent, onClose, onRevoke }: NodeDetai
             <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
               <table className="w-full text-left text-sm">
                 <tbody className="divide-y divide-slate-50">
-                  {Object.entries(warrant.resourceConstraints).map(([key, value]) => (
+                  {constraintEntries.map(([key, value]) => (
                     <tr key={key} className="group">
                       <td className="px-4 py-3 font-medium text-[var(--muted)] capitalize bg-slate-50/30 w-1/3">
                         {key.replace(/([A-Z])/g, ' $1').trim()}

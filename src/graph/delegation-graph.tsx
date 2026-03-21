@@ -152,7 +152,7 @@ export function DelegationGraph({
           panOnScroll={false}
           panOnDrag={true}
         >
-          <Background color="#cbd5e1" gap={24} size={1} opacity={0.4} />
+          <Background color="rgba(203, 213, 225, 0.4)" gap={24} size={1} />
           <Controls showInteractive={false} className="!left-8 !bottom-8 !shadow-none !border-[var(--panel-border)]" />
         </ReactFlow>
 
