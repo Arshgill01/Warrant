@@ -4,7 +4,6 @@ export type ActionKind =
   | "docs.read"
   | "gmail.draft"
   | "gmail.send"
-  | "docs.read"
   | "warrant.issue"
   | "warrant.revoke";
 
@@ -19,6 +18,10 @@ export interface ActionUsageSnapshot {
   sendsUsed?: number;
 }
 
+export type ActionGate = "policy" | "auth0" | "approval";
+
+export type ActionPathState = "ready" | "blocked" | "pending";
+
 export interface ActionAttempt {
   id: string;
   kind: ActionKind;
@@ -27,4 +30,19 @@ export interface ActionAttempt {
   requestedAt: string;
   target?: ActionTarget;
   usage?: ActionUsageSnapshot;
+}
+
+export interface LocalPolicyCheck {
+  allowed: boolean;
+  reason: string;
+}
+
+export interface ActionPathSnapshot {
+  kind: ActionKind;
+  label: string;
+  state: ActionPathState;
+  gate: ActionGate;
+  headline: string;
+  detail: string;
+  nextStep: string | null;
 }

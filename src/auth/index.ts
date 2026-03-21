@@ -9,3 +9,7 @@ export const authBoundary: WorktreeBoundary = {
   notes: "Keep provider-specific connection logic out of this directory.",
   status: "reserved",
 };
+
+export * from "@/auth/auth0";
+export * from "@/auth/env";
+export * from "@/auth/session";

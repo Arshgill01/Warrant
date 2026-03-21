@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Warrant",
-  description: "OAuth was designed for apps. AI agents need warrants.",
+  title: "Warrant | Auth0 Access Shell",
+  description: "Auth0-backed sign-in, Google connection state, and delegated external access setup for Warrant.",
 };
 
 export default function RootLayout({

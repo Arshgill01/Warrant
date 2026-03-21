@@ -10,5 +10,6 @@ export const demoFixturesBoundary: WorktreeBoundary = {
   status: "reserved",
 };
 
+export * from "@/demo-fixtures/auth-shell";
 export * from "@/demo-fixtures/scenario";
 export * from "@/demo-fixtures/state";
