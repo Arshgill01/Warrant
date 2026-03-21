@@ -148,7 +148,7 @@ export default function DemoPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.05fr_1fr_0.95fr]">
+      <section className="grid gap-4 xl:grid-cols-3">
         <SectionCard title="Canonical seeded scenario" eyebrow="Fixture-backed">
           <p>
             Prompt owner: <strong>{scenario.user.label}</strong>
@@ -187,7 +187,7 @@ export default function DemoPage() {
         </SectionCard>
       </section>
 
-      <section className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">
+      <section className="grid gap-4 xl:grid-cols-[1.4fr_0.9fr]">
         <DelegationGraph
           warrants={scenario.warrants}
           agents={scenario.agents}
@@ -197,38 +197,36 @@ export default function DemoPage() {
           description="Seeded warrants and statuses from the canonical Wave 1 scenario. Revoking a node still cascades through its branch."
         />
 
-        <div className="grid gap-4 xl:sticky xl:top-6">
+        <div className="grid gap-4">
           <SectionCard title="Canonical beats" eyebrow="Scenario examples">
-            <div className="grid gap-3">
-              <ExampleCard
-                eyebrow="Allowed child action"
-                title={examples.validChildAction.summary}
-                outcome={examples.validChildAction.outcome}
-                detail={examples.validChildAction.outcomeReason}
-                meta={`Resource: ${examples.validChildAction.resource}`}
-              />
-              <ExampleCard
-                eyebrow="Blocked overreach"
-                title={examples.blockedOverreachAction.summary}
-                outcome={examples.blockedOverreachAction.outcome}
-                detail={examples.blockedOverreachAction.outcomeReason}
-                meta={`Attempted resource: ${examples.blockedOverreachAction.resource}`}
-              />
-              <ExampleCard
-                eyebrow="Approval still pending"
-                title={examples.approvalPendingRequest.title}
-                outcome={examples.approvalPendingAction.outcome}
-                detail={examples.approvalPendingRequest.reason}
-                meta={`Blast radius: ${examples.approvalPendingRequest.blastRadius}`}
-              />
-              <ExampleCard
-                eyebrow="Revoked branch"
-                title="Descendant access cut off"
-                outcome="revoked"
-                detail={examples.revokedBranchRecord.reason}
-                meta={`Cascades to: ${examples.revokedBranchRecord.cascadedWarrantIds.join(", ")}`}
-              />
-            </div>
+            <ExampleCard
+              eyebrow="Allowed child action"
+              title={examples.validChildAction.summary}
+              outcome={examples.validChildAction.outcome}
+              detail={examples.validChildAction.outcomeReason}
+              meta={`Resource: ${examples.validChildAction.resource}`}
+            />
+            <ExampleCard
+              eyebrow="Blocked overreach"
+              title={examples.blockedOverreachAction.summary}
+              outcome={examples.blockedOverreachAction.outcome}
+              detail={examples.blockedOverreachAction.outcomeReason}
+              meta={`Attempted resource: ${examples.blockedOverreachAction.resource}`}
+            />
+            <ExampleCard
+              eyebrow="Approval still pending"
+              title={examples.approvalPendingRequest.title}
+              outcome={examples.approvalPendingAction.outcome}
+              detail={examples.approvalPendingRequest.reason}
+              meta={`Blast radius: ${examples.approvalPendingRequest.blastRadius}`}
+            />
+            <ExampleCard
+              eyebrow="Revoked branch"
+              title="Descendant access cut off"
+              outcome="revoked"
+              detail={examples.revokedBranchRecord.reason}
+              meta={`Cascades to: ${examples.revokedBranchRecord.cascadedWarrantIds.join(", ")}`}
+            />
           </SectionCard>
         </div>
       </section>
