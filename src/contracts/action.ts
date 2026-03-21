@@ -1,6 +1,7 @@
 export type ActionKind =
   | "calendar.read"
   | "calendar.schedule"
+  | "docs.read"
   | "gmail.draft"
   | "gmail.send"
   | "warrant.issue"
