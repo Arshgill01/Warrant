@@ -42,6 +42,9 @@ describe("main scenario planner flow", () => {
     const commsAction = run.scenario.actionAttempts.find(
       (action) => action.id === "action-comms-draft-001",
     );
+    const commsOverreachAction = run.scenario.actionAttempts.find(
+      (action) => action.id === "action-comms-send-overreach-001",
+    );
 
     expect(calendarAction).toEqual(
       expect.objectContaining({
@@ -50,6 +53,9 @@ describe("main scenario planner flow", () => {
         warrantId: "warrant-calendar-child-001",
         parentWarrantId: "warrant-planner-root-001",
         outcome: "allowed",
+        authorization: expect.objectContaining({
+          code: "allowed",
+        }),
       }),
     );
     expect(commsAction).toEqual(
@@ -59,8 +65,26 @@ describe("main scenario planner flow", () => {
         warrantId: "warrant-comms-child-001",
         parentWarrantId: "warrant-planner-root-001",
         outcome: "allowed",
+        authorization: expect.objectContaining({
+          code: "allowed",
+        }),
       }),
     );
+    expect(commsOverreachAction).toEqual(
+      expect.objectContaining({
+        rootRequestId: "request-investor-update-001",
+        agentId: "agent-comms-001",
+        warrantId: "warrant-comms-child-001",
+        parentWarrantId: "warrant-planner-root-001",
+        kind: "gmail.send",
+        outcome: "blocked",
+        authorization: expect.objectContaining({
+          code: "capability_missing",
+          blockedByWarrantId: "warrant-comms-child-001",
+        }),
+      }),
+    );
+    expect(commsOverreachAction?.outcomeReason).toMatch(/does not allow gmail\.send/i);
     expect(run.scenario.timeline.map((event) => event.kind)).toEqual([
       "scenario.loaded",
       "warrant.issued",
@@ -68,7 +92,11 @@ describe("main scenario planner flow", () => {
       "warrant.issued",
       "action.allowed",
       "action.allowed",
+      "action.blocked",
     ]);
+    expect(run.scenario.agents.find((agent) => agent.id === "agent-comms-001")?.status).toBe(
+      "blocked",
+    );
   });
 
   it("stays stable across repeated deterministic runs", () => {

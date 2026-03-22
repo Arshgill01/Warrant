@@ -1475,3 +1475,73 @@ Out of scope:
 - The current shared contracts do not yet include orchestration-specific execution metadata, so new types may be needed if the existing display shape proves too narrow.
 - The action layer already has Auth0-path helpers for connection readiness; the new execution adapters must not blur those concerns or duplicate policy logic inconsistently.
 - Replacing static demo fixtures with generated scenario data could expose latent assumptions in the demo UI or tests that currently rely on hard-coded ids or ordering.
+
+## ExecPlan — Comms Overreach Proof (2026-03-23)
+
+### Objective
+
+Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a draft-only child warrant but attempts a real `gmail.send` action and is denied by the warrant engine with lineage-aware, UI-consumable denial details.
+
+### Demo relevance
+
+This is Milestone 4 in its clearest form. It proves that a child agent cannot silently inherit the parent planner's broader Gmail authority, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface.
+
+### Scope
+
+In scope:
+
+- one deterministic Comms overreach attempt for `gmail.send` under a `gmail.draft`-only child warrant
+- real authorization through the existing warrant engine, not a UI-only guard
+- structured denied action data with machine-readable code, human-readable reason, acting agent, and warrant lineage
+- timeline/display/graph-friendly propagation of the denied result into the seeded demo scenario
+- targeted UI updates that make the denied branch and denial reason legible without redesigning the overall graph screen
+- tests covering the exact overreach case and its deterministic scenario output
+
+Out of scope:
+
+- multiple overreach variants in the same slice
+- generic permission-management frameworks or broad policy refactors
+- approval-flow implementation for allowed sends
+- unrelated redesign of the demo page or delegation graph layout
+- live provider-send execution changes beyond preserving the existing external-boundary contract
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/actions/*`
+- `src/agents/*`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `src/components/graph/*`
+- `src/graph/*`
+- `src/app/demo/page.tsx`
+- `tests/*`
+
+### Invariants to preserve
+
+- The denied result must come from real warrant authorization and preserve the two-layer model; the local warrant layer blocks before any external send path is treated as executable.
+- Child warrants can only narrow authority, so the Comms child must remain draft-only while the planner/root can still hold broader Gmail capability.
+- The seeded scenario must remain deterministic, with fixed ids, timestamps, recipients, and event ordering.
+- Denials must remain structured first and human-legible second so both tests and UI can consume the same result.
+- UI binding must stay thin: no hardcoded cosmetic denial that bypasses domain evaluation.
+
+### Implementation steps
+
+1. Extend the action-execution and demo contracts so blocked action attempts retain the underlying authorization denial code, lineage context, and branch attribution needed by display/UI layers.
+2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, emits a blocked action attempt, and produces a timeline-ready denial event without invoking provider send execution.
+3. Wire the main scenario to include the overreach attempt after the allowed draft action, keeping the Comms branch visibly blocked for the demo fixture.
+4. Update display and graph-facing summaries so the blocked Comms branch and its precise denial reason are easy to inspect in the demo page and node detail surface.
+5. Add targeted tests for the capability-missing overreach result, scenario lineage/ordering, and demo-display consumption before running repo validation.
+
+### Validation plan
+
+- `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts`
+- `npm run typecheck`
+- `npm run build`
+- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial is not represented as a disabled-button-only state
+
+### Risks
+
+- The current graph/detail contracts focus on warrant summaries, so surfacing the blocked action clearly may require careful extension to avoid coupling UI components directly to raw scenario internals.
+- Marking the Comms agent as blocked for the overreach beat must not accidentally undermine the earlier successful draft action or muddle later approval/revocation slices.
+- The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.

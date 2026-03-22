@@ -1,4 +1,8 @@
-import type { ActionAttempt, ActionAttemptOutcome } from "@/contracts/action";
+import type {
+  ActionAttempt,
+  ActionAttemptOutcome,
+  ActionAuthorizationSnapshot,
+} from "@/contracts/action";
 import type { AgentIdentity, AgentStatus } from "@/contracts/agent";
 import type { ApprovalRequest } from "@/contracts/approval";
 import type { LedgerEvent, RevocationRecord } from "@/contracts/audit";
@@ -31,6 +35,7 @@ export interface DemoActionAttempt extends ActionAttempt {
   resource: string;
   outcome: DemoActionOutcome;
   outcomeReason: string;
+  authorization: ActionAuthorizationSnapshot;
   approvalRequestId?: string;
 }
 
@@ -50,6 +55,7 @@ export interface DemoScenarioExamples {
   commsChildWarrantId: string;
   calendarActionId: string;
   commsDraftActionId: string;
+  commsOverreachActionId: string;
 }
 
 export interface DemoScenario {
