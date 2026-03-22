@@ -126,6 +126,7 @@ export function buildDelegationGraphNodes({
         label: node.label,
         role: node.role,
         status: node.status,
+        statusReason: node.statusReason,
         capabilities: node.capabilityBadges,
         purpose: node.purpose,
         canDelegate: node.canDelegate,

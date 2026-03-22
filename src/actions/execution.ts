@@ -51,6 +51,9 @@ function createBlockedActionRecord(input: {
       resource: input.fallbackResource,
       outcome: "blocked",
       outcomeReason: authorization.message,
+      providerState: null,
+      providerHeadline: null,
+      providerDetail: null,
     },
     timelineEvent: {
       id: `${input.action.id}:timeline`,
@@ -129,6 +132,9 @@ export function executeCalendarReadAction(input: ExecuteActionBaseInput & {
       resource: adapterResult.resource,
       outcome: "allowed",
       outcomeReason: adapterResult.outcomeReason,
+      providerState: adapterResult.providerState,
+      providerHeadline: adapterResult.providerHeadline,
+      providerDetail: adapterResult.providerDetail,
     },
     timelineEvent: {
       id: `${input.actionId}:timeline`,
@@ -200,6 +206,9 @@ export function executeGmailDraftAction(input: ExecuteActionBaseInput & {
       resource: adapterResult.resource,
       outcome: "allowed",
       outcomeReason: adapterResult.outcomeReason,
+      providerState: adapterResult.providerState,
+      providerHeadline: adapterResult.providerHeadline,
+      providerDetail: adapterResult.providerDetail,
     },
     timelineEvent: {
       id: `${input.actionId}:timeline`,

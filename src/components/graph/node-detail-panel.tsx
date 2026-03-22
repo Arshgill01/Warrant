@@ -1,15 +1,15 @@
 import {
-  X,
-  Shield,
-  Target,
-  Clock, 
-  ChevronRight,
-  Trash2,
+  Activity,
   AlertTriangle,
   Ban,
+  ChevronRight,
+  Clock,
   FileSearch,
-  Activity,
-  UserCheck
+  Shield,
+  Target,
+  Trash2,
+  UserCheck,
+  X,
 } from "lucide-react";
 import type { WarrantDisplaySummary } from "@/contracts";
 
@@ -19,93 +19,242 @@ type NodeDetailPanelProps = {
   onRevoke: (warrantId: string) => void;
 };
 
-export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelProps) {
-  if (!warrant) return null;
+const statusTone: Record<WarrantDisplaySummary["status"], string> = {
+  active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  idle: "bg-slate-50 text-slate-600 border-slate-200",
+  blocked: "bg-amber-50 text-amber-700 border-amber-200",
+  denied: "bg-rose-50 text-rose-700 border-rose-200",
+  "pending-approval": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-amber-200",
+  revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-rose-200",
+  expired: "bg-slate-100 text-slate-500 border-slate-200",
+};
+
+function formatDisplayStatus(value: WarrantDisplaySummary["status"]): string {
+  return value.replace("-", " ");
+}
+
+function formatDateTime(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
+function formatStatusSource(value: WarrantDisplaySummary["statusSource"]): string {
+  return value.replace("-", " ");
+}
+
+export function NodeDetailPanel({
+  warrant,
+  onClose,
+  onRevoke,
+}: NodeDetailPanelProps) {
+  if (!warrant) {
+    return null;
+  }
 
   const isRevoked = warrant.status === "revoked";
   const isRoot = warrant.agentLabel === "Root User";
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-20 w-[420px] flex flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
-      {/* Header */}
+    <div className="absolute bottom-0 right-0 top-0 z-20 flex w-[420px] flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
       <div className="flex items-center justify-between border-b border-[var(--panel-border)] bg-slate-50/50 p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-[var(--panel-border)] text-[var(--accent)] shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--panel-border)] bg-white text-[var(--accent)] shadow-sm">
             <FileSearch className="size-5" />
           </div>
           <div className="space-y-0.5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">Report Status</p>
-            <h2 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Warrant Analysis</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+              Report Status
+            </p>
+            <h2 className="text-xl font-bold tracking-tight text-[var(--foreground)]">
+              Warrant Analysis
+            </h2>
           </div>
         </div>
-        <button 
+        <button
           onClick={onClose}
-          className="rounded-xl border border-[var(--panel-border)] p-2 bg-white hover:bg-slate-50 transition-colors shadow-sm active:scale-95"
+          className="rounded-xl border border-[var(--panel-border)] bg-white p-2 shadow-sm transition-colors hover:bg-slate-50 active:scale-95"
         >
           <X className="size-5 text-[var(--muted)]" />
         </button>
       </div>
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar">
-        {/* Identity Section */}
+      <div className="custom-scrollbar flex-1 space-y-10 overflow-y-auto p-8">
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest
-              ${isRevoked ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-600 border-emerald-200"}`}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${statusTone[warrant.status]}`}
             >
               {isRevoked ? <Ban className="size-3.5" /> : <Shield className="size-3.5" />}
-              {warrant.status}
+              {formatDisplayStatus(warrant.status)}
             </div>
-            <span className="font-mono text-[10px] font-bold text-[var(--muted)] uppercase tracking-tighter">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-tighter text-[var(--muted)]">
               ID: {warrant.id}
             </span>
           </div>
-          
+
           <div className="space-y-2">
-            <h3 className="text-3xl font-bold tracking-tight text-[var(--foreground)]" style={{ fontFamily: "var(--font-serif)" }}>
+            <h3
+              className="text-3xl font-bold tracking-tight text-[var(--foreground)]"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
               {warrant.agentLabel}
             </h3>
             <p className="text-sm leading-relaxed text-[var(--muted)]">
               {warrant.purpose}
             </p>
           </div>
+
+          <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Current status source
+              </span>
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]">
+                {formatStatusSource(warrant.statusSource)}
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-[var(--foreground)]">
+              {warrant.statusReason}
+            </p>
+          </div>
         </section>
 
-        {/* Capabilities Section */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Target className="size-4 text-[var(--accent)]" />
-            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Authorized Capabilities</h4>
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+              Authorized Capabilities
+            </h4>
           </div>
           <div className="grid gap-2">
-            {warrant.capabilities.map((cap) => (
-              <div key={cap} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-hover hover:border-[var(--accent-soft)]">
-                <span className="text-sm font-semibold text-[var(--foreground)]">{cap}</span>
-                <div className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black text-emerald-600 uppercase tracking-widest">
-                  Verified
+            {warrant.capabilities.map((capability) => (
+              <div
+                key={capability}
+                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4"
+              >
+                <span className="text-sm font-semibold text-[var(--foreground)]">
+                  {capability}
+                </span>
+                <div className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                  Bound
                 </div>
               </div>
             ))}
             {warrant.capabilities.length === 0 && (
-              <p className="text-xs italic text-[var(--muted)]">No capabilities assigned to this warrant.</p>
+              <p className="text-xs italic text-[var(--muted)]">
+                No capabilities assigned to this warrant.
+              </p>
             )}
           </div>
         </section>
 
-        {/* Constraints Section */}
+        {warrant.latestAction && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Activity className="size-4 text-[var(--accent)]" />
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Latest execution
+              </h4>
+            </div>
+            <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-[var(--foreground)]">
+                    {warrant.latestAction.summary}
+                  </p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {warrant.latestAction.kind} at{" "}
+                    {formatDateTime(warrant.latestAction.requestedAt)}
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                  {warrant.latestAction.outcome.replace("-", " ")}
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-[var(--foreground)]">
+                {warrant.latestAction.outcomeReason}
+              </p>
+              <div className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-medium text-[var(--muted)]">Resource</span>
+                  <span className="text-right font-semibold text-[var(--foreground)]">
+                    {warrant.latestAction.resource}
+                  </span>
+                </div>
+                {warrant.latestAction.providerState && (
+                  <>
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="font-medium text-[var(--muted)]">Provider state</span>
+                      <span className="font-semibold uppercase tracking-wide text-[var(--foreground)]">
+                        {warrant.latestAction.providerState.replace("-", " ")}
+                      </span>
+                    </div>
+                    {warrant.latestAction.providerHeadline && (
+                      <p className="text-xs leading-relaxed text-[var(--muted)]">
+                        {warrant.latestAction.providerHeadline}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {warrant.pendingApproval && (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-[var(--accent)]" />
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Approval state
+              </h4>
+            </div>
+            <div className="space-y-3 rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-[var(--foreground)]">
+                  {warrant.pendingApproval.title}
+                </p>
+                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
+                  {warrant.pendingApproval.status}
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-[var(--foreground)]">
+                {warrant.pendingApproval.reason}
+              </p>
+              <div className="grid gap-2 text-xs text-[var(--muted)]">
+                <p>
+                  Requested: {formatDateTime(warrant.pendingApproval.requestedAt)}
+                </p>
+                <p>
+                  Expires: {formatDateTime(warrant.pendingApproval.expiresAt)}
+                </p>
+                <p>
+                  Recipients:{" "}
+                  {warrant.pendingApproval.affectedRecipients.join(", ")}
+                </p>
+                <p>Blast radius: {warrant.pendingApproval.blastRadius}</p>
+              </div>
+            </div>
+          </section>
+        )}
+
         {warrant.constraints.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <Activity className="size-4 text-[var(--accent)]" />
-              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Resource Constraints</h4>
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Resource Constraints
+              </h4>
             </div>
             <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
               <table className="w-full text-left text-sm">
                 <tbody className="divide-y divide-slate-50">
                   {warrant.constraints.map((constraint) => (
-                    <tr key={constraint.label} className="group">
-                      <td className="px-4 py-3 font-medium text-[var(--muted)] capitalize bg-slate-50/30 w-1/3">
+                    <tr key={constraint.label}>
+                      <td className="w-1/3 bg-slate-50/30 px-4 py-3 font-medium capitalize text-[var(--muted)]">
                         {constraint.label}
                       </td>
                       <td className="px-4 py-3 font-mono text-[11px] font-bold text-[var(--foreground)]">
@@ -119,67 +268,102 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
           </section>
         )}
 
-        {/* Temporal Section */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-[var(--accent)]" />
-            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Temporal Integrity</h4>
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+              Temporal Integrity
+            </h4>
           </div>
-          <div className="grid gap-4 rounded-2xl border border-slate-100 p-5 bg-slate-50/30">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-medium text-[var(--muted)]">Expiration Policy</span>
-              <span className="text-xs font-bold text-[var(--foreground)]">{new Date(warrant.expiresAt).toLocaleDateString()}</span>
+          <div className="grid gap-4 rounded-2xl border border-slate-100 bg-slate-50/30 p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--muted)]">
+                Issued
+              </span>
+              <span className="text-xs font-bold text-[var(--foreground)]">
+                {formatDateTime(warrant.createdAt)}
+              </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-medium text-[var(--muted)]">Delegation Depth</span>
-              <span className="text-xs font-bold text-[var(--foreground)]">{warrant.maxChildren} child warrants</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--muted)]">
+                Expires
+              </span>
+              <span className="text-xs font-bold text-[var(--foreground)]">
+                {formatDateTime(warrant.expiresAt)}
+              </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-medium text-[var(--muted)]">Redelegation</span>
-              <span className={`text-xs font-bold ${warrant.canDelegate ? "text-emerald-600" : "text-rose-600"}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--muted)]">
+                Delegation depth
+              </span>
+              <span className="text-xs font-bold text-[var(--foreground)]">
+                {warrant.maxChildren} child warrants
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-[var(--muted)]">
+                Redelegation
+              </span>
+              <span
+                className={`text-xs font-bold ${
+                  warrant.canDelegate ? "text-emerald-600" : "text-rose-600"
+                }`}
+              >
                 {warrant.canDelegate ? "Enabled" : "Restricted"}
               </span>
             </div>
           </div>
         </section>
 
-        {/* Lineage Section */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
             <UserCheck className="size-4 text-[var(--accent)]" />
-            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Warrant Lineage</h4>
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+              Warrant Lineage
+            </h4>
           </div>
-          <div className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-slate-200">
+          <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 p-4">
             <div className="flex-1 rounded-lg bg-slate-100 p-2 text-center">
-              <span className="block text-[8px] font-black uppercase text-slate-400 tracking-tighter">Parent</span>
-              <span className="font-mono text-[10px] font-bold">{warrant.parentId || "ROOT"}</span>
+              <span className="block text-[8px] font-black uppercase tracking-tighter text-slate-400">
+                Parent
+              </span>
+              <span className="font-mono text-[10px] font-bold">
+                {warrant.parentLabel ?? warrant.parentId ?? "ROOT"}
+              </span>
             </div>
             <ChevronRight className="size-4 text-slate-300" />
-            <div className="flex-1 rounded-lg bg-[var(--accent-soft)] p-2 text-center border border-[var(--accent)]/10">
-              <span className="block text-[8px] font-black uppercase text-[var(--accent)] tracking-tighter">Current</span>
-              <span className="font-mono text-[10px] font-bold text-[var(--accent)]">{warrant.id}</span>
+            <div className="flex-1 rounded-lg border border-[var(--accent)]/10 bg-[var(--accent-soft)] p-2 text-center">
+              <span className="block text-[8px] font-black uppercase tracking-tighter text-[var(--accent)]">
+                Current
+              </span>
+              <span className="font-mono text-[10px] font-bold text-[var(--accent)]">
+                {warrant.id}
+              </span>
             </div>
           </div>
         </section>
       </div>
 
-      {/* Footer / Actions */}
       {!isRoot && (
-        <div className="border-t border-[var(--panel-border)] bg-slate-50/80 p-6 space-y-4">
+        <div className="space-y-4 border-t border-[var(--panel-border)] bg-slate-50/80 p-6">
           {isRevoked ? (
             <div className="flex items-center gap-3 rounded-xl border border-rose-100 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
               <AlertTriangle className="size-5 shrink-0" />
-              <p>{warrant.revocationReason ?? "This warrant branch has been decommissioned and cannot be reactivated."}</p>
+              <p>
+                {warrant.revocationReason ??
+                  "This warrant branch has been decommissioned and cannot be reactivated."}
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-start gap-3 rounded-xl bg-amber-50/50 p-4 text-[10px] leading-relaxed text-amber-800 border border-amber-100/50">
+              <div className="flex items-start gap-3 rounded-xl border border-amber-100/50 bg-amber-50/50 p-4 text-[10px] leading-relaxed text-amber-800">
                 <AlertTriangle className="size-4 shrink-0 text-amber-600" />
                 <p>
-                  <strong>Revocation Protocol:</strong> Triggering a revocation will immediately cascade through all sub-delegations, invalidating their tokens and access paths.
+                  <strong>Revocation Protocol:</strong> Triggering a revocation
+                  immediately cascades through all descendants in this branch.
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => onRevoke(warrant.id)}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-6 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-white shadow-lg shadow-rose-600/20 transition-all hover:bg-rose-700 active:scale-[0.98]"
               >

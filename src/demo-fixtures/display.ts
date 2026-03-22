@@ -87,63 +87,169 @@ function formatConstraintFields(
   return fields;
 }
 
-function hasPendingApproval(scenario: DemoScenario, warrantId: string): boolean {
-  return scenario.approvals.some(
-    (approval) => approval.warrantId === warrantId && approval.status === "pending",
-  );
+function getLatestRecordsByWarrantId<Record extends { warrantId: string; requestedAt?: string; expiresAt?: string }>(
+  records: Record[],
+  getAt: (record: Record) => string,
+): Map<string, Record> {
+  const latestByWarrantId = new Map<string, Record>();
+
+  records.forEach((record) => {
+    const existing = latestByWarrantId.get(record.warrantId);
+
+    if (!existing || getAt(record).localeCompare(getAt(existing)) > 0) {
+      latestByWarrantId.set(record.warrantId, record);
+    }
+  });
+
+  return latestByWarrantId;
 }
 
 function resolveDisplayStatus(input: {
   agentStatus: DemoScenario["agents"][number]["status"];
   warrantStatus: DemoScenario["warrants"][number]["status"];
-  hasPendingApproval: boolean;
-}): DisplayStatus {
+  expiresAt: string;
+  revocationReason: string | null;
+  pendingApproval: ApprovalStateDisplayRecord | null;
+  latestAction: ActionAttemptDisplayRecord | null;
+}): {
+  status: DisplayStatus;
+  reason: string;
+  source: "agent" | "approval" | "action" | "provider" | "warrant";
+} {
   if (input.warrantStatus === "revoked") {
-    return "revoked";
+    return {
+      status: "revoked",
+      reason:
+        input.revocationReason ??
+        "This branch was revoked and all descendants lose authority immediately.",
+      source: "warrant",
+    };
   }
 
   if (input.warrantStatus === "expired") {
-    return "expired";
+    return {
+      status: "expired",
+      reason: `This warrant expired at ${formatDateTime(input.expiresAt)}.`,
+      source: "warrant",
+    };
   }
 
-  if (input.agentStatus === "blocked") {
-    return "blocked";
+  if (
+    input.pendingApproval ||
+    input.latestAction?.outcome === "approval-required"
+  ) {
+    return {
+      status: "pending-approval",
+      reason:
+        input.pendingApproval?.reason ??
+        input.latestAction?.outcomeReason ??
+        "This branch is waiting for explicit approval before it can continue.",
+      source: "approval",
+    };
   }
 
-  if (input.hasPendingApproval) {
-    return "pending";
+  if (
+    input.latestAction?.outcome === "blocked" &&
+    input.latestAction.providerState === null
+  ) {
+    return {
+      status: "denied",
+      reason: input.latestAction.outcomeReason,
+      source: "action",
+    };
+  }
+
+  if (
+    input.agentStatus === "blocked" ||
+    (input.latestAction?.providerState !== null &&
+      input.latestAction?.providerState !== undefined &&
+      input.latestAction.providerState !== "success")
+  ) {
+    return {
+      status: "blocked",
+      reason:
+        input.latestAction?.providerDetail ??
+        input.latestAction?.providerHeadline ??
+        input.latestAction?.outcomeReason ??
+        "This branch is currently blocked from continuing.",
+      source:
+        input.latestAction?.providerState &&
+        input.latestAction.providerState !== "success"
+          ? "provider"
+          : "agent",
+    };
   }
 
   if (input.agentStatus === "idle") {
-    return "idle";
+    return {
+      status: "idle",
+      reason: "This branch has not executed work yet.",
+      source: "agent",
+    };
   }
 
-  return "active";
+  return {
+    status: "active",
+    reason:
+      input.latestAction?.providerDetail ??
+      input.latestAction?.outcomeReason ??
+      "This branch is active and operating within its warrant bounds.",
+    source:
+      input.latestAction?.providerState === "success" ? "provider" : "warrant",
+  };
 }
 
 export function createWarrantDisplaySummaries(
   scenario: DemoScenario,
 ): WarrantDisplaySummary[] {
   const agentsById = new Map(scenario.agents.map((agent) => [agent.id, agent]));
+  const warrantsById = new Map(
+    scenario.warrants.map((warrant) => [warrant.id, warrant]),
+  );
+  const actionRecords = createActionAttemptDisplayRecords(scenario);
+  const approvalRecords = createApprovalStateDisplayRecords(scenario);
+  const latestActionByWarrantId = getLatestRecordsByWarrantId(
+    actionRecords,
+    (record) => record.requestedAt,
+  );
+  const pendingApprovalByWarrantId = getLatestRecordsByWarrantId(
+    approvalRecords.filter((approval) => approval.status === "pending"),
+    (record) => record.requestedAt,
+  );
 
   return scenario.warrants.map((warrant) => {
     const agent = required(
       agentsById.get(warrant.agentId),
       `Missing agent for warrant ${warrant.id}`,
     );
+    const parentWarrant = warrant.parentId
+      ? warrantsById.get(warrant.parentId) ?? null
+      : null;
+    const parentLabel = parentWarrant
+      ? agentsById.get(parentWarrant.agentId)?.label ?? parentWarrant.agentId
+      : null;
+    const latestAction = latestActionByWarrantId.get(warrant.id) ?? null;
+    const pendingApproval = pendingApprovalByWarrantId.get(warrant.id) ?? null;
+    const status = resolveDisplayStatus({
+      agentStatus: agent.status,
+      warrantStatus: warrant.status,
+      expiresAt: warrant.expiresAt,
+      revocationReason: warrant.revocationReason,
+      pendingApproval,
+      latestAction,
+    });
 
     return {
       id: warrant.id,
       parentId: warrant.parentId,
+      parentLabel,
       rootRequestId: warrant.rootRequestId,
       agentId: warrant.agentId,
       agentLabel: agent.label,
       agentRole: agent.role,
-      status: resolveDisplayStatus({
-        agentStatus: agent.status,
-        warrantStatus: warrant.status,
-        hasPendingApproval: hasPendingApproval(scenario, warrant.id),
-      }),
+      status: status.status,
+      statusReason: status.reason,
+      statusSource: status.source,
       purpose: warrant.purpose,
       capabilities: warrant.capabilities.map(
         (capability) => capabilityLabels[capability],
@@ -155,6 +261,8 @@ export function createWarrantDisplaySummaries(
       maxChildren: warrant.maxChildren,
       revokedAt: warrant.revokedAt,
       revocationReason: warrant.revocationReason,
+      latestAction,
+      pendingApproval,
     };
   });
 }
@@ -181,6 +289,9 @@ export function createActionAttemptDisplayRecords(
     outcome: action.outcome,
     outcomeReason: action.outcomeReason,
     approvalRequestId: action.approvalRequestId ?? null,
+    providerState: action.providerState ?? null,
+    providerHeadline: action.providerHeadline ?? null,
+    providerDetail: action.providerDetail ?? null,
   }));
 }
 
@@ -252,6 +363,8 @@ export function createDelegationGraphView(
       label: summary.agentLabel,
       role: summary.agentRole,
       status: summary.status,
+      statusReason: summary.statusReason,
+      statusSource: summary.statusSource,
       purpose: summary.purpose,
       capabilityBadges: summary.capabilities,
       canDelegate: summary.canDelegate,

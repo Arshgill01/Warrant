@@ -82,6 +82,8 @@ export function DelegationGraph({
           ? {
               ...summary,
               status: "revoked",
+              statusReason: "This branch was revoked from the delegation graph.",
+              statusSource: "warrant",
               revokedAt: summary.revokedAt ?? new Date().toISOString(),
               revocationReason:
                 summary.revocationReason ??
@@ -99,6 +101,7 @@ export function DelegationGraph({
             data: {
               ...node.data,
               status: "revoked",
+              statusReason: "This branch was revoked from the delegation graph.",
               isRevoked: true,
             },
           };
