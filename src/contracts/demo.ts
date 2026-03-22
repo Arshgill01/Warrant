@@ -1,4 +1,8 @@
-import type { ActionAttempt, ActionAttemptOutcome } from "@/contracts/action";
+import type {
+  ActionAttempt,
+  ActionAttemptOutcome,
+  ProviderActionState,
+} from "@/contracts/action";
 import type { AgentIdentity, AgentStatus } from "@/contracts/agent";
 import type { ApprovalRequest } from "@/contracts/approval";
 import type { LedgerEvent, RevocationRecord } from "@/contracts/audit";
@@ -32,6 +36,9 @@ export interface DemoActionAttempt extends ActionAttempt {
   outcome: DemoActionOutcome;
   outcomeReason: string;
   approvalRequestId?: string;
+  providerState?: ProviderActionState | null;
+  providerHeadline?: string | null;
+  providerDetail?: string | null;
 }
 
 export interface DemoApprovalRequest extends ApprovalRequest {

@@ -39,8 +39,10 @@ describe("demo fixtures", () => {
     expect(examples.commsChildWarrant.capabilities).toEqual(["Draft email"]);
     expect(examples.calendarAction.outcome).toBe("allowed");
     expect(examples.calendarAction.kind).toBe("calendar.read");
+    expect(examples.calendarAction.providerState).toBe("success");
     expect(examples.commsDraftAction.outcome).toBe("allowed");
     expect(examples.commsDraftAction.kind).toBe("gmail.draft");
+    expect(examples.commsDraftAction.providerState).toBe("success");
   });
 
   it("loads graph and timeline views from the same canonical state and resets safely", () => {
@@ -59,6 +61,7 @@ describe("demo fixtures", () => {
     expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.parentId).toBe(
       "warrant-planner-root-001",
     );
+    expect(graphView.warrantSummaries.find((summary) => summary.id === "warrant-comms-child-001")?.latestAction?.providerState).toBe("success");
     expect(timeline.map((event) => event.at)).toEqual([...timeline.map((event) => event.at)].sort());
     expect(timeline.at(-1)?.actionId).toBe("action-comms-draft-001");
 

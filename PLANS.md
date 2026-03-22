@@ -1475,3 +1475,87 @@ Out of scope:
 - The current shared contracts do not yet include orchestration-specific execution metadata, so new types may be needed if the existing display shape proves too narrow.
 - The action layer already has Auth0-path helpers for connection readiness; the new execution adapters must not blur those concerns or duplicate policy logic inconsistently.
 - Replacing static demo fixtures with generated scenario data could expose latent assumptions in the demo UI or tests that currently rely on hard-coded ids or ordering.
+
+## ExecPlan — Wave 2 Graph Binding To Shared State (2026-03-23)
+
+### Objective
+
+Bind the delegation graph UI to the real shared Wave 2 state surfaces so graph nodes, edges, and node details are derived from orchestration, warrant, approval, and provider-action outputs instead of graph-local assumptions.
+
+### Demo relevance
+
+This is directly on the core three-minute path. The graph is the main proof artifact for delegated authority, blocked overreach, approval-gated actions, and branch revocation. If the graph is not reading the same state as the rest of the product story, the thesis becomes less credible.
+
+### Scope
+
+In scope:
+
+- audit and use the shared Wave 2 contract surfaces from `src/contracts/*`
+- bind the graph from real scenario state produced by the current orchestration path
+- extend the graph-facing display DTOs only where needed to carry truthful node status and detail data
+- map warrant, action, approval, and provider-state signals into stable graph node and edge state
+- support the graph statuses needed for the demo: active, blocked, pending approval, revoked, expired, denied
+- keep the existing graph component surface and stable layout behavior
+- update node-detail rendering so it reflects real status, capability, expiry, and recent status context
+- add targeted tests for the new binding logic and state transitions
+
+Out of scope:
+
+- redesigning the graph UI
+- broad warrant-engine redesign
+- replacing the deterministic seeded scenario with live provider execution
+- full approval UX or persistence changes beyond reflecting current shared state
+- deep new graph interactions beyond the existing selection and revoke affordances
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/display.ts`
+- `src/contracts/demo.ts`
+- `src/actions/provider-adapters.ts`
+- `src/actions/execution.ts`
+- `src/demo-fixtures/display.ts`
+- `src/demo-fixtures/state.ts`
+- `src/components/graph/*`
+- `src/graph/*`
+- `src/app/demo/page.tsx`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep the graph shallow, stable, and demo-legible.
+- Keep domain-to-view translation in explicit adapters instead of scattering warrant internals through presentational components.
+- Keep the graph fed by shared DTOs/contracts, not graph-local mock data.
+- Preserve the existing graph component prop surface where practical.
+- Keep branch revocation visually obvious and limited to the selected branch and descendants.
+- Do not conflate Auth0/provider-state concerns with local warrant authorization; reflect both honestly when present.
+
+### Implementation steps
+
+1. Extend the shared graph/display DTOs only where needed so node status and detail panels can represent real action, approval, and provider context without reaching back into raw domain models.
+2. Update action execution records to retain the structured policy/provider status needed by the graph-binding layer.
+3. Refactor the display adapter that builds graph data so it derives node status from the latest relevant warrant, action, approval, and provider signals in the shared scenario state.
+4. Keep the current stable node/edge layout logic, but update graph nodes, edges, and node details to consume the richer DTOs and distinct status treatments.
+5. Add targeted tests covering active, blocked, pending approval, revoked, expired, and denied graph states plus node-detail accuracy.
+6. Run lint, typecheck, test, build, then run the app locally and verify the graph remains readable and visually stable when rendered from the bound state.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run dev -- --port 3000`
+
+Manual scenario checks:
+
+- `/demo` renders the graph from the shared scenario state
+- node details show capabilities, purpose, expiry, and status reason from shared DTOs
+- approval-required or denied state changes are reflected on the affected branch without layout drift
+- revoke interaction still clearly marks the branch and descendants
+
+### Risks
+
+- The current deterministic orchestration output does not yet persist full live provider envelopes, so the binding layer may need semi-live fields that represent Wave 2 provider status without overfitting to today’s demo state.
+- The graph currently mutates revoked presentation state locally; keeping that demo interaction while staying truthful to the shared data boundary needs care.
+- Adding richer detail DTOs may expose assumptions in the existing node-detail panel or demo page proof-point cards that were safe with the older, narrower summaries.
