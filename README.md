@@ -25,19 +25,24 @@ Open `http://localhost:3000`.
 
 ## Environment
 
-Copy `.env.example` to a local env file and replace the placeholder values before wiring Auth0, OpenAI, or database integrations.
+Copy `.env.example` to `.env.local` and replace the placeholder values before wiring Auth0, OpenAI, or database integrations.
 
-Required for the auth shell:
+Required now for the auth foundation:
 
+- `APP_BASE_URL`
 - `AUTH0_DOMAIN`
 - `AUTH0_CLIENT_ID`
 - `AUTH0_CLIENT_SECRET`
 - `AUTH0_SECRET`
-- `APP_BASE_URL`
 
-Recommended for Google delegated access:
+Recommended now:
 
+- `NEXT_PUBLIC_APP_URL`
 - `AUTH0_GOOGLE_CONNECTION_NAME`
+
+Optional later for downstream delegated-action branches:
+
+- `AUTH0_AUDIENCE`
 - `AUTH0_TOKEN_VAULT_CONNECTION_ID`
 
 Optional shell-only overrides:
@@ -45,17 +50,63 @@ Optional shell-only overrides:
 - `WARRANT_GOOGLE_CONNECTION_STATE`
 - `WARRANT_GOOGLE_CONNECTION_EMAIL`
 
-Use the shell overrides only to rehearse UI states while the real Auth0 connected-account callback is still being wired. The real path should use Auth0 sign-in plus `/auth/connect`.
+Use the shell overrides only to rehearse UI states while the real Auth0 connected-account path is still being finalized. The real path uses Auth0 sign-in plus `/auth/connect`.
+
+Google OAuth client credentials do not belong in this app env for this branch. Configure the Google social connection inside the Auth0 dashboard and let the app consume Auth0-managed delegated access.
+
+## Local Auth0 setup
+
+1. Create an Auth0 application of type `Regular Web Application`.
+2. Add `http://localhost:3000/auth/callback` to Allowed Callback URLs.
+3. Add `http://localhost:3000` to Allowed Logout URLs.
+4. Add `http://localhost:3000` to Allowed Web Origins.
+5. Put the Auth0 app values into `.env.local`.
+6. Enable the Google connection in Auth0 and make sure it can be used by this application.
+7. If you want Google only for delegated Gmail and Calendar access, configure the Google social connection with Connected Accounts for Token Vault enabled. If you also want users to sign in with Google, enable Authentication as well.
+8. In the Google connection, use your own Google OAuth client ID and client secret rather than Auth0 developer keys.
+9. Toggle the Google connection on for this Auth0 application from the connection's Applications tab.
+10. Configure Auth0 My Account API access for this application and authorize the Connected Accounts scopes.
+11. Enable Multi-Resource Refresh Token for the application with the My Account API so the SDK can exchange the login refresh token for connected-account access later.
+12. For Google connected accounts, enable `offline_access` in the connection if Auth0 prompts for it.
+
+The shell assumes the Google connection name is `google-oauth2` unless overridden. The `/auth/connect` handoff requests:
+
+- `openid`
+- `profile`
+- `https://www.googleapis.com/auth/calendar.readonly`
+- `https://www.googleapis.com/auth/gmail.compose`
+- `https://www.googleapis.com/auth/gmail.send`
+
+It also requests `access_type=offline` and `prompt=consent` so later Gmail and Calendar branches can rely on delegated refreshable access through Auth0 rather than direct provider secrets.
+
+Connected-account prerequisites come from Auth0's Token Vault docs: the Google connection must be enabled for the application, Connected Accounts for Token Vault must be turned on, `offline_access` may be required for Google, and the application needs My Account API plus MRRT configured so `/auth/connect` can obtain the necessary Connected Accounts scopes.
 
 ## Auth0 shell behavior
 
 - `/auth/login` and `/auth/logout` come from the Auth0 Next.js SDK middleware.
-- The home page shows three layers separately: app session, Google provider connection, and external action readiness.
+- `/auth/connect` uses the SDK connected-account endpoint and the configured Google connection name.
+- The home page shows four layers separately: app session, Google provider connection, Token Vault readiness inputs, and external action readiness.
 - Calendar availability, Gmail draft preparation, and send-email execution now flow through explicit provider-backed result envelopes.
 - Gmail draft and Gmail send stay distinct: draft can succeed without implying send is allowed to execute.
 - Gmail send remains a separate execution boundary that requires an explicit upstream release before it will hit the live provider path.
+- The shell keeps local Warrant policy distinct from Auth0-backed external capability so later branches can prove the two-layer model clearly.
 
-To connect Google through Auth0, the shell uses the SDK connect-account route at `/auth/connect` with the Google Calendar read and Gmail compose or send scopes.
+## What works now vs later
+
+Working in this branch:
+
+- official Auth0 Next.js SDK wiring
+- middleware-based auth route handling
+- signed-out, signed-in, and missing-config shell states
+- visible Google disconnected, connected, pending, and unavailable states
+- visible Token Vault-ready connection contract for later Gmail and Calendar work
+
+Still requires external Auth0 dashboard configuration:
+
+- real sign-in against your tenant
+- real Google account connection through Auth0
+- real connected-account or Token Vault-backed token exchange for the Google connection
+- any actual Gmail or Calendar API calls
 
 ## Directory guide
 

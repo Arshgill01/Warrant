@@ -1,5 +1,10 @@
 import Link from "next/link";
-import type { AuthSessionSnapshot, ProviderActionResult, ProviderConnectionSnapshot } from "@/contracts";
+import type {
+  AuthSessionSnapshot,
+  ProviderActionResult,
+  ProviderConnectionSetupSnapshot,
+  ProviderConnectionSnapshot,
+} from "@/contracts";
 import { SectionCard } from "@/components/foundation/section-card";
 import { googleConnectionStateLegend } from "@/connections";
 
@@ -7,6 +12,7 @@ type AuthShellProps = {
   session: AuthSessionSnapshot;
   googleConnection: ProviderConnectionSnapshot;
   providerResults: ProviderActionResult[];
+  googleSetup: ProviderConnectionSetupSnapshot;
 };
 
 const sessionTone: Record<AuthSessionSnapshot["state"], string> = {
@@ -100,7 +106,16 @@ function renderProviderSuccessSummary(result: ProviderActionResult): string | nu
   }
 }
 
-export function AuthShell({ session, googleConnection, providerResults }: AuthShellProps) {
+function SetupRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--panel-border)] bg-white/80 px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{label}</p>
+      <p className="mt-1 break-all text-sm font-medium text-[var(--foreground)]">{value}</p>
+    </div>
+  );
+}
+
+export function AuthShell({ session, googleConnection, providerResults, googleSetup }: AuthShellProps) {
   const sessionAction =
     session.state === "signed-in"
       ? { href: session.logoutHref, label: "Log out" }
@@ -192,6 +207,38 @@ export function AuthShell({ session, googleConnection, providerResults }: AuthSh
           </div>
         </SectionCard>
       </section>
+
+      <SectionCard title="Google Token Vault readiness" eyebrow="Connect contract">
+        <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-3">
+            <StatusPill
+              label={googleSetup.status === "ready" ? "connect-ready" : "setup-required"}
+              tone={googleSetup.status === "ready" ? "bg-[var(--accent)] text-white" : "bg-[#8a5b1f] text-white"}
+            />
+            <p>{googleSetup.headline}</p>
+            <p>{googleSetup.detail}</p>
+            <p className="text-sm leading-6 text-[var(--muted)]">
+              This branch keeps the base session, provider connection, and future Gmail or Calendar delegated-access
+              inputs visible. Real provider actions land later.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            <SetupRow label="Connection name" value={googleSetup.connectionName} />
+            <SetupRow
+              label="Auth params"
+              value={googleSetup.requestedAuthParams.map((entry) => `${entry.key}=${entry.value}`).join(" ")}
+            />
+            <SetupRow label="Token Vault connection id" value={googleSetup.tokenVaultConnectionId ?? "Optional later"} />
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {googleSetup.requestedScopes.map((scope) => (
+            <SetupRow key={scope} label="Delegated scope" value={scope} />
+          ))}
+        </div>
+      </SectionCard>
 
       <section className="grid gap-4 lg:grid-cols-3">
         {providerResults.map((result) => (

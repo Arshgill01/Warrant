@@ -618,6 +618,94 @@ Manual shell checks during local run:
 6. Add README and `.env.example` placeholders for future Auth0 and database work.
 7. Install dependencies and validate `lint`, `test`, `typecheck`, and `build`.
 
+## ExecPlan — Auth0 Foundation Track (2026-03-23)
+
+### Objective
+
+Harden the Auth0 foundation in the current Next.js App Router shell so Warrant has a real Auth0 session boundary, a visible signed-in shell, and a Google connection surface that is ready for Token Vault-backed Gmail and Calendar work in later branches.
+
+### Demo relevance
+
+This work strengthens the first two beats of the core demo:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+
+It also makes Auth0 visibly load-bearing before the warrant engine, approval flow, and delegation graph land.
+
+### Scope
+
+In scope:
+
+- validate and tighten the official Auth0 Next.js SDK setup already present in the repo
+- keep middleware-based route handling aligned with the installed SDK
+- implement or refine login, logout, and session-derived shell states
+- make the signed-in shell visibly distinct from the signed-out shell
+- expose Google connection state in a way that is easy for later Token Vault-backed actions to consume
+- document required vs optional auth env vars for local setup
+- add or update tests around auth env parsing, session-driven UI state, and Google connection wiring
+
+Out of scope:
+
+- local Warrant issuance, narrowing, or enforcement logic
+- approval-flow implementation
+- delegation graph logic
+- real Gmail or Calendar action execution
+- non-Google provider integration
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `.env.example`
+- `README.md`
+- `package.json`
+- `src/app/*`
+- `src/auth/*`
+- `src/connections/*`
+- `src/components/auth-shell/*`
+- `src/contracts/*`
+- `tests/auth-shell.test.ts`
+
+### Invariants to preserve
+
+- Auth0 app auth and provider-backed delegated access stay separate from local Warrant logic.
+- Auth0 must remain visible in the product narrative, not buried as generic OAuth plumbing.
+- The shell must clearly distinguish: signed out, signed in, Google not connected, Google connected, and Google unavailable or error.
+- The app should still boot with missing Auth0 env, but it must explain exactly what is missing.
+- Google connection naming and config should be easy to reuse later for Token Vault-backed Gmail and Calendar paths.
+
+### Implementation steps
+
+1. Inspect the current auth shell against the installed `@auth0/nextjs-auth0` package and remove any weak or misleading scaffolding.
+2. Tighten env parsing and auth client setup so required vs optional values are explicit and the shell can explain incomplete configuration clearly.
+3. Refine session and Google connection snapshots so the UI cleanly renders the required signed-in, signed-out, connected, disconnected, and unavailable states.
+4. Improve the homepage shell copy and structure so Auth0 sign-in and Google connection state are obvious and later provider-action branches have a stable surface to plug into.
+5. Update `.env.example` and docs with concrete local setup steps, required callback/logout URLs, and which pieces still depend on external Auth0 dashboard or Google connection configuration.
+6. Add or update targeted tests, then run repo-native validation plus a local boot check.
+
+### Validation steps
+
+- `npm install`
+- `npm run lint`
+- `npm run test`
+- `npm run typecheck`
+- `npm run build`
+- `npm run dev -- --port 3000`
+
+Manual checks during local run:
+
+- home page boots with missing env and explains the missing Auth0 setup
+- signed-out shell renders a login affordance
+- signed-in shell renders a logout affordance and user identity when a session exists
+- Google panel visibly distinguishes not connected, connected, and unavailable states
+- docs and `.env.example` match the implemented config surface
+
+### Known risks
+
+- Real Google connected-account state still depends on Auth0 tenant setup, enabled connection flow, and Token Vault configuration outside this repo.
+- End-to-end sign-in cannot be fully verified without valid local credentials in `.env.local` and corresponding Auth0 dashboard URLs.
+- The current branch can prepare Gmail and Calendar delegated-access boundaries, but it should not claim real provider action execution until a later branch exercises those paths end to end.
+
 ### Validation plan
 
 - `npm install`
