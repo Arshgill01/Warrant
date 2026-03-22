@@ -55,7 +55,23 @@ export function NodeDetailPanel({
   }
 
   const isRevoked = warrant.status === "revoked";
+  const isAttentionState =
+    warrant.status === "blocked" ||
+    warrant.status === "denied" ||
+    warrant.status === "pending-approval";
   const isRoot = warrant.agentLabel === "Root User";
+  const latestPolicyDenial =
+    warrant.latestAction?.outcome === "blocked" &&
+    warrant.latestAction.providerState === null
+      ? warrant.latestAction
+      : null;
+  const statusIcon = isRevoked ? (
+    <Ban className="size-3.5" />
+  ) : isAttentionState ? (
+    <AlertTriangle className="size-3.5" />
+  ) : (
+    <Shield className="size-3.5" />
+  );
 
   return (
     <div className="absolute bottom-0 right-0 top-0 z-20 flex w-[420px] flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
@@ -87,7 +103,7 @@ export function NodeDetailPanel({
             <div
               className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${statusTone[warrant.status]}`}
             >
-              {isRevoked ? <Ban className="size-3.5" /> : <Shield className="size-3.5" />}
+              {statusIcon}
               {formatDisplayStatus(warrant.status)}
             </div>
             <span className="font-mono text-[10px] font-bold uppercase tracking-tighter text-[var(--muted)]">
@@ -342,6 +358,42 @@ export function NodeDetailPanel({
             </div>
           </div>
         </section>
+
+        {latestPolicyDenial ? (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-[var(--status-blocked-text)]" />
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Latest Policy Denial</h4>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-semibold text-[var(--foreground)]">
+                  {latestPolicyDenial.summary}
+                </p>
+                <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-amber-700">
+                  {latestPolicyDenial.authorization.code}
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-amber-900">
+                {latestPolicyDenial.outcomeReason}
+              </p>
+              <div className="grid gap-3 rounded-xl border border-amber-100 bg-white/80 p-4 text-[11px] font-medium text-slate-700">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-wider text-slate-500">Attempted action</span>
+                  <span className="font-mono font-bold text-slate-900">{latestPolicyDenial.kind}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-wider text-slate-500">Blocked by warrant</span>
+                  <span className="font-mono font-bold text-slate-900">{latestPolicyDenial.authorization.blockedByWarrantId ?? warrant.id}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-wider text-slate-500">Resource</span>
+                  <span className="text-right font-semibold text-slate-900">{latestPolicyDenial.resource}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
 
       {!isRoot && (

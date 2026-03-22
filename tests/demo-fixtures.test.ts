@@ -35,7 +35,7 @@ describe("demo fixtures", () => {
 
     expect(examples.calendarChildWarrant.status).toBe("active");
     expect(examples.calendarChildWarrant.capabilities).toEqual(["Read calendar"]);
-    expect(examples.commsChildWarrant.status).toBe("active");
+    expect(examples.commsChildWarrant.status).toBe("denied");
     expect(examples.commsChildWarrant.capabilities).toEqual(["Draft email"]);
     expect(examples.calendarAction.outcome).toBe("allowed");
     expect(examples.calendarAction.kind).toBe("calendar.read");
@@ -43,6 +43,12 @@ describe("demo fixtures", () => {
     expect(examples.commsDraftAction.outcome).toBe("allowed");
     expect(examples.commsDraftAction.kind).toBe("gmail.draft");
     expect(examples.commsDraftAction.providerState).toBe("success");
+    expect(examples.commsOverreachAction.outcome).toBe("blocked");
+    expect(examples.commsOverreachAction.kind).toBe("gmail.send");
+    expect(examples.commsOverreachAction.authorization.code).toBe("capability_missing");
+    expect(examples.commsChildWarrant.latestAction?.authorization.code).toBe(
+      "capability_missing",
+    );
   });
 
   it("loads graph and timeline views from the same canonical state and resets safely", () => {
@@ -57,13 +63,13 @@ describe("demo fixtures", () => {
     const graphView = loadDelegationGraphView();
     const timeline = loadTimelineEvents();
 
-    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("active");
+    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("denied");
     expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.parentId).toBe(
       "warrant-planner-root-001",
     );
-    expect(graphView.warrantSummaries.find((summary) => summary.id === "warrant-comms-child-001")?.latestAction?.providerState).toBe("success");
+    expect(graphView.warrantSummaries.find((summary) => summary.id === "warrant-comms-child-001")?.latestAction?.providerState).toBeNull();
     expect(timeline.map((event) => event.at)).toEqual([...timeline.map((event) => event.at)].sort());
-    expect(timeline.at(-1)?.actionId).toBe("action-comms-draft-001");
+    expect(timeline.at(-1)?.actionId).toBe("action-comms-send-overreach-001");
 
     resetDemoState();
 

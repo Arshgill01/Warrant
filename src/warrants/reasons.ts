@@ -1,4 +1,4 @@
-import type { WarrantDecisionCode } from "@/warrants/types";
+import type { WarrantDecisionCode } from "@/contracts/policy";
 
 interface ReasonContext {
   actionKind?: string;

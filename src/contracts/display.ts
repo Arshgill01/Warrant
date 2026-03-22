@@ -1,4 +1,5 @@
 import type {
+  ActionAuthorizationSnapshot,
   ActionAttemptOutcome,
   ActionKind,
   ProviderActionState,
@@ -52,7 +53,6 @@ export interface DelegationGraphEdgeRecord {
 
 export type GraphNodeDTO = DelegationGraphNodeRecord;
 export type GraphEdgeDTO = DelegationGraphEdgeRecord;
-
 export interface ActionAttemptDisplayRecord {
   id: string;
   kind: ActionKind;
@@ -66,6 +66,7 @@ export interface ActionAttemptDisplayRecord {
   resource: string;
   outcome: ActionAttemptOutcome;
   outcomeReason: string;
+  authorization: ActionAuthorizationSnapshot;
   approvalRequestId: string | null;
   providerState: ProviderActionState | null;
   providerHeadline: string | null;
@@ -140,4 +141,5 @@ export interface DisplayScenarioExampleSet {
   commsChildWarrant: WarrantDisplaySummary;
   calendarAction: ActionAttemptDisplayRecord;
   commsDraftAction: ActionAttemptDisplayRecord;
+  commsOverreachAction: ActionAttemptDisplayRecord;
 }

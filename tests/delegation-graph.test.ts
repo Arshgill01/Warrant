@@ -21,8 +21,8 @@ describe("delegation graph view model", () => {
     expect(nodes).toHaveLength(3);
     expect(planner?.data.label).toBe("Planner Agent");
     expect(calendar?.data.role).toBe("calendar");
-    expect(comms?.data.status).toBe("active");
-    expect(comms?.data.statusReason).toContain("Auth0-backed Gmail draft creation");
+    expect(comms?.data.status).toBe("denied");
+    expect(comms?.data.statusReason).toContain("does not allow gmail.send");
     expect(calendar?.position.y).toBe(comms?.position.y);
     expect(planner?.position.y).toBeLessThan(calendar?.position.y ?? Number.MAX_SAFE_INTEGER);
   });
@@ -92,6 +92,13 @@ describe("delegation graph view model", () => {
       resource: "Send investor follow-up to partners@northstar.vc",
       outcome: "blocked",
       outcomeReason: "This warrant does not allow gmail.send.",
+      authorization: {
+        allowed: false,
+        code: "capability_missing",
+        message: "This warrant does not allow gmail.send.",
+        effectiveStatus: "active",
+        blockedByWarrantId: "warrant-comms-child-001",
+      },
       providerState: null,
       providerHeadline: null,
       providerDetail: null,
@@ -126,6 +133,13 @@ describe("delegation graph view model", () => {
       resource: "Calendar window for 2026-04-18",
       outcome: "blocked",
       outcomeReason: "Delegated Google Calendar access is waiting on the provider path.",
+      authorization: {
+        allowed: true,
+        code: "allowed",
+        message: "This action is within the warrant bounds.",
+        effectiveStatus: "active",
+        blockedByWarrantId: null,
+      },
       providerState: "pending",
       providerHeadline: "Calendar Agent is waiting for delegated Google access.",
       providerDetail: "Auth0 started the provider handoff, but the calendar path is not ready yet.",

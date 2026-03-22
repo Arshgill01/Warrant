@@ -2,6 +2,7 @@ import type {
   ActionAttempt,
   ActionAttemptOutcome,
   ProviderActionState,
+  ActionAuthorizationSnapshot,
 } from "@/contracts/action";
 import type { AgentIdentity, AgentStatus } from "@/contracts/agent";
 import type { ApprovalRequest } from "@/contracts/approval";
@@ -35,6 +36,7 @@ export interface DemoActionAttempt extends ActionAttempt {
   resource: string;
   outcome: DemoActionOutcome;
   outcomeReason: string;
+  authorization: ActionAuthorizationSnapshot;
   approvalRequestId?: string;
   providerState?: ProviderActionState | null;
   providerHeadline?: string | null;
@@ -57,6 +59,7 @@ export interface DemoScenarioExamples {
   commsChildWarrantId: string;
   calendarActionId: string;
   commsDraftActionId: string;
+  commsOverreachActionId: string;
 }
 
 export interface DemoScenario {

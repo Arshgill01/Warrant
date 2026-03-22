@@ -9,6 +9,7 @@ import {
   createDeterministicScenarioActionAdapters,
   executeCalendarReadAction,
   executeGmailDraftAction,
+  executeGmailSendOverreachAction,
   type ScenarioActionAdapters,
 } from "@/actions";
 import { issueChildWarrant, issueRootWarrant } from "@/warrants";
@@ -264,6 +265,17 @@ export function runMainScenarioPlannerFlow(
     adapter: adapters.comms,
   });
 
+  const commsOverreachAction = executeGmailSendOverreachAction({
+    actionId: "action-comms-send-overreach-001",
+    requestedAt: "2026-04-17T09:08:00.000Z",
+    warrant: commsWarrant,
+    warrants,
+    recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+    usage: {
+      sendsUsed: 0,
+    },
+  });
+
   const agents: DemoAgent[] = [
     {
       ...plannerAgent,
@@ -275,6 +287,7 @@ export function runMainScenarioPlannerFlow(
     },
     {
       ...commsAgent,
+      status: "blocked",
       warrantId: commsWarrant.id,
     },
   ];
@@ -291,7 +304,11 @@ export function runMainScenarioPlannerFlow(
     user: scenarioUser,
     agents,
     warrants,
-    actionAttempts: [calendarAction.attempt, commsAction.attempt],
+    actionAttempts: [
+      calendarAction.attempt,
+      commsAction.attempt,
+      commsOverreachAction.attempt,
+    ],
     approvals: [],
     revocations: [],
     timeline: [
@@ -328,12 +345,14 @@ export function runMainScenarioPlannerFlow(
       }),
       calendarAction.timelineEvent,
       commsAction.timelineEvent,
+      commsOverreachAction.timelineEvent,
     ],
     examples: {
       calendarChildWarrantId: calendarWarrant.id,
       commsChildWarrantId: commsWarrant.id,
       calendarActionId: calendarAction.attempt.id,
       commsDraftActionId: commsAction.attempt.id,
+      commsOverreachActionId: commsOverreachAction.attempt.id,
     },
   };
 

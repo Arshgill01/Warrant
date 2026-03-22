@@ -46,6 +46,8 @@ describe("route rendering", () => {
     expect(html).toContain("Canonical Proof Points");
     expect(html).toContain("Lineage-Aware Timeline");
     expect(html).toContain("Draft internal investor follow-up emails for approved recipients only.");
+    expect(html).toContain("Attempted to send the drafted investor follow-ups");
+    expect(html).toContain("Policy code: capability_missing");
   });
 
   it("renders the auth shell route in the safe fallback state without Auth0 config", async () => {

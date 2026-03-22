@@ -288,6 +288,7 @@ export function createActionAttemptDisplayRecords(
     resource: action.resource,
     outcome: action.outcome,
     outcomeReason: action.outcomeReason,
+    authorization: action.authorization,
     approvalRequestId: action.approvalRequestId ?? null,
     providerState: action.providerState ?? null,
     providerHeadline: action.providerHeadline ?? null,
@@ -408,6 +409,10 @@ export function getDisplayScenarioExamples(
     commsDraftAction: required(
       actionRecordsById.get(scenario.examples.commsDraftActionId),
       `Missing action ${scenario.examples.commsDraftActionId}`,
+    ),
+    commsOverreachAction: required(
+      actionRecordsById.get(scenario.examples.commsOverreachActionId),
+      `Missing action ${scenario.examples.commsOverreachActionId}`,
     ),
   };
 }

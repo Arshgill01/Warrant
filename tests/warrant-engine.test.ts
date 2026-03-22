@@ -356,6 +356,65 @@ describe("warrant engine", () => {
     expect(result.message).toMatch(/approved recipients/i);
   });
 
+  it("denies a draft-only child that attempts gmail.send", () => {
+    const parent = createParentWarrant();
+    const issued = issueChildWarrant({
+      parent,
+      child: {
+        id: "warrant_child",
+        createdBy: parent.agentId,
+        agentId: "comms_agent",
+        purpose: "Draft investor follow-up emails",
+        capabilities: ["gmail.draft"],
+        resourceConstraints: {
+          allowedRecipients: ["ceo@example.com"],
+          allowedDomains: ["example.com"],
+          maxDrafts: 1,
+        },
+        canDelegate: false,
+        maxChildren: 0,
+        expiresAt: LATER,
+      },
+      existingChildrenCount: 0,
+      now: NOW,
+    });
+
+    if (!issued.ok) {
+      throw new Error("child issuance unexpectedly failed");
+    }
+
+    const result = authorizeAction({
+      warrant: issued.warrant,
+      warrants: [parent, issued.warrant],
+      action: {
+        id: "action_send_overreach",
+        kind: "gmail.send",
+        agentId: issued.warrant.agentId,
+        warrantId: issued.warrant.id,
+        requestedAt: NOW,
+        target: {
+          recipients: ["ceo@example.com"],
+        },
+        usage: {
+          sendsUsed: 0,
+        },
+      },
+      now: NOW,
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.code).toBe("capability_missing");
+    expect(result.message).toMatch(/gmail\.send/i);
+    expect(result.warrantId).toBe(issued.warrant.id);
+    expect(result.lineage.parentWarrantId).toBe(parent.id);
+
+    if (result.allowed) {
+      throw new Error("send overreach unexpectedly authorized");
+    }
+
+    expect(result.blockedByWarrantId).toBe(issued.warrant.id);
+  });
+
   it("preserves lineage metadata in action authorization results", () => {
     const parent = createParentWarrant();
     const issued = issueChildWarrant({
