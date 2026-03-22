@@ -21,7 +21,7 @@ describe("delegation graph view model", () => {
     expect(nodes).toHaveLength(3);
     expect(planner?.data.label).toBe("Planner Agent");
     expect(calendar?.data.role).toBe("calendar");
-    expect(comms?.data.status).toBe("active");
+    expect(comms?.data.status).toBe("blocked");
     expect(calendar?.position.y).toBe(comms?.position.y);
     expect(planner?.position.y).toBeLessThan(calendar?.position.y ?? Number.MAX_SAFE_INTEGER);
   });

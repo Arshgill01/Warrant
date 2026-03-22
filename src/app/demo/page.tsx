@@ -181,7 +181,7 @@ export default function DemoPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
           <ExampleCard
             eyebrow="Calendar Warrant"
             title={examples.calendarChildWarrant.purpose}
@@ -213,6 +213,14 @@ export default function DemoPage() {
             statusLabel={examples.commsDraftAction.outcome.replace("-", " ")}
             detail={examples.commsDraftAction.outcomeReason}
             meta={examples.commsDraftAction.resource}
+          />
+          <ExampleCard
+            eyebrow="Blocked Overreach"
+            title={examples.commsOverreachAction.summary}
+            statusKey={examples.commsOverreachAction.outcome}
+            statusLabel={examples.commsOverreachAction.outcome.replace("-", " ")}
+            detail={examples.commsOverreachAction.outcomeReason}
+            meta={`Policy code: ${examples.commsOverreachAction.authorization.code}`}
           />
         </div>
       </section>

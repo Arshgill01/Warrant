@@ -121,10 +121,42 @@ function resolveDisplayStatus(input: {
   return "active";
 }
 
+function createLatestBlockedActionByWarrantId(
+  scenario: DemoScenario,
+): Map<DemoScenario["warrants"][number]["id"], WarrantDisplaySummary["latestBlockedAction"]> {
+  const latestBlockedActionByWarrantId = new Map<
+    DemoScenario["warrants"][number]["id"],
+    WarrantDisplaySummary["latestBlockedAction"]
+  >();
+
+  [...scenario.actionAttempts]
+    .sort((left, right) => left.requestedAt.localeCompare(right.requestedAt))
+    .forEach((action) => {
+      if (action.outcome !== "blocked") {
+        return;
+      }
+
+      latestBlockedActionByWarrantId.set(action.warrantId, {
+        id: action.id,
+        kind: action.kind,
+        requestedAt: action.requestedAt,
+        summary: action.summary,
+        resource: action.resource,
+        outcomeReason: action.outcomeReason,
+        authorization: action.authorization,
+      });
+    });
+
+  return latestBlockedActionByWarrantId;
+}
+
 export function createWarrantDisplaySummaries(
   scenario: DemoScenario,
 ): WarrantDisplaySummary[] {
   const agentsById = new Map(scenario.agents.map((agent) => [agent.id, agent]));
+  const latestBlockedActionByWarrantId = createLatestBlockedActionByWarrantId(
+    scenario,
+  );
 
   return scenario.warrants.map((warrant) => {
     const agent = required(
@@ -155,6 +187,8 @@ export function createWarrantDisplaySummaries(
       maxChildren: warrant.maxChildren,
       revokedAt: warrant.revokedAt,
       revocationReason: warrant.revocationReason,
+      latestBlockedAction:
+        latestBlockedActionByWarrantId.get(warrant.id) ?? null,
     };
   });
 }
@@ -180,6 +214,7 @@ export function createActionAttemptDisplayRecords(
     resource: action.resource,
     outcome: action.outcome,
     outcomeReason: action.outcomeReason,
+    authorization: action.authorization,
     approvalRequestId: action.approvalRequestId ?? null,
   }));
 }
@@ -295,6 +330,10 @@ export function getDisplayScenarioExamples(
     commsDraftAction: required(
       actionRecordsById.get(scenario.examples.commsDraftActionId),
       `Missing action ${scenario.examples.commsDraftActionId}`,
+    ),
+    commsOverreachAction: required(
+      actionRecordsById.get(scenario.examples.commsOverreachActionId),
+      `Missing action ${scenario.examples.commsOverreachActionId}`,
     ),
   };
 }

@@ -1,4 +1,8 @@
-import type { ActionKind, ActionAttemptOutcome } from "@/contracts/action";
+import type {
+  ActionAuthorizationSnapshot,
+  ActionAttemptOutcome,
+  ActionKind,
+} from "@/contracts/action";
 import type { AgentRole } from "@/contracts/agent";
 import type { ApprovalStatus } from "@/contracts/approval";
 import type { LedgerActorKind, LedgerEventKind } from "@/contracts/audit";
@@ -56,6 +60,17 @@ export interface WarrantDisplaySummary {
   maxChildren: number;
   revokedAt: string | null;
   revocationReason: string | null;
+  latestBlockedAction: BlockedActionDisplaySummary | null;
+}
+
+export interface BlockedActionDisplaySummary {
+  id: string;
+  kind: ActionKind;
+  requestedAt: string;
+  summary: string;
+  resource: string;
+  outcomeReason: string;
+  authorization: ActionAuthorizationSnapshot;
 }
 
 export interface ActionAttemptDisplayRecord {
@@ -71,6 +86,7 @@ export interface ActionAttemptDisplayRecord {
   resource: string;
   outcome: ActionAttemptOutcome;
   outcomeReason: string;
+  authorization: ActionAuthorizationSnapshot;
   approvalRequestId: string | null;
 }
 
@@ -118,4 +134,5 @@ export interface DisplayScenarioExampleSet {
   commsChildWarrant: WarrantDisplaySummary;
   calendarAction: ActionAttemptDisplayRecord;
   commsDraftAction: ActionAttemptDisplayRecord;
+  commsOverreachAction: ActionAttemptDisplayRecord;
 }

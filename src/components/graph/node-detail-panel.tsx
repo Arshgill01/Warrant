@@ -23,7 +23,21 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
   if (!warrant) return null;
 
   const isRevoked = warrant.status === "revoked";
+  const isBlocked = warrant.status === "blocked";
   const isRoot = warrant.agentLabel === "Root User";
+  const latestBlockedAction = warrant.latestBlockedAction;
+  const statusTone = isRevoked
+    ? "bg-rose-50 text-rose-600 border-rose-200"
+    : isBlocked
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-emerald-50 text-emerald-600 border-emerald-200";
+  const statusIcon = isRevoked ? (
+    <Ban className="size-3.5" />
+  ) : isBlocked ? (
+    <AlertTriangle className="size-3.5" />
+  ) : (
+    <Shield className="size-3.5" />
+  );
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-20 w-[420px] flex flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
@@ -51,10 +65,10 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
         {/* Identity Section */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest
-              ${isRevoked ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-600 border-emerald-200"}`}
+          <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest
+              ${statusTone}`}
             >
-              {isRevoked ? <Ban className="size-3.5" /> : <Shield className="size-3.5" />}
+              {statusIcon}
               {warrant.status}
             </div>
             <span className="font-mono text-[10px] font-bold text-[var(--muted)] uppercase tracking-tighter">
@@ -161,6 +175,42 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
             </div>
           </div>
         </section>
+
+        {latestBlockedAction ? (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-[var(--status-blocked-text)]" />
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Latest Policy Denial</h4>
+            </div>
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm font-semibold text-[var(--foreground)]">
+                  {latestBlockedAction.summary}
+                </p>
+                <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-amber-700">
+                  {latestBlockedAction.authorization.code}
+                </span>
+              </div>
+              <p className="text-sm leading-relaxed text-amber-900">
+                {latestBlockedAction.outcomeReason}
+              </p>
+              <div className="grid gap-3 rounded-xl border border-amber-100 bg-white/80 p-4 text-[11px] font-medium text-slate-700">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-wider text-slate-500">Attempted action</span>
+                  <span className="font-mono font-bold text-slate-900">{latestBlockedAction.kind}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-wider text-slate-500">Blocked by warrant</span>
+                  <span className="font-mono font-bold text-slate-900">{latestBlockedAction.authorization.blockedByWarrantId ?? warrant.id}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="uppercase tracking-wider text-slate-500">Resource</span>
+                  <span className="text-right font-semibold text-slate-900">{latestBlockedAction.resource}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
 
       {/* Footer / Actions */}
