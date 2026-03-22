@@ -24,6 +24,15 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
 
   const isRevoked = warrant.status === "revoked";
   const isRoot = warrant.agentLabel === "Root User";
+  const statusTone: Record<WarrantDisplaySummary["status"], string> = {
+    active: "bg-emerald-50 text-emerald-600 border-emerald-200",
+    idle: "bg-slate-50 text-slate-500 border-slate-200",
+    blocked: "bg-rose-50 text-rose-600 border-rose-200",
+    denied: "bg-rose-100 text-rose-700 border-rose-200",
+    pending: "bg-amber-50 text-amber-700 border-amber-200",
+    revoked: "bg-rose-50 text-rose-600 border-rose-200",
+    expired: "bg-slate-100 text-slate-500 border-slate-200",
+  };
 
   return (
     <div className="absolute right-0 top-0 bottom-0 z-20 w-[420px] flex flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
@@ -52,7 +61,7 @@ export function NodeDetailPanel({ warrant, onClose, onRevoke }: NodeDetailPanelP
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest
-              ${isRevoked ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-600 border-emerald-200"}`}
+              ${statusTone[warrant.status]}`}
             >
               {isRevoked ? <Ban className="size-3.5" /> : <Shield className="size-3.5" />}
               {warrant.status}

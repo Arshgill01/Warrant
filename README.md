@@ -54,6 +54,8 @@ Use the shell overrides only to rehearse UI states while the real Auth0 connecte
 - Calendar availability, Gmail draft preparation, and send-email execution now flow through explicit provider-backed result envelopes.
 - Gmail draft and Gmail send stay distinct: draft can succeed without implying send is allowed to execute.
 - Gmail send remains a separate execution boundary that requires an explicit upstream release before it will hit the live provider path.
+- The demo route now models the sensitive send approval ladder explicitly: `not-requested`, `pending`, `approved`, `denied`, `unavailable`, and `error`.
+- Auth0 is intentionally visible in that flow: local Warrant eligibility and Auth0-backed approval are shown as separate gates before final Gmail execution becomes ready.
 
 To connect Google through Auth0, the shell uses the SDK connect-account route at `/auth/connect` with the Google Calendar read and Gmail compose or send scopes.
 
@@ -87,6 +89,12 @@ Shared consumers should prefer these exports:
 - `getDisplayScenarioExamples()` or `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
 
 This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
+
+The seeded scenario now includes:
+
+- a successful Comms draft action
+- a locally eligible Comms send attempt that stops in `approval-required`
+- a pending Auth0 approval request with exact preview, recipients, and blast-radius copy
 
 ## Shared display contracts
 

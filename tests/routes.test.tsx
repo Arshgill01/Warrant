@@ -44,8 +44,12 @@ describe("route rendering", () => {
     expect(html).toContain("Investor update for April 18");
     expect(html).toContain("Prepare my investor update for tomorrow and coordinate follow-ups.");
     expect(html).toContain("Canonical Proof Points");
+    expect(html).toContain("Sensitive Action Approval");
+    expect(html).toContain("Draft authority is not send authority.");
+    expect(html).toContain("Approve investor follow-up send");
+    expect(html).toContain("What changes when approval changes");
     expect(html).toContain("Lineage-Aware Timeline");
-    expect(html).toContain("Draft internal investor follow-up emails for approved recipients only.");
+    expect(html).toContain("Draft and send internal investor follow-up emails for approved recipients, but only after explicit approval.");
   });
 
   it("renders the auth shell route in the safe fallback state without Auth0 config", async () => {

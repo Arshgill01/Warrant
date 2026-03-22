@@ -35,6 +35,7 @@ const statusColors: Record<AgentNodeData["status"], string> = {
   active: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)] border-[var(--status-allowed-text)]/20",
   idle: "bg-slate-50 text-slate-500 border-slate-200",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)] border-[var(--status-blocked-text)]/20",
+  denied: "bg-rose-50 text-rose-700 border-rose-200",
   revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-[var(--status-revoked-text)]/20",
   pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-[var(--status-pending-text)]/20",
   expired: "bg-slate-100 text-slate-400 border-slate-200",
