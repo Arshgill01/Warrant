@@ -1,12 +1,24 @@
-import type { AuthSessionSnapshot, ProviderConnectionSnapshot, ProviderConnectionState } from "@/contracts";
+import type {
+  AuthSessionSnapshot,
+  ProviderConnectionSetupSnapshot,
+  ProviderConnectionSnapshot,
+  ProviderConnectionState,
+} from "@/contracts";
 import { AccessTokenForConnectionError, AccessTokenForConnectionErrorCode, auth0 } from "@/auth";
 import { getAuth0Environment } from "@/auth/env";
 
-const googleScopes = [
+export const googleDelegatedScopes = [
+  "openid",
+  "profile",
   "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/gmail.compose",
   "https://www.googleapis.com/auth/gmail.send",
 ] as const;
+
+export const googleConnectAuthorizationParams = {
+  access_type: "offline",
+  prompt: "consent",
+} as const;
 
 export const googleConnectionStateLegend: Array<{
   state: ProviderConnectionState;
@@ -39,11 +51,42 @@ export function buildGoogleConnectHref(connectionName: string, returnTo = "/"): 
   const searchParams = new URLSearchParams({
     connection: connectionName,
     returnTo,
+    ...googleConnectAuthorizationParams,
   });
 
-  googleScopes.forEach((scope) => searchParams.append("scopes", scope));
+  googleDelegatedScopes.forEach((scope) => searchParams.append("scopes", scope));
 
   return `/auth/connect?${searchParams.toString()}`;
+}
+
+export function getGoogleConnectionSetupSnapshot(): ProviderConnectionSetupSnapshot {
+  const authEnv = getAuth0Environment();
+
+  if (!authEnv.isConfigured) {
+    return {
+      provider: "google",
+      status: "setup-required",
+      headline: "Google delegated access depends on Auth0 app setup first.",
+      detail:
+        "Finish the core Auth0 app env and dashboard URLs before the Google connected-account flow can hand off Calendar and Gmail access through Auth0.",
+      connectionName: authEnv.googleConnectionName,
+      requestedScopes: [...googleDelegatedScopes],
+      requestedAuthParams: Object.entries(googleConnectAuthorizationParams).map(([key, value]) => ({ key, value })),
+      tokenVaultConnectionId: authEnv.tokenVaultConnectionId,
+    };
+  }
+
+  return {
+    provider: "google",
+    status: "ready",
+    headline: "Google can be linked through Auth0's connected-account flow.",
+    detail:
+      "The shell will send users through /auth/connect with offline Google access so later Gmail and Calendar branches can consume delegated access instead of direct provider secrets.",
+    connectionName: authEnv.googleConnectionName,
+    requestedScopes: [...googleDelegatedScopes],
+    requestedAuthParams: Object.entries(googleConnectAuthorizationParams).map(([key, value]) => ({ key, value })),
+    tokenVaultConnectionId: authEnv.tokenVaultConnectionId,
+  };
 }
 
 function getConnectedAccountLabel(session: AuthSessionSnapshot): string | null {

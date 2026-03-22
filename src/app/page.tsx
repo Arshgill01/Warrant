@@ -1,13 +1,14 @@
 import { getCalendarReadPath, getGmailDraftPath, getGmailSendPath } from "@/actions";
 import { getAuthSessionSnapshot } from "@/auth";
 import { AuthShell } from "@/components/auth-shell/auth-shell";
-import { getGoogleConnectionSnapshot } from "@/connections";
+import { getGoogleConnectionSetupSnapshot, getGoogleConnectionSnapshot } from "@/connections";
 import { authShellPolicies, authShellSendApprovalStatus } from "@/demo-fixtures";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const session = await getAuthSessionSnapshot();
+  const googleSetup = getGoogleConnectionSetupSnapshot();
   const googleConnection = await getGoogleConnectionSnapshot(session);
 
   const [calendarReadPath, gmailDraftPath, gmailSendPath] = await Promise.all([
@@ -33,6 +34,7 @@ export default async function Home() {
     <AuthShell
       session={session}
       googleConnection={googleConnection}
+      googleSetup={googleSetup}
       actionPaths={[calendarReadPath, gmailDraftPath, gmailSendPath]}
     />
   );
