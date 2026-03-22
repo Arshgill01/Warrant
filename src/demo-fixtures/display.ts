@@ -93,10 +93,17 @@ function hasPendingApproval(scenario: DemoScenario, warrantId: string): boolean 
   );
 }
 
+function hasDeniedApproval(scenario: DemoScenario, warrantId: string): boolean {
+  return scenario.approvals.some(
+    (approval) => approval.warrantId === warrantId && approval.status === "denied",
+  );
+}
+
 function resolveDisplayStatus(input: {
   agentStatus: DemoScenario["agents"][number]["status"];
   warrantStatus: DemoScenario["warrants"][number]["status"];
   hasPendingApproval: boolean;
+  hasDeniedApproval: boolean;
 }): DisplayStatus {
   if (input.warrantStatus === "revoked") {
     return "revoked";
@@ -108,6 +115,10 @@ function resolveDisplayStatus(input: {
 
   if (input.agentStatus === "blocked") {
     return "blocked";
+  }
+
+  if (input.hasDeniedApproval) {
+    return "denied";
   }
 
   if (input.hasPendingApproval) {
@@ -143,6 +154,7 @@ export function createWarrantDisplaySummaries(
         agentStatus: agent.status,
         warrantStatus: warrant.status,
         hasPendingApproval: hasPendingApproval(scenario, warrant.id),
+        hasDeniedApproval: hasDeniedApproval(scenario, warrant.id),
       }),
       purpose: warrant.purpose,
       capabilities: warrant.capabilities.map(
@@ -207,6 +219,7 @@ export function createApprovalStateDisplayRecords(
     decidedAt: approval.decidedAt,
     affectedRecipients: [...approval.affectedRecipients],
     blastRadius: approval.blastRadius,
+    provider: approval.provider,
   }));
 }
 
@@ -295,6 +308,16 @@ export function getDisplayScenarioExamples(
     commsDraftAction: required(
       actionRecordsById.get(scenario.examples.commsDraftActionId),
       `Missing action ${scenario.examples.commsDraftActionId}`,
+    ),
+    commsSendAction: required(
+      actionRecordsById.get(scenario.examples.commsSendActionId),
+      `Missing action ${scenario.examples.commsSendActionId}`,
+    ),
+    commsPendingApproval: required(
+      createApprovalStateDisplayRecords(scenario).find(
+        (approval) => approval.id === scenario.examples.commsSendApprovalId,
+      ),
+      `Missing approval ${scenario.examples.commsSendApprovalId}`,
     ),
   };
 }

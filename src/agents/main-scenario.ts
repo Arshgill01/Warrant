@@ -1,4 +1,5 @@
 import type {
+  ActionAttempt,
   DemoAgent,
   DemoScenario,
   DemoUser,
@@ -11,7 +12,8 @@ import {
   executeGmailDraftAction,
   type ScenarioActionAdapters,
 } from "@/actions";
-import { issueChildWarrant, issueRootWarrant } from "@/warrants";
+import { createSendApprovalRequest } from "@/approvals";
+import { authorizeAction, issueChildWarrant, issueRootWarrant } from "@/warrants";
 import type { MainScenarioRunResult, PlannerTaskRecord } from "@/agents/types";
 
 const SCENARIO_ID = "demo-scenario-investor-update";
@@ -61,9 +63,9 @@ function buildCommsAgent(): Omit<DemoAgent, "warrantId"> {
     role: "comms",
     label: "Comms Agent",
     status: "active",
-    purpose: "Draft investor follow-up emails without send authority.",
+    purpose: "Draft investor follow-up emails and queue bounded sends for approval.",
     summary:
-      "Can prepare draft follow-ups for approved Northstar recipients but cannot send them in this slice.",
+      "Can draft freely for approved Northstar recipients and may attempt one bounded send, but only after Auth0 approval releases execution.",
     parentAgentId: "agent-planner-001",
     externalSystems: ["gmail"],
   };
@@ -191,8 +193,8 @@ export function runMainScenarioPlannerFlow(
         createdBy: plannerAgent.id,
         agentId: commsAgent.id,
         purpose:
-          "Draft internal investor follow-up emails for approved recipients only.",
-        capabilities: ["gmail.draft"],
+          "Draft and send internal investor follow-up emails for approved recipients, but only after explicit approval.",
+        capabilities: ["gmail.draft", "gmail.send"],
         resourceConstraints: {
           allowedDomains: ["northstar.vc"],
           allowedRecipients: [
@@ -200,6 +202,7 @@ export function runMainScenarioPlannerFlow(
             "finance@northstar.vc",
           ],
           maxDrafts: 2,
+          maxSends: 1,
         },
         canDelegate: false,
         maxChildren: 0,
@@ -234,6 +237,17 @@ export function runMainScenarioPlannerFlow(
       warrantId: commsWarrant.id,
       status: "completed",
     },
+    {
+      id: "task-comms-send-approval-001",
+      title: "Send approved investor follow-up emails",
+      summary:
+        "Comms Agent may execute one bounded Gmail send only after Maya approves the exact message through Auth0.",
+      assignedAgentId: commsAgent.id,
+      assignedRole: commsAgent.role,
+      requiredCapabilities: ["gmail.send"],
+      warrantId: commsWarrant.id,
+      status: "delegated",
+    },
   ];
 
   const calendarAction = executeCalendarReadAction({
@@ -264,6 +278,65 @@ export function runMainScenarioPlannerFlow(
     adapter: adapters.comms,
   });
 
+  const commsSendRequestedAt = "2026-04-17T09:10:00.000Z";
+  const commsSendAction: ActionAttempt = {
+    id: "action-comms-send-001",
+    kind: "gmail.send",
+    agentId: commsWarrant.agentId,
+    warrantId: commsWarrant.id,
+    requestedAt: commsSendRequestedAt,
+    target: {
+      recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+    },
+    usage: {
+      sendsUsed: 0,
+    },
+  };
+  const commsSendAuthorization = authorizeAction({
+    warrant: commsWarrant,
+    warrants,
+    action: commsSendAction,
+    now: commsSendRequestedAt,
+  });
+
+  if (!commsSendAuthorization.allowed) {
+    throw new Error(commsSendAuthorization.message);
+  }
+
+  const commsSendApproval = createSendApprovalRequest({
+    id: "approval-comms-send-001",
+    actionId: commsSendAction.id,
+    warrantId: commsWarrant.id,
+    requestedByAgentId: commsAgent.id,
+    title: "Approve investor follow-up send",
+    reason:
+      "Sending the draft email leaves draft-only mode and reaches external recipients, so Maya must explicitly approve the exact message through Auth0 before Warrant can release execution.",
+    subject: "Investor update follow-up for April 18",
+    bodyText:
+      "Prepared follow-up for tomorrow's investor update.\n\nPlease confirm the owners, timing, and next asks before we send externally.",
+    to: ["partners@northstar.vc", "finance@northstar.vc"],
+    cc: ["maya@northstar.vc"],
+    requestedAt: commsSendRequestedAt,
+    expiresAt: "2026-04-17T18:00:00.000Z",
+    draftId: "draft-investor-update-001",
+    blastRadius:
+      "Approving this request authorizes one live Gmail send from the Comms branch to the two approved Northstar recipients.",
+  });
+
+  const commsSendAttempt = {
+    ...commsSendAction,
+    rootRequestId: commsSendAuthorization.lineage.rootRequestId,
+    parentWarrantId: commsSendAuthorization.lineage.parentWarrantId,
+    createdAt: commsSendRequestedAt,
+    summary:
+      "Prepared the investor follow-up send and stopped for approval.",
+    resource: "Send to partners@northstar.vc and finance@northstar.vc",
+    outcome: "approval-required" as const,
+    outcomeReason:
+      "The Comms warrant allows one bounded send, but Warrant still requires Auth0 approval before the live Gmail action can execute.",
+    approvalRequestId: commsSendApproval.id,
+  };
+
   const agents: DemoAgent[] = [
     {
       ...plannerAgent,
@@ -291,8 +364,12 @@ export function runMainScenarioPlannerFlow(
     user: scenarioUser,
     agents,
     warrants,
-    actionAttempts: [calendarAction.attempt, commsAction.attempt],
-    approvals: [],
+    actionAttempts: [
+      calendarAction.attempt,
+      commsAction.attempt,
+      commsSendAttempt,
+    ],
+    approvals: [commsSendApproval],
     revocations: [],
     timeline: [
       createScenarioLoadedEvent(),
@@ -324,16 +401,33 @@ export function runMainScenarioPlannerFlow(
         warrant: commsWarrant,
         title: "Comms child warrant issued",
         description:
-          "Planner Agent issues a drafting-only warrant so Comms Agent can prepare follow-ups without send authority.",
+          "Planner Agent issues a bounded comms warrant that allows drafting immediately but still requires approval before any live send can execute.",
       }),
       calendarAction.timelineEvent,
       commsAction.timelineEvent,
+      {
+        id: "event-comms-send-approval-requested-001",
+        at: commsSendRequestedAt,
+        kind: "approval.requested",
+        actorKind: "agent",
+        actorId: commsAgent.id,
+        warrantId: commsWarrant.id,
+        parentWarrantId: commsWarrant.parentId,
+        actionId: commsSendAction.id,
+        approvalId: commsSendApproval.id,
+        revocationId: null,
+        title: "Comms send paused for approval",
+        description:
+          "Comms Agent has a locally valid send path for the approved recipients, but Warrant pauses the live Gmail action until Maya approves the exact email through Auth0.",
+      },
     ],
     examples: {
       calendarChildWarrantId: calendarWarrant.id,
       commsChildWarrantId: commsWarrant.id,
       calendarActionId: calendarAction.attempt.id,
       commsDraftActionId: commsAction.attempt.id,
+      commsSendActionId: commsSendAttempt.id,
+      commsSendApprovalId: commsSendApproval.id,
     },
   };
 

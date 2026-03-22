@@ -21,7 +21,14 @@ describe("demo fixtures", () => {
     expect(first).toEqual(second);
     expect(first.taskPrompt).toBe("Prepare my investor update for tomorrow and coordinate follow-ups.");
     expect(first.agents.map((agent) => agent.role)).toEqual(["planner", "calendar", "comms"]);
-    expect(first.approvals).toEqual([]);
+    expect(first.approvals).toHaveLength(1);
+    expect(first.approvals[0]).toEqual(
+      expect.objectContaining({
+        id: "approval-comms-send-001",
+        provider: "auth0",
+        status: "pending",
+      }),
+    );
     expect(first.revocations).toEqual([]);
 
     first.user.label = "Changed User";
@@ -35,12 +42,14 @@ describe("demo fixtures", () => {
 
     expect(examples.calendarChildWarrant.status).toBe("active");
     expect(examples.calendarChildWarrant.capabilities).toEqual(["Read calendar"]);
-    expect(examples.commsChildWarrant.status).toBe("active");
-    expect(examples.commsChildWarrant.capabilities).toEqual(["Draft email"]);
+    expect(examples.commsChildWarrant.status).toBe("pending");
+    expect(examples.commsChildWarrant.capabilities).toEqual(["Draft email", "Send email"]);
     expect(examples.calendarAction.outcome).toBe("allowed");
     expect(examples.calendarAction.kind).toBe("calendar.read");
     expect(examples.commsDraftAction.outcome).toBe("allowed");
     expect(examples.commsDraftAction.kind).toBe("gmail.draft");
+    expect(examples.commsSendAction.outcome).toBe("approval-required");
+    expect(examples.commsPendingApproval.status).toBe("pending");
   });
 
   it("loads graph and timeline views from the same canonical state and resets safely", () => {
@@ -55,12 +64,12 @@ describe("demo fixtures", () => {
     const graphView = loadDelegationGraphView();
     const timeline = loadTimelineEvents();
 
-    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("active");
+    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("pending");
     expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.parentId).toBe(
       "warrant-planner-root-001",
     );
     expect(timeline.map((event) => event.at)).toEqual([...timeline.map((event) => event.at)].sort());
-    expect(timeline.at(-1)?.actionId).toBe("action-comms-draft-001");
+    expect(timeline.at(-1)?.actionId).toBe("action-comms-send-001");
 
     resetDemoState();
 
