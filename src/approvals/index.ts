@@ -7,5 +7,7 @@ export const approvalsBoundary: WorktreeBoundary = {
   purpose: "Own sensitive-action approval requests, exact action previews, and approval outcome handling.",
   futureWorktree: "Send-email approval flow",
   notes: "Keep approval text legible and focused on consequences instead of OAuth jargon.",
-  status: "reserved",
+  status: "shared",
 };
+
+export * from "@/approvals/send-flow";

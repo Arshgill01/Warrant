@@ -1559,7 +1559,114 @@ Manual scenario checks:
 - The current deterministic orchestration output does not yet persist full live provider envelopes, so the binding layer may need semi-live fields that represent Wave 2 provider status without overfitting to today’s demo state.
 - The graph currently mutates revoked presentation state locally; keeping that demo interaction while staying truthful to the shared data boundary needs care.
 - Adding richer detail DTOs may expose assumptions in the existing node-detail panel or demo page proof-point cards that were safe with the older, narrower summaries.
- 
+
+Focused checks:
+
+- Comms draft action succeeds without needing send approval
+- Comms send path is locally eligible but not execution-ready before approval
+- the seeded approval request includes exact preview, recipients, blast radius, and Auth0-specific reason text
+- approved state flips execution readiness while denied, unavailable, and error stay blocked
+- `/demo` renders the approval surface and state model in a way that is legible for the demo
+
+### Risks
+
+- The repo does not yet have a real approval backend, so the demo must stay honest that this slice is deterministic and UI-modeled rather than callback-driven.
+- Changing the Comms child warrant to include local send eligibility could blur the earlier “draft-only” story if the UI copy does not clearly explain that approval is still required for execution.
+- Adding more approval metadata may expose existing display-contract assumptions in the demo route or tests that currently only expect simple pending approval records.
+
+## ExecPlan — Sensitive Send Approval Flow (2026-03-23)
+
+### Objective
+
+Implement the Comms Agent sensitive-action approval flow so drafting and sending remain separate, Auth0 is visibly load-bearing for real-world execution, and approval outcome changes whether send can proceed.
+
+### Demo relevance
+
+This is Milestone 5 work and one of the strongest proof points in the three-minute story:
+
+1. Comms Agent drafts useful follow-up emails without friction
+2. the same branch cannot send just because local Warrant policy allows the category
+3. Auth0-backed approval becomes the explicit control surface for live external execution
+4. judges can see pending, approved, denied, unavailable, and error states in one legible demo path
+
+### Scope
+
+In scope:
+
+- explicit approval-request and send-approval-state modeling for the Gmail send path
+- deterministic seeded scenario updates so Comms drafting and sending are separate but related steps
+- a visible send preview surface with recipients, blast radius, and plain-language approval reason
+- clear separation between local action eligibility, approval requirement, approval state, and final execution readiness
+- demo-surface rendering for not-requested, pending, approved, denied, unavailable, and error states
+- focused tests for scenario wiring, approval-state logic, and route rendering
+
+Out of scope:
+
+- real Auth0 approval callbacks or persistence
+- new provider integrations beyond Google
+- redesigning unrelated graph or auth-shell sections
+- branch revocation implementation changes
+- broad warrant-engine refactors unrelated to the send-approval story
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md`
+- `src/contracts/approval.ts`
+- `src/contracts/demo.ts`
+- `src/contracts/display.ts`
+- `src/contracts/audit.ts`
+- `src/approvals/*`
+- `src/agents/*`
+- `src/demo-fixtures/*`
+- `src/app/demo/page.tsx`
+- `src/components/graph/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- Draft and send must remain distinct capabilities or execution states.
+- Local Warrant allow must stay separate from Auth0-backed approval and provider execution.
+- Child warrants may only narrow parent authority.
+- The flow must stay deterministic and demo-ready without hidden server-only state changes.
+- User-facing copy must describe consequences, not OAuth jargon.
+
+### Implementation steps
+
+1. Extend approval contracts with a narrow send-approval state model and an explicit approval request shape that can carry exact preview, recipients, and blast-radius text.
+2. Update the deterministic planner scenario so Comms keeps draft capability, gains bounded local send eligibility, and emits a pending send approval request plus a lineage-aware send action that is blocked on approval.
+3. Add approval helpers that compute the visible state ladder from `not-requested` through `error`, including when execution becomes ready and when Auth0 is the blocking layer.
+4. Render a dedicated approval surface on `/demo` that shows:
+   - exact send preview
+   - recipients
+   - plain-language approval reason
+   - blast radius
+   - local eligibility vs approval gate vs execution readiness
+   - the state ladder for pending, approved, denied, unavailable, and error outcomes
+5. Update graph/display adapters and any related node-status rendering needed to keep pending approval legible without conflating it with revocation or policy denial.
+6. Add targeted tests, then run the standard repo validation commands.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Focused checks:
+
+- Comms draft action succeeds without needing send approval
+- Comms send path is locally eligible but not execution-ready before approval
+- the seeded approval request includes exact preview, recipients, blast radius, and Auth0-specific reason text
+- approved state flips execution readiness while denied, unavailable, and error stay blocked
+- `/demo` renders the approval surface and state model in a way that is legible for the demo
+
+### Risks
+
+- The repo does not yet have a real approval backend, so the demo must stay honest that this slice is deterministic and UI-modeled rather than callback-driven.
+- Changing the Comms child warrant to include local send eligibility could blur the earlier “draft-only” story if the UI copy does not clearly explain that approval is still required for execution.
+- Adding more approval metadata may expose existing display-contract assumptions in the demo route or tests that currently only expect simple pending approval records.
+
 ## ExecPlan — Comms Overreach Proof (2026-03-23)
 
 ### Objective

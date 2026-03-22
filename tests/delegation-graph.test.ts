@@ -21,8 +21,8 @@ describe("delegation graph view model", () => {
     expect(nodes).toHaveLength(3);
     expect(planner?.data.label).toBe("Planner Agent");
     expect(calendar?.data.role).toBe("calendar");
-    expect(comms?.data.status).toBe("denied");
-    expect(comms?.data.statusReason).toContain("does not allow gmail.send");
+    expect(comms?.data.status).toBe("pending-approval");
+    expect(comms?.data.statusReason).toContain("explicitly approve");
     expect(calendar?.position.y).toBe(comms?.position.y);
     expect(planner?.position.y).toBeLessThan(calendar?.position.y ?? Number.MAX_SAFE_INTEGER);
   });
@@ -44,25 +44,7 @@ describe("delegation graph view model", () => {
   });
 
   it("maps pending approval and denied status from shared scenario state", () => {
-    const pendingScenario = createDefaultDemoScenario();
-
-    pendingScenario.approvals.push({
-      id: "approval-comms-send-001",
-      actionId: "action-comms-send-001",
-      warrantId: "warrant-comms-child-001",
-      requestedByAgentId: "agent-comms-001",
-      reason: "Sending investor follow-ups needs explicit approval before release.",
-      status: "pending",
-      title: "Approve investor follow-up send",
-      preview: "Send the prepared investor follow-up email to the approved Northstar recipients.",
-      requestedAt: "2026-04-17T09:10:00.000Z",
-      expiresAt: "2026-04-17T09:20:00.000Z",
-      decidedAt: null,
-      affectedRecipients: ["partners@northstar.vc", "finance@northstar.vc"],
-      blastRadius: "Two internal recipients would receive the final investor follow-up email.",
-    });
-
-    const pendingView = createDelegationGraphView(pendingScenario);
+    const pendingView = createDelegationGraphView(createDefaultDemoScenario());
     const pendingComms = pendingView.warrantSummaries.find(
       (summary) => summary.id === "warrant-comms-child-001",
     );
@@ -72,6 +54,7 @@ describe("delegation graph view model", () => {
     expect(pendingComms?.statusSource).toBe("approval");
 
     const deniedScenario = createDefaultDemoScenario();
+    deniedScenario.approvals = [];
 
     deniedScenario.actionAttempts.push({
       id: "action-comms-send-overreach-001",

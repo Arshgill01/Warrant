@@ -43,16 +43,7 @@ export interface DemoActionAttempt extends ActionAttempt {
   providerDetail?: string | null;
 }
 
-export interface DemoApprovalRequest extends ApprovalRequest {
-  warrantId: string;
-  title: string;
-  preview: string;
-  requestedAt: string;
-  expiresAt: string;
-  decidedAt: string | null;
-  affectedRecipients: string[];
-  blastRadius: string;
-}
+export type DemoApprovalRequest = ApprovalRequest;
 
 export interface DemoScenarioExamples {
   calendarChildWarrantId: string;
@@ -60,6 +51,8 @@ export interface DemoScenarioExamples {
   calendarActionId: string;
   commsDraftActionId: string;
   commsOverreachActionId: string;
+  commsSendActionId: string;
+  commsSendApprovalId: string;
 }
 
 export interface DemoScenario {

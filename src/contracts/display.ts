@@ -5,7 +5,10 @@ import type {
   ProviderActionState,
 } from "@/contracts/action";
 import type { AgentRole } from "@/contracts/agent";
-import type { ApprovalStatus } from "@/contracts/approval";
+import type {
+  ApprovalRequestPreview,
+  ApprovalStatus,
+} from "@/contracts/approval";
 import type { LedgerActorKind, LedgerEventKind } from "@/contracts/audit";
 
 export type DisplayStatus =
@@ -82,12 +85,13 @@ export interface ApprovalStateDisplayRecord {
   status: ApprovalStatus;
   title: string;
   reason: string;
-  preview: string;
+  preview: ApprovalRequestPreview;
   requestedAt: string;
   expiresAt: string;
   decidedAt: string | null;
   affectedRecipients: string[];
   blastRadius: string;
+  provider: "auth0";
 }
 
 export interface WarrantDisplaySummary {
@@ -142,4 +146,6 @@ export interface DisplayScenarioExampleSet {
   calendarAction: ActionAttemptDisplayRecord;
   commsDraftAction: ActionAttemptDisplayRecord;
   commsOverreachAction: ActionAttemptDisplayRecord;
+  commsSendAction: ActionAttemptDisplayRecord;
+  commsPendingApproval: ApprovalStateDisplayRecord;
 }

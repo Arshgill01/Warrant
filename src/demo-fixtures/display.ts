@@ -319,6 +319,7 @@ export function createApprovalStateDisplayRecords(
     decidedAt: approval.decidedAt,
     affectedRecipients: [...approval.affectedRecipients],
     blastRadius: approval.blastRadius,
+    provider: approval.provider,
   }));
 }
 
@@ -389,6 +390,9 @@ export function getDisplayScenarioExamples(
   const actionRecordsById = new Map(
     createActionAttemptDisplayRecords(scenario).map((action) => [action.id, action]),
   );
+  const approvalRecordsById = new Map(
+    createApprovalStateDisplayRecords(scenario).map((approval) => [approval.id, approval]),
+  );
   const warrantSummariesById = new Map(
     createWarrantDisplaySummaries(scenario).map((summary) => [summary.id, summary]),
   );
@@ -413,6 +417,14 @@ export function getDisplayScenarioExamples(
     commsOverreachAction: required(
       actionRecordsById.get(scenario.examples.commsOverreachActionId),
       `Missing action ${scenario.examples.commsOverreachActionId}`,
+    ),
+    commsSendAction: required(
+      actionRecordsById.get(scenario.examples.commsSendActionId),
+      `Missing action ${scenario.examples.commsSendActionId}`,
+    ),
+    commsPendingApproval: required(
+      approvalRecordsById.get(scenario.examples.commsSendApprovalId),
+      `Missing approval ${scenario.examples.commsSendApprovalId}`,
     ),
   };
 }

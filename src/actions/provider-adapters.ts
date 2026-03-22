@@ -91,10 +91,10 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
             "Drafted investor follow-up emails for the approved internal recipients.",
           resource: `Drafts for ${input.recipients.join(" and ")}`,
           outcomeReason:
-            "The Comms child warrant allows drafting follow-ups for the approved Northstar recipients but does not include send authority.",
+            "The Comms child warrant allows drafting follow-ups immediately, while live sending remains gated behind a separate approval step.",
           timelineTitle: "Investor follow-up drafts created",
           timelineDescription:
-            "Comms Agent drafts the follow-up emails for the approved Northstar recipients and stops at draft creation for later approval-track work.",
+            "Comms Agent drafts the follow-up emails for the approved Northstar recipients and stops before live send so the approval layer can review the exact message.",
           draftIds: ["draft-investor-update-001", "draft-investor-update-002"],
           preview:
             "Subject: Investor update for tomorrow\n\nSharing the draft update and proposed follow-up timing before we send anything externally.",
