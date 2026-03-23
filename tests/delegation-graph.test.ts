@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createDefaultDemoScenario, createDelegationGraphView } from "@/demo-fixtures";
+import {
+  createDefaultDemoScenario,
+  createDelegationGraphView,
+  revokeCommsBranchScenario,
+} from "@/demo-fixtures";
 import {
   buildDelegationGraphEdges,
   buildDelegationGraphNodes,
@@ -172,5 +176,24 @@ describe("delegation graph view model", () => {
     expect(
       expiredView.warrantSummaries.find((summary) => summary.id === "warrant-calendar-child-001")?.status,
     ).toBe("expired");
+  });
+
+  it("renders revoked Comms state from the canonical branch-revoke scenario while Calendar stays active", () => {
+    const revokedScenario = revokeCommsBranchScenario(createDefaultDemoScenario());
+    const revokedView = createDelegationGraphView(revokedScenario);
+    const revokedComms = revokedView.warrantSummaries.find(
+      (summary) => summary.id === "warrant-comms-child-001",
+    );
+    const activeCalendar = revokedView.warrantSummaries.find(
+      (summary) => summary.id === "warrant-calendar-child-001",
+    );
+
+    expect(revokedComms?.status).toBe("revoked");
+    expect(revokedComms?.statusSource).toBe("warrant");
+    expect(revokedComms?.statusReason).toMatch(/delegated authority/i);
+    expect(revokedComms?.latestAction?.id).toBe("action-comms-send-post-revoke-001");
+    expect(revokedComms?.latestAction?.authorization.code).toBe("warrant_revoked");
+    expect(revokedComms?.pendingApproval?.status).toBe("pending");
+    expect(activeCalendar?.status).toBe("active");
   });
 });

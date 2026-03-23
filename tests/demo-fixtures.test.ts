@@ -6,6 +6,7 @@ import {
   loadDemoState,
   loadTimelineEvents,
   replaceDemoState,
+  revokeCommsBranchScenario,
   resetDemoState,
 } from "../src/demo-fixtures";
 
@@ -110,5 +111,51 @@ describe("demo fixtures", () => {
           warrantIds.has(event.parentWarrantId),
       ),
     ).toBe(true);
+  });
+
+  it("applies a branch-specific Comms revocation without collapsing Calendar", () => {
+    const revokedScenario = revokeCommsBranchScenario(createDefaultDemoScenario());
+    const commsWarrant = revokedScenario.warrants.find(
+      (warrant) => warrant.id === "warrant-comms-child-001",
+    );
+    const calendarWarrant = revokedScenario.warrants.find(
+      (warrant) => warrant.id === "warrant-calendar-child-001",
+    );
+    const postRevokeAction = revokedScenario.actionAttempts.find(
+      (action) => action.id === "action-comms-send-post-revoke-001",
+    );
+
+    expect(revokedScenario.revocations).toEqual([
+      expect.objectContaining({
+        id: "revocation-comms-001",
+        warrantId: "warrant-comms-child-001",
+        revokedById: "user-maya-chen",
+      }),
+    ]);
+    expect(commsWarrant?.status).toBe("revoked");
+    expect(commsWarrant?.revocationReason).toMatch(/Maya revoked the Comms branch/i);
+    expect(calendarWarrant?.status).toBe("active");
+    expect(
+      revokedScenario.agents.find((agent) => agent.id === "agent-comms-001")?.status,
+    ).toBe("revoked");
+    expect(
+      revokedScenario.agents.find((agent) => agent.id === "agent-calendar-001")?.status,
+    ).toBe("active");
+    expect(postRevokeAction).toEqual(
+      expect.objectContaining({
+        outcome: "blocked",
+        authorization: expect.objectContaining({
+          code: "warrant_revoked",
+          blockedByWarrantId: "warrant-comms-child-001",
+        }),
+      }),
+    );
+    expect(revokedScenario.timeline.map((event) => event.kind)).toContain("warrant.revoked");
+    expect(revokedScenario.timeline.at(-1)).toEqual(
+      expect.objectContaining({
+        actionId: "action-comms-send-post-revoke-001",
+        kind: "action.blocked",
+      }),
+    );
   });
 });
