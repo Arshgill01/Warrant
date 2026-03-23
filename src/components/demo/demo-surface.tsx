@@ -1,31 +1,23 @@
 "use client";
 
-import {
-  startTransition,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import {
   buildSendApprovalBoundarySummary,
   buildSendApprovalStateMatrix,
+  mapApprovalStatusToSendApprovalState,
 } from "@/approvals";
-import type {
-  ActionPathSnapshot,
-  DemoScenario,
-  SendApprovalState,
-} from "@/contracts";
+import type { DemoScenario } from "@/contracts";
 import {
   createDelegationGraphView,
   createTimelineEventDisplayRecords,
   getDisplayScenarioExamples,
-  revokeCommsBranchScenario,
 } from "@/demo-fixtures";
 import { DelegationGraph } from "@/graph";
 
 const statusTone: Record<string, string> = {
   active: "bg-[var(--accent-soft)] text-[var(--accent)]",
+  info: "bg-slate-100 text-slate-700",
   allowed: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
   denied: "bg-rose-50 text-rose-700",
@@ -123,8 +115,14 @@ function BoundaryCard({
   headline,
   detail,
   nextStep,
-}: ActionPathSnapshot & {
+}: {
   eyebrow: string;
+  label: string;
+  state: "ready" | "blocked" | "pending";
+  gate: string;
+  headline: string;
+  detail: string;
+  nextStep: string | null;
 }) {
   return (
     <article className="rounded-2xl border border-[var(--panel-border)] bg-white p-5 shadow-sm">
@@ -202,60 +200,47 @@ function ApprovalStateCard({
   );
 }
 
-function toSendApprovalState(
-  approvalStatus: "pending" | "approved" | "denied" | "expired",
-): SendApprovalState {
-  switch (approvalStatus) {
-    case "approved":
-      return "approved";
-    case "denied":
-      return "denied";
-    case "expired":
-      return "denied";
-    case "pending":
-    default:
-      return "pending";
-  }
-}
-
-function buildRevokedApprovalBoundarySummary(): {
-  localEligibility: ActionPathSnapshot;
-  approvalRequirement: ActionPathSnapshot;
-  executionReadiness: ActionPathSnapshot;
-} {
-  return {
-    localEligibility: {
-      kind: "gmail.send",
-      label: "Local Warrant eligibility",
-      state: "blocked",
-      gate: "policy",
-      headline: "The Comms branch has been revoked.",
-      detail:
-        "Revocation beats prior local eligibility. This branch can no longer draft or send because its warrant authority is dead.",
-      nextStep:
-        "Issue a new child warrant if the planner should regain a bounded Comms branch.",
-    },
-    approvalRequirement: {
-      kind: "gmail.send",
-      label: "Auth0 approval requirement",
-      state: "blocked",
-      gate: "approval",
-      headline: "The approval request is now historical only.",
-      detail:
-        "An Auth0 approval result cannot restore authority to a revoked branch. The request stays visible for audit, not execution.",
-      nextStep: null,
-    },
-    executionReadiness: {
-      kind: "gmail.send",
-      label: "Final execution readiness",
-      state: "blocked",
-      gate: "policy",
-      headline: "Live execution is blocked by revocation.",
-      detail:
-        "Warrant stops the branch before any approval release or provider execution can proceed.",
-      nextStep: null,
-    },
-  };
+function ProofStepCard({
+  eyebrow,
+  title,
+  statusKey,
+  statusLabel,
+  detail,
+  meta,
+}: {
+  eyebrow: string;
+  title: string;
+  statusKey: string;
+  statusLabel: string;
+  detail: string;
+  meta: string[];
+}) {
+  return (
+    <article className="rounded-[1.75rem] border border-[var(--panel-border)] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+            {eyebrow}
+          </p>
+          <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
+            {title}
+          </h3>
+        </div>
+        <StatusPill
+          label={statusLabel}
+          tone={statusTone[statusKey] || statusTone.active}
+        />
+      </div>
+      <p className="text-sm leading-relaxed text-[var(--foreground)]">{detail}</p>
+      <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+        {meta.map((item) => (
+          <p key={item} className="text-xs font-medium text-[var(--muted)]">
+            {item}
+          </p>
+        ))}
+      </div>
+    </article>
+  );
 }
 
 export function DemoSurface({
@@ -265,28 +250,19 @@ export function DemoSurface({
   initialScenario: DemoScenario;
   authConfigured: boolean;
 }) {
-  const [scenario, setScenario] = useState(initialScenario);
-
+  const scenario = initialScenario;
   const graphView = useMemo(() => createDelegationGraphView(scenario), [scenario]);
   const timeline = useMemo(
     () => createTimelineEventDisplayRecords(scenario),
     [scenario],
   );
   const examples = useMemo(() => getDisplayScenarioExamples(scenario), [scenario]);
-  const postRevokeAction = useMemo(
-    () =>
-      scenario.actionAttempts.find(
-        (action) => action.authorization.code === "warrant_revoked",
-      ) ?? null,
-    [scenario],
+  const commsPolicyDenial =
+    examples.commsChildWarrant.latestPolicyDenial ?? examples.commsOverreachAction;
+  const currentApprovalState = mapApprovalStatusToSendApprovalState(
+    examples.commsSendApproval.status,
   );
-  const currentApprovalState = toSendApprovalState(
-    examples.commsPendingApproval.status,
-  );
-  const commsBranchRevoked = examples.commsChildWarrant.status === "revoked";
-  const approvalBoundaries = commsBranchRevoked
-    ? buildRevokedApprovalBoundarySummary()
-    : buildSendApprovalBoundarySummary(currentApprovalState);
+  const approvalBoundaries = buildSendApprovalBoundarySummary(currentApprovalState);
   const approvalStateMatrix = buildSendApprovalStateMatrix();
   const agentCounts = useMemo(
     () =>
@@ -296,20 +272,6 @@ export function DemoSurface({
       }, {}),
     [scenario.agents],
   );
-
-  const handleRevokeBranch = useCallback((warrantId: string) => {
-    if (warrantId !== "warrant-comms-child-001") {
-      return;
-    }
-
-    startTransition(() => {
-      setScenario((current) => revokeCommsBranchScenario(current));
-    });
-  }, []);
-
-  const currentApprovalBadge = commsBranchRevoked
-    ? "current: pending + branch revoked"
-    : `current: ${currentApprovalState}`;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col gap-8 px-6 py-10 sm:px-10 lg:px-16">
@@ -409,10 +371,9 @@ export function DemoSurface({
           graphNodes={graphView.nodes}
           graphEdges={graphView.edges}
           warrantSummaries={graphView.warrantSummaries}
-          onRevoke={handleRevokeBranch}
           eyebrow="Visual Hierarchy"
           title="Delegation Tree"
-          description="A real-time map of issued warrants and branch status. Select the Comms node to revoke that branch without affecting Calendar."
+          description="A real-time map of issued warrants and branch status. Select a node to inspect lineage and capabilities."
         />
       </section>
 
@@ -447,11 +408,7 @@ export function DemoSurface({
             title={examples.commsChildWarrant.purpose}
             statusKey={examples.commsChildWarrant.status}
             statusLabel={examples.commsChildWarrant.status}
-            detail={
-              commsBranchRevoked
-                ? "Maya revoked the Comms branch. Its prior send approval remains visible in history, but the branch can no longer execute."
-                : "Planner Agent delegates bounded draft-plus-send authority, but the live send path is still paused behind Auth0 approval."
-            }
+            detail="Planner Agent delegates bounded draft-plus-send authority, but the branch is later revoked after the approved send so its authority cannot continue."
             meta={`Capabilities: ${examples.commsChildWarrant.capabilities.join(", ")}`}
           />
           <ExampleCard
@@ -479,16 +436,66 @@ export function DemoSurface({
             meta={`Policy code: ${examples.commsOverreachAction.authorization.code}`}
           />
           <ExampleCard
-            eyebrow={postRevokeAction ? "Post-Revoke Failure" : "Sensitive Send"}
-            title={postRevokeAction ? postRevokeAction.summary : examples.commsSendAction.summary}
-            statusKey={postRevokeAction ? postRevokeAction.outcome : examples.commsSendAction.outcome}
-            statusLabel={(postRevokeAction ? postRevokeAction.outcome : examples.commsSendAction.outcome).replace("-", " ")}
-            detail={postRevokeAction ? postRevokeAction.outcomeReason : examples.commsSendAction.outcomeReason}
-            meta={
-              postRevokeAction
-                ? `Policy code: ${postRevokeAction.authorization.code}`
-                : examples.commsPendingApproval.title
-            }
+            eyebrow="Sensitive Send"
+            title={examples.commsSendAction.summary}
+            statusKey={examples.commsSendAction.outcome}
+            statusLabel={examples.commsSendAction.outcome.replace("-", " ")}
+            detail={examples.commsSendAction.outcomeReason}
+            meta={examples.commsSendApproval.title}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-slate-50/60 p-8 shadow-sm lg:p-12">
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
+            Proof Sequence
+          </p>
+          <h2 className="text-3xl font-semibold tracking-tight">
+            One branch, two different gates.
+          </h2>
+          <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+            The Comms branch succeeds at bounded drafting, gets denied immediately when it overreaches local recipient policy,
+            and only reaches Auth0 approval when it retries a send that stays inside the warrant&apos;s bounds.
+          </p>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-3">
+          <ProofStepCard
+            eyebrow="Step 1"
+            title="Bounded draft succeeds"
+            statusKey={examples.commsDraftAction.outcome}
+            statusLabel={examples.commsDraftAction.outcome.replace("-", " ")}
+            detail={examples.commsDraftAction.outcomeReason}
+            meta={[
+              `Action: ${examples.commsDraftAction.kind}`,
+              `Warrant: ${examples.commsDraftAction.warrantId}`,
+              `Resource: ${examples.commsDraftAction.resource}`,
+            ]}
+          />
+          <ProofStepCard
+            eyebrow="Step 2"
+            title="Overreach is denied by local warrant policy"
+            statusKey="denied"
+            statusLabel="policy denied"
+            detail={commsPolicyDenial.outcomeReason}
+            meta={[
+              `Decision code: ${commsPolicyDenial.authorization.code}`,
+              `Blocked by warrant: ${commsPolicyDenial.authorization.blockedByWarrantId ?? commsPolicyDenial.warrantId}`,
+              `Parent warrant: ${commsPolicyDenial.parentWarrantId ?? "root"}`,
+            ]}
+          />
+          <ProofStepCard
+            eyebrow="Step 3"
+            title="Allowed send pauses for approval instead"
+            statusKey={examples.commsSendAction.outcome}
+            statusLabel={examples.commsSendAction.outcome.replace("-", " ")}
+            detail={examples.commsSendAction.outcomeReason}
+            meta={[
+              `Approval request: ${examples.commsSendApproval.id}`,
+              `Recipients: ${examples.commsSendApproval.affectedRecipients.join(", ")}`,
+              `Root request: ${examples.commsSendAction.rootRequestId}`,
+            ]}
           />
         </div>
       </section>
@@ -502,34 +509,25 @@ export function DemoSurface({
             Draft authority is not send authority.
           </h2>
           <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
-            The Comms branch can draft the follow-up immediately. Sending the
-            exact email below still requires an Auth0-backed approval result
-            before Warrant can release the live Gmail execution path.
+            The Comms branch could draft immediately, then needed explicit Auth0 approval before the live send executed.
+            The same branch was revoked afterward, which is why the audit timeline matters as much as the approval card.
           </p>
         </div>
-
-        {commsBranchRevoked ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 text-sm leading-relaxed text-rose-900">
-            The approval request remains in the audit trail, but the Comms
-            branch has been revoked. Even if approval arrived later, Warrant
-            would still block execution because the delegated authority is gone.
-          </div>
-        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <article className="rounded-[2rem] border border-[var(--panel-border)] bg-slate-50/60 p-6">
             <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
-                  Current approval request
+                  Approval control moment
                 </p>
                 <h3 className="text-2xl font-semibold tracking-tight">
-                  {examples.commsPendingApproval.title}
+                  {examples.commsSendApproval.title}
                 </h3>
               </div>
               <StatusPill
-                label={`${examples.commsPendingApproval.status} through ${examples.commsPendingApproval.provider}`}
-                tone={statusTone[examples.commsPendingApproval.status]}
+                label={`${examples.commsSendApproval.status} through ${examples.commsSendApproval.provider}`}
+                tone={statusTone[examples.commsSendApproval.status]}
               />
             </div>
 
@@ -539,7 +537,7 @@ export function DemoSurface({
                   Why approval is needed
                 </p>
                 <p className="text-sm leading-relaxed text-[var(--foreground)]">
-                  {examples.commsPendingApproval.reason}
+                  {examples.commsSendApproval.reason}
                 </p>
               </div>
               <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
@@ -547,7 +545,7 @@ export function DemoSurface({
                   Blast radius
                 </p>
                 <p className="text-sm leading-relaxed text-[var(--foreground)]">
-                  {examples.commsPendingApproval.blastRadius}
+                  {examples.commsSendApproval.blastRadius}
                 </p>
               </div>
             </div>
@@ -559,7 +557,7 @@ export function DemoSurface({
                     Exact action preview
                   </p>
                   <h4 className="text-lg font-semibold text-[var(--foreground)]">
-                    {examples.commsPendingApproval.preview.subject}
+                    {examples.commsSendApproval.preview.subject}
                   </h4>
                 </div>
                 <StatusPill label="gmail.send" tone="bg-slate-900 text-white" />
@@ -570,13 +568,13 @@ export function DemoSurface({
                     Recipients
                   </p>
                   <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
-                    To: {examples.commsPendingApproval.preview.to.join(", ")}
+                    To: {examples.commsSendApproval.preview.to.join(", ")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--foreground)]">
-                    Cc: {examples.commsPendingApproval.preview.cc.join(", ")}
+                    Cc: {examples.commsSendApproval.preview.cc.join(", ")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--foreground)]">
-                    Draft: {examples.commsPendingApproval.preview.draftId ?? "none"}
+                    Draft: {examples.commsSendApproval.preview.draftId ?? "none"}
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--panel-border)] bg-slate-50/70 p-4">
@@ -587,7 +585,7 @@ export function DemoSurface({
                     className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--foreground)]"
                     style={{ fontFamily: "inherit" }}
                   >
-                    {examples.commsPendingApproval.preview.bodyText}
+                    {examples.commsSendApproval.preview.bodyText}
                   </pre>
                 </div>
               </div>
@@ -612,8 +610,8 @@ export function DemoSurface({
               </h3>
             </div>
             <StatusPill
-              label={currentApprovalBadge}
-              tone={commsBranchRevoked ? statusTone.revoked : statusTone[currentApprovalState]}
+              label={`current: ${currentApprovalState}`}
+              tone={statusTone[currentApprovalState]}
             />
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -643,30 +641,35 @@ export function DemoSurface({
           <h2 className="text-3xl font-semibold tracking-tight">
             Lineage-Aware Timeline
           </h2>
-          <p className="text-sm text-[var(--muted)]">
-            A cryptographic trail of issued warrants, approvals, revocations,
-            and later action attempts.
+          <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+            A concise ledger of who acted, which warrant branch they acted under, and why the system allowed,
+            paused, approved, revoked, or blocked each step.
           </p>
         </div>
 
         <div className="space-y-4">
-          {timeline.map((event) => (
+          {timeline.map((event, index) => (
             <article
               key={event.id}
-              className="group flex flex-col gap-6 rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-sm transition-all hover:border-[var(--muted)]/20 hover:shadow-md md:flex-row md:items-center"
+              className="group grid gap-5 rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-sm transition-all hover:border-[var(--muted)]/20 hover:shadow-md lg:grid-cols-[88px_minmax(0,1fr)_320px]"
             >
-              <div className="flex-1 space-y-3">
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+                  Step {String(index + 1).padStart(2, "0")}
+                </span>
+                <p className="text-xs font-semibold text-[var(--foreground)]">
+                  {formatDateTime(event.at, scenario.timezone)}
+                </p>
+              </div>
+
+              <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <StatusPill
-                    label={event.kind.replace(".", " ")}
-                    tone={
-                      statusTone[event.kind.split(".")[1]] ||
-                      statusTone[event.kind] ||
-                      statusTone.revoked
-                    }
+                    label={`${event.kindLabel} ${event.resultLabel}`}
+                    tone={statusTone[event.resultTone]}
                   />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                    {formatDateTime(event.at, scenario.timezone)}
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+                    {event.branchLabel}
                   </span>
                 </div>
                 <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">
@@ -677,28 +680,36 @@ export function DemoSurface({
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 rounded-xl border border-[var(--panel-border)] bg-slate-50/50 p-4 font-mono text-[10px] text-[var(--muted)] transition-all group-hover:bg-white md:min-w-[300px]">
-                <div className="flex justify-between border-b border-[var(--panel-border)]/50 pb-2">
-                  <span className="font-bold uppercase tracking-tighter opacity-50">
+              <div className="grid gap-2 rounded-2xl border border-[var(--panel-border)] bg-slate-50/60 p-4 text-[11px] text-[var(--muted)] transition-all group-hover:bg-white">
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)]/70 pb-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">
                     Actor
                   </span>
                   <span className="font-semibold text-[var(--foreground)]">
                     {event.actorLabel}
                   </span>
                 </div>
-                <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
-                  <span className="font-bold uppercase tracking-tighter opacity-50">
-                    Warrant
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)]/70 py-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">
+                    Branch
                   </span>
-                  <span className="font-semibold text-[var(--accent)]">
-                    {event.warrantId ?? "—"}
+                  <span className="text-right font-semibold text-[var(--foreground)]">
+                    {event.branchLabel}
                   </span>
                 </div>
-                <div className="flex justify-between pt-2">
-                  <span className="font-bold uppercase tracking-tighter opacity-50">
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)]/70 py-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">
+                    Warrant
+                  </span>
+                  <span className="font-mono font-semibold text-[var(--accent)]">
+                    {event.warrantId ?? "root"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">
                     Parent
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-mono font-semibold text-[var(--foreground)]">
                     {event.parentWarrantId ?? "root"}
                   </span>
                 </div>

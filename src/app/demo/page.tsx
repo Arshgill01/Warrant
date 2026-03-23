@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getAuth0Environment } from "@/auth/env";
-import { loadDemoState } from "@/demo-fixtures";
 import { DemoSurface } from "@/components/demo/demo-surface";
+import { loadDemoState } from "@/demo-fixtures";
 
 export const metadata: Metadata = {
   title: "Warrant | Wave 1 Demo",

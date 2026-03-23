@@ -4,16 +4,27 @@ import type {
   DemoScenario,
   DemoUser,
   LedgerEvent,
+  RevocationRecord,
   WarrantContract,
 } from "@/contracts";
 import {
   createDeterministicScenarioActionAdapters,
   executeCalendarReadAction,
   executeGmailDraftAction,
+  executeGmailSendAction,
+  executeGmailSendOverreachAction,
   type ScenarioActionAdapters,
 } from "@/actions";
-import { createSendApprovalRequest } from "@/approvals";
-import { authorizeAction, issueChildWarrant, issueRootWarrant } from "@/warrants";
+import {
+  createSendApprovalRequest,
+  decideApprovalRequest,
+} from "@/approvals";
+import {
+  authorizeAction,
+  issueChildWarrant,
+  issueRootWarrant,
+  revokeWarrantBranch,
+} from "@/warrants";
 import type { MainScenarioRunResult, PlannerTaskRecord } from "@/agents/types";
 
 const SCENARIO_ID = "demo-scenario-investor-update";
@@ -109,6 +120,75 @@ function createWarrantIssuedEvent(input: {
     actionId: null,
     approvalId: null,
     revocationId: null,
+    title: input.title,
+    description: input.description,
+  };
+}
+
+function createApprovalEvent(input: {
+  id: string;
+  at: string;
+  kind: "approval.requested" | "approval.approved" | "approval.denied";
+  actorKind: "user" | "agent";
+  actorId: string;
+  warrant: WarrantContract;
+  actionId: string;
+  approvalId: string;
+  title: string;
+  description: string;
+}): LedgerEvent {
+  return {
+    id: input.id,
+    at: input.at,
+    kind: input.kind,
+    actorKind: input.actorKind,
+    actorId: input.actorId,
+    warrantId: input.warrant.id,
+    parentWarrantId: input.warrant.parentId,
+    actionId: input.actionId,
+    approvalId: input.approvalId,
+    revocationId: null,
+    title: input.title,
+    description: input.description,
+  };
+}
+
+function createRevocationRecord(input: {
+  id: string;
+  warrant: WarrantContract;
+  revokedAt: string;
+  reason: string;
+  cascadedWarrantIds: string[];
+}): RevocationRecord {
+  return {
+    id: input.id,
+    warrantId: input.warrant.id,
+    parentWarrantId: input.warrant.parentId,
+    revokedByKind: "user",
+    revokedById: scenarioUser.id,
+    revokedAt: input.revokedAt,
+    reason: input.reason,
+    cascadedWarrantIds: input.cascadedWarrantIds,
+  };
+}
+
+function createRevocationEvent(input: {
+  revocation: RevocationRecord;
+  warrant: WarrantContract;
+  title: string;
+  description: string;
+}): LedgerEvent {
+  return {
+    id: `event-${input.revocation.id}`,
+    at: input.revocation.revokedAt,
+    kind: "warrant.revoked",
+    actorKind: input.revocation.revokedByKind,
+    actorId: input.revocation.revokedById,
+    warrantId: input.warrant.id,
+    parentWarrantId: input.warrant.parentId,
+    actionId: null,
+    approvalId: null,
+    revocationId: input.revocation.id,
     title: input.title,
     description: input.description,
   };
@@ -278,30 +358,16 @@ export function runMainScenarioPlannerFlow(
     adapter: adapters.comms,
   });
 
-  const commsOverreachRequestedAt = "2026-04-17T09:08:00.000Z";
-  const commsOverreachAction: ActionAttempt = {
-    id: "action-comms-send-overreach-001",
-    kind: "gmail.send",
-    agentId: commsWarrant.agentId,
-    warrantId: commsWarrant.id,
-    requestedAt: commsOverreachRequestedAt,
-    target: {
-      recipients: ["ceo@external-partner.com"],
-    },
+  const commsOverreach = executeGmailSendOverreachAction({
+    actionId: "action-comms-send-overreach-001",
+    requestedAt: "2026-04-17T09:08:00.000Z",
+    warrant: commsWarrant,
+    warrants,
+    recipients: ["ceo@external-partner.com"],
     usage: {
       sendsUsed: 0,
     },
-  };
-  const commsOverreachAuthorization = authorizeAction({
-    warrant: commsWarrant,
-    warrants,
-    action: commsOverreachAction,
-    now: commsOverreachRequestedAt,
   });
-
-  if (commsOverreachAuthorization.allowed) {
-    throw new Error("Comms overreach action unexpectedly passed warrant authorization.");
-  }
 
   const commsSendRequestedAt = "2026-04-17T09:10:00.000Z";
   const commsSendAction: ActionAttempt = {
@@ -347,6 +413,11 @@ export function runMainScenarioPlannerFlow(
     blastRadius:
       "Approving this request authorizes one live Gmail send from the Comms branch to the two approved Northstar recipients.",
   });
+  const commsSendApproved = decideApprovalRequest({
+    request: commsSendApproval,
+    status: "approved",
+    decidedAt: "2026-04-17T09:11:00.000Z",
+  });
 
   const commsSendAttempt = {
     ...commsSendAction,
@@ -368,6 +439,55 @@ export function runMainScenarioPlannerFlow(
       "The Comms warrant allows one bounded send, but Warrant still requires Auth0 approval before the live Gmail action can execute.",
     approvalRequestId: commsSendApproval.id,
   };
+  const commsApprovedSend = executeGmailSendAction({
+    actionId: "action-comms-send-approved-001",
+    requestedAt: "2026-04-17T09:12:00.000Z",
+    warrant: commsWarrant,
+    warrants,
+    user: scenarioUser,
+    recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+    usage: {
+      sendsUsed: 0,
+    },
+    adapter: adapters.gmailSend,
+  });
+  const commsRevocation = revokeWarrantBranch({
+    warrants,
+    warrantId: commsWarrant.id,
+    revokedAt: "2026-04-17T09:13:00.000Z",
+    revokedBy: scenarioUser.id,
+    reason:
+      "Maya revoked the Comms branch after the approved send to prove that delegated authority can be withdrawn immediately.",
+  });
+  const revocation = createRevocationRecord({
+    id: "revocation-comms-001",
+    warrant: commsWarrant,
+    revokedAt: commsRevocation.events[0]?.metadata.occurredAt ?? "2026-04-17T09:13:00.000Z",
+    reason: commsRevocation.events[0]?.metadata.reason ??
+      "Maya revoked the Comms branch after the approved send to prove that delegated authority can be withdrawn immediately.",
+    cascadedWarrantIds: commsRevocation.revokedWarrantIds,
+  });
+  const revokedWarrants = commsRevocation.warrants;
+  const revokedCommsWarrant = revokedWarrants.find(
+    (warrant) => warrant.id === commsWarrant.id,
+  );
+
+  if (!revokedCommsWarrant) {
+    throw new Error("Expected revoked comms warrant in main scenario.");
+  }
+
+  const commsPostRevokeAttempt = executeGmailSendAction({
+    actionId: "action-comms-send-post-revoke-001",
+    requestedAt: "2026-04-17T09:14:00.000Z",
+    warrant: revokedCommsWarrant,
+    warrants: revokedWarrants,
+    user: scenarioUser,
+    recipients: ["partners@northstar.vc"],
+    usage: {
+      sendsUsed: 1,
+    },
+    adapter: adapters.gmailSend,
+  });
   const agents: DemoAgent[] = [
     {
       ...plannerAgent,
@@ -379,7 +499,7 @@ export function runMainScenarioPlannerFlow(
     },
     {
       ...commsAgent,
-      status: "active",
+      status: "revoked",
       warrantId: commsWarrant.id,
     },
   ];
@@ -395,35 +515,17 @@ export function runMainScenarioPlannerFlow(
     rootWarrantId: rootWarrant.id,
     user: scenarioUser,
     agents,
-    warrants,
+    warrants: revokedWarrants,
     actionAttempts: [
       calendarAction.attempt,
       commsAction.attempt,
-      {
-        ...commsOverreachAction,
-        rootRequestId: commsOverreachAuthorization.lineage.rootRequestId,
-        parentWarrantId: commsOverreachAuthorization.lineage.parentWarrantId,
-        createdAt: commsOverreachRequestedAt,
-        summary:
-          "Attempted to send the drafted investor follow-ups to an unapproved external recipient.",
-        resource: "Send email to ceo@external-partner.com",
-        outcome: "blocked",
-        outcomeReason: commsOverreachAuthorization.message,
-        authorization: {
-          allowed: false,
-          code: commsOverreachAuthorization.code,
-          message: commsOverreachAuthorization.message,
-          effectiveStatus: commsOverreachAuthorization.effectiveStatus,
-          blockedByWarrantId: commsOverreachAuthorization.blockedByWarrantId,
-        },
-        providerState: null,
-        providerHeadline: null,
-        providerDetail: null,
-      },
+      commsOverreach.attempt,
       commsSendAttempt,
+      commsApprovedSend.attempt,
+      commsPostRevokeAttempt.attempt,
     ],
-    approvals: [commsSendApproval],
-    revocations: [],
+    approvals: [commsSendApproved],
+    revocations: [revocation],
     timeline: [
       createScenarioLoadedEvent(),
       createWarrantIssuedEvent({
@@ -458,43 +560,49 @@ export function runMainScenarioPlannerFlow(
       }),
       calendarAction.timelineEvent,
       commsAction.timelineEvent,
-      {
-        id: "event-comms-send-overreach-001",
-        at: commsOverreachRequestedAt,
-        kind: "action.blocked",
-        actorKind: "agent",
-        actorId: commsAgent.id,
-        warrantId: commsWarrant.id,
-        parentWarrantId: commsWarrant.parentId,
-        actionId: commsOverreachAction.id,
-        approvalId: null,
-        revocationId: null,
-        title: "Comms send overreach denied",
-        description:
-          "Comms Agent tried to send the follow-up to an unapproved external recipient, so the warrant engine blocked the branch before any live Gmail execution.",
-      },
-      {
+      commsOverreach.timelineEvent,
+      createApprovalEvent({
         id: "event-comms-send-approval-requested-001",
         at: commsSendRequestedAt,
         kind: "approval.requested",
         actorKind: "agent",
         actorId: commsAgent.id,
-        warrantId: commsWarrant.id,
-        parentWarrantId: commsWarrant.parentId,
+        warrant: commsWarrant,
         actionId: commsSendAction.id,
         approvalId: commsSendApproval.id,
-        revocationId: null,
         title: "Comms send paused for approval",
         description:
           "Comms Agent has a locally valid send path for the approved recipients, but Warrant pauses the live Gmail action until Maya approves the exact email through Auth0.",
-      },
+      }),
+      createApprovalEvent({
+        id: "event-comms-send-approval-approved-001",
+        at: commsSendApproved.decidedAt ?? "2026-04-17T09:11:00.000Z",
+        kind: "approval.approved",
+        actorKind: "user",
+        actorId: scenarioUser.id,
+        warrant: commsWarrant,
+        actionId: commsSendAction.id,
+        approvalId: commsSendApproved.id,
+        title: "Approval granted for the exact send",
+        description:
+          "Maya approves the exact email preview through Auth0, releasing one bounded live Gmail send for the Comms branch.",
+      }),
+      commsApprovedSend.timelineEvent,
+      createRevocationEvent({
+        revocation,
+        warrant: revokedCommsWarrant,
+        title: "Comms branch revoked",
+        description:
+          "Maya revokes the Comms branch after the approved send, immediately removing authority from that warrant and any descendants.",
+      }),
+      commsPostRevokeAttempt.timelineEvent,
     ],
     examples: {
       calendarChildWarrantId: calendarWarrant.id,
       commsChildWarrantId: commsWarrant.id,
       calendarActionId: calendarAction.attempt.id,
       commsDraftActionId: commsAction.attempt.id,
-      commsOverreachActionId: commsOverreachAction.id,
+      commsOverreachActionId: commsOverreach.attempt.id,
       commsSendActionId: commsSendAttempt.id,
       commsSendApprovalId: commsSendApproval.id,
     },

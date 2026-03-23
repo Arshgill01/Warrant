@@ -733,7 +733,6 @@ This is Milestone 2 / Workstream B. It provides the proof that delegated authori
 ### Scope
 
 In scope:
-
 - shared warrant and action contract updates needed for the engine
 - core warrant domain types and resource-constraint structures
 - parent-to-child narrowing validation
@@ -1759,17 +1758,17 @@ Focused checks:
 
 ### Objective
 
-Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a draft-only child warrant but attempts a real `gmail.send` action and is denied by the warrant engine with lineage-aware, UI-consumable denial details.
+Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a locally send-eligible child warrant for approved Northstar recipients, then attempts a real `gmail.send` action to an out-of-policy external recipient and is denied by the warrant engine before approval logic or provider execution becomes relevant.
 
 ### Demo relevance
 
-This is Milestone 4 in its clearest form. It proves that a child agent cannot silently inherit the parent planner's broader Gmail authority, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface.
+This is Milestone 4 in its clearest form. It proves that a child agent cannot use a generally send-capable branch to escape its narrower recipient/domain ceiling, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface while still preserving a separate approval-required send path for allowed recipients.
 
 ### Scope
 
 In scope:
 
-- one deterministic Comms overreach attempt for `gmail.send` under a `gmail.draft`-only child warrant
+- one deterministic Comms overreach attempt for `gmail.send` to an external recipient outside the child warrant's allowed recipient/domain constraints
 - real authorization through the existing warrant engine, not a UI-only guard
 - structured denied action data with machine-readable code, human-readable reason, acting agent, and warrant lineage
 - timeline/display/graph-friendly propagation of the denied result into the seeded demo scenario
@@ -1799,7 +1798,7 @@ Out of scope:
 ### Invariants to preserve
 
 - The denied result must come from real warrant authorization and preserve the two-layer model; the local warrant layer blocks before any external send path is treated as executable.
-- Child warrants can only narrow authority, so the Comms child must remain draft-only while the planner/root can still hold broader Gmail capability.
+- Child warrants can only narrow authority, so the Comms child may only send within the parent's approved Northstar recipient/domain ceiling even if the planner/root holds broader Gmail capability.
 - The seeded scenario must remain deterministic, with fixed ids, timestamps, recipients, and event ordering.
 - Denials must remain structured first and human-legible second so both tests and UI can consume the same result.
 - UI binding must stay thin: no hardcoded cosmetic denial that bypasses domain evaluation.
@@ -1807,23 +1806,27 @@ Out of scope:
 ### Implementation steps
 
 1. Extend the action-execution and demo contracts so blocked action attempts retain the underlying authorization denial code, lineage context, and branch attribution needed by display/UI layers.
-2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, emits a blocked action attempt, and produces a timeline-ready denial event without invoking provider send execution.
-3. Wire the main scenario to include the overreach attempt after the allowed draft action, keeping the Comms branch visibly blocked for the demo fixture.
-4. Update display and graph-facing summaries so the blocked Comms branch and its precise denial reason are easy to inspect in the demo page and node detail surface.
-5. Add targeted tests for the capability-missing overreach result, scenario lineage/ordering, and demo-display consumption before running repo validation.
+2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, evaluates recipient/domain constraints, emits a blocked action attempt, and produces a timeline-ready denial event without invoking approval or provider send execution.
+3. Wire the main scenario to include the overreach attempt after the allowed draft action and before the allowed-but-approval-gated send path, keeping the sequence explicit in the demo fixture.
+4. Update display and graph-facing summaries so the blocked Comms branch and its precise policy-denial reason are easy to inspect in the demo page and node detail surface, and remain visually distinct from the later approval-required state.
+5. Add an explicit demo-surface proof sequence that shows the policy denial before the later approval-gated allowed send so judges do not have to infer the distinction from raw state.
+6. Add targeted tests for the `recipient_not_allowed` or `domain_not_allowed` overreach result, scenario lineage/ordering, node-detail consumption, and demo-surface rendering before running repo validation.
 
 ### Validation plan
 
 - `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts`
+- `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts tests/routes.test.tsx`
 - `npm run typecheck`
 - `npm run build`
-- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial is not represented as a disabled-button-only state
+- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial remains distinct from the later approval-required state instead of collapsing into a disabled-button-only treatment
+- route-level render checks that the demo page shows the overreach denial and the later approval gate in one explicit proof sequence
 
 ### Risks
 
 - The current graph/detail contracts focus on warrant summaries, so surfacing the blocked action clearly may require careful extension to avoid coupling UI components directly to raw scenario internals.
 - Marking the Comms agent as blocked for the overreach beat must not accidentally undermine the earlier successful draft action or muddle later approval/revocation slices.
 - The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.
+- If the demo page does not render both the denial and the approval gate explicitly, viewers may still misread the branch as “just pending approval” and miss the proof that policy blocked an earlier attempt.
 
 ## ExecPlan — Branch-Specific Comms Revocation (2026-03-23)
 
@@ -1923,3 +1926,154 @@ Out of scope:
 - The current demo route is mostly server-rendered from fixture loaders, so making revocation interactive without forking state between server and client may require careful state hoisting.
 - Once Comms is revoked, its existing pending approval needs to stay historically visible without implying the branch can still execute, and that distinction may require small display-contract changes.
 - There is no deeper descendant under Comms in the current seeded tree, so descendant invalidation must be explicit in data and tests even if the visible graph branch is shallow.
+
+## ExecPlan — Auth0 Foundation Validation Pass (2026-03-23)
+
+### Objective
+
+Run a concrete validation pass on the Auth0 foundation branch so we can separate what is proven live in this worktree from what still depends on a human-completed Auth0 or Google session.
+
+### Demo relevance
+
+This validates the first two core demo beats and clarifies how they connect to the later delegated-action story:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+
+It also prevents the demo from overstating what is already real versus what is still staged.
+
+### Scope
+
+In scope:
+
+- verify local env-driven Auth0 runtime behavior in this worktree
+- boot the app and exercise login, logout, and Google connect entry points at the route boundary
+- inspect the current root shell and the provider-action placeholders it exposes
+- verify the deterministic delegation and approval surfaces that currently ship in this branch
+- report exact gaps between implemented auth plumbing and true end-to-end provider-backed execution
+
+Out of scope:
+
+- changing product behavior unless testing exposes a clear branch-specific defect
+- claiming Google Calendar or Gmail actions executed live without a signed-in delegated session
+- claiming the deterministic delegation demo is already driven by real Auth0-backed agent execution
+- optional documentation or small fixes only if testing reveals branch-specific issues
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- optional documentation or small auth/runtime fixes only if validation exposes a real issue
+
+### Invariants to preserve
+
+- Auth0-backed external access must remain visibly distinct from local Warrant and approval logic.
+- The report must distinguish route-level verification from human-completed browser flows.
+- The branch must not claim live Gmail or Calendar execution without direct evidence.
+
+### Implementation steps
+
+1. Confirm the active worktree state, env setup, and current auth/provider modules.
+2. Run repo-native validation to catch regressions before live route checks.
+3. Boot the Next.js app on the expected local port and verify `/`, `/auth/login`, `/auth/logout`, `/auth/connect`, and `/demo`.
+4. Inspect whether root-page provider-action panels are real, placeholder, or partially wired.
+5. Summarize the entire Auth0 and Google workflow from dashboard configuration through app runtime behavior, with exact verified versus unverified boundaries.
+
+### Validation steps
+
+- `npm run validate`
+- `npm run dev -- --port 3000`
+- `curl -s -D - -o /dev/null http://127.0.0.1:3000/auth/login`
+- `curl -s -D - -o /dev/null http://127.0.0.1:3000/auth/logout`
+- `curl -s -D - -o /dev/null "http://127.0.0.1:3000/auth/connect?..."`
+- `curl -s http://127.0.0.1:3000`
+- `curl -s http://127.0.0.1:3000/demo`
+
+### Risks
+
+- True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
+- Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
+
+## ExecPlan — Lineage-Aware Audit Timeline (2026-03-23)
+
+### Objective
+
+Build a concise, lineage-aware audit timeline for the seeded main scenario so judges can follow the exact sequence of delegation, enforcement, approval control, revocation, and post-revoke blocking without reading raw logs.
+
+### Demo relevance
+
+This is Workstream F and directly strengthens the core proof sequence in the 3-minute demo:
+
+1. root warrant issued
+2. child warrants issued
+3. useful child actions succeed
+4. overreach is denied
+5. sensitive send pauses for approval
+6. approval decision becomes visible
+7. one branch is revoked
+8. later action from that branch is blocked because authority is gone
+
+It matters because the proof moments already exist, but they are not yet easy to inspect as one attributable story.
+
+### Scope
+
+In scope:
+
+- extend the seeded scenario so the canonical timeline covers approval outcome, branch revocation, and a post-revoke blocked attempt
+- add or refine audit event contracts and display adapters so each event carries actor, warrant, parent warrant, and lineage or branch context needed by the UI
+- render a concise ledger or timeline on `/demo` with human-readable event descriptions and compact attribution
+- keep the audit surface aligned with existing warrant, approval, and revocation logic rather than inventing parallel state
+- add targeted tests for event ordering, attribution, and timeline rendering
+
+Out of scope:
+
+- building a generic developer log viewer
+- persistence, search, filtering, or export features
+- redesigning the existing graph UI beyond what is needed to align the timeline story
+- adding live provider execution beyond the current deterministic scenario
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/audit.ts`
+- `src/contracts/display.ts`
+- `src/contracts/demo.ts`
+- `src/agents/main-scenario.ts`
+- `src/demo-fixtures/display.ts`
+- `src/demo-fixtures/state.ts`
+- `src/app/demo/page.tsx`
+- `src/approvals/*`
+- `src/warrants/revocation.ts`
+- `tests/agents-orchestration.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/routes.test.tsx`
+
+### Invariants to preserve
+
+- Every meaningful event must remain attributable through lineage: root request, acting agent, warrant, parent warrant, timestamp, and result.
+- The timeline must reflect real domain decisions already modeled in the repo: local warrant denial, Auth0 approval gating, and descendant invalidation after revocation.
+- Child warrants may only narrow authority; the audit layer must explain decisions, not weaken or bypass enforcement.
+- The seeded scenario must stay deterministic, with fixed ids, timestamps, ordering, and human-readable copy.
+- The UI must stay concise and serious; it should help a judge explain the system, not bury them in developer diagnostics.
+
+### Implementation steps
+
+1. Audit the current seeded scenario, approval flow, and revocation logic to identify the missing proof moments and the thinnest contract changes needed to represent them.
+2. Extend the audit event model and display adapters so rendered records include event classification, actor label, warrant lineage, branch attribution, and concise explanation text.
+3. Update the canonical main scenario to include the full proof chain after the current pending approval point: approval decision, branch revocation, and one blocked post-revoke action from the revoked branch.
+4. Rework the `/demo` timeline section into a concise ledger view that emphasizes sequence, attribution, and “why the system decided this” instead of raw ids alone.
+5. Add targeted tests for event kind ordering, attribution fields, deterministic fixture output, and demo-page rendering of the new proof moments.
+6. Run repo-native validation, boot the app locally, and verify the seeded timeline visually in the browser.
+
+### Validation steps
+
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run typecheck`
+- `npm run build`
+- `npm run dev -- --port 3000`
+- manual verification on `http://127.0.0.1:3000/demo` that the timeline shows the full seeded proof sequence in the expected order and clearly attributes each event to its agent and warrant lineage
+
+### Risks
+
+- The current scenario stops at `approval.requested`, so extending it without muddying existing proof cards requires careful sequencing and copy discipline.
+- Approval and revocation state already influence graph summaries; adding fuller audit records could expose drift between display adapters and the seeded scenario if both are not updated together.
+- Manual browser verification depends on the local Next.js server booting cleanly in this environment.

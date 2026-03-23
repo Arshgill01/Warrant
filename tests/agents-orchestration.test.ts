@@ -53,6 +53,12 @@ describe("main scenario planner flow", () => {
     const commsSendAction = run.scenario.actionAttempts.find(
       (action) => action.id === "action-comms-send-001",
     );
+    const commsApprovedSend = run.scenario.actionAttempts.find(
+      (action) => action.id === "action-comms-send-approved-001",
+    );
+    const commsPostRevoke = run.scenario.actionAttempts.find(
+      (action) => action.id === "action-comms-send-post-revoke-001",
+    );
     const approval = run.scenario.approvals.find(
       (request) => request.id === "approval-comms-send-001",
     );
@@ -96,6 +102,8 @@ describe("main scenario planner flow", () => {
       }),
     );
     expect(commsOverreachAction?.outcomeReason).toMatch(/outside its warrant/i);
+    expect(commsOverreachAction?.approvalRequestId).toBeUndefined();
+    expect(commsOverreachAction?.providerState).toBeNull();
     expect(commsSendAction).toEqual(
       expect.objectContaining({
         rootRequestId: "request-investor-update-001",
@@ -112,9 +120,28 @@ describe("main scenario planner flow", () => {
     expect(approval).toEqual(
       expect.objectContaining({
         provider: "auth0",
-        status: "pending",
+        status: "approved",
         warrantId: "warrant-comms-child-001",
         affectedRecipients: ["partners@northstar.vc", "finance@northstar.vc"],
+        decidedAt: "2026-04-17T09:11:00.000Z",
+      }),
+    );
+    expect(commsApprovedSend).toEqual(
+      expect.objectContaining({
+        outcome: "allowed",
+        providerState: "success",
+        authorization: expect.objectContaining({
+          code: "allowed",
+        }),
+      }),
+    );
+    expect(commsPostRevoke).toEqual(
+      expect.objectContaining({
+        outcome: "blocked",
+        authorization: expect.objectContaining({
+          code: "warrant_revoked",
+          effectiveStatus: "revoked",
+        }),
       }),
     );
     expect(approval?.preview).toEqual(
@@ -132,8 +159,17 @@ describe("main scenario planner flow", () => {
       "action.allowed",
       "action.blocked",
       "approval.requested",
+      "approval.approved",
+      "action.allowed",
+      "warrant.revoked",
+      "action.blocked",
     ]);
-    expect(run.scenario.agents.find((agent) => agent.id === "agent-comms-001")?.status).toBe("active");
+    expect(run.scenario.revocations).toEqual([
+      expect.objectContaining({
+        warrantId: "warrant-comms-child-001",
+      }),
+    ]);
+    expect(run.scenario.agents.find((agent) => agent.id === "agent-comms-001")?.status).toBe("revoked");
   });
 
   it("stays stable across repeated deterministic runs", () => {

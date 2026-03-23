@@ -9,6 +9,7 @@ import type {
 import type {
   CalendarReadAdapter,
   GmailDraftAdapter,
+  GmailSendAdapter,
 } from "@/actions/provider-adapters";
 import { authorizeAction, type AuthorizationResult } from "@/warrants";
 
@@ -290,10 +291,110 @@ export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & 
   return executeBlockedGmailSendAction({
     ...input,
     fallbackSummary:
-      "Attempted to send the drafted investor follow-ups, but the Comms warrant only allowed drafting.",
+      "Attempted to send the drafted investor follow-ups to an out-of-policy recipient.",
     fallbackResource: `Send email to ${input.recipients.join(" and ")}`,
     blockedTitle: "Comms send attempt denied",
     blockedDescription:
-      "Comms Agent tried to send the prepared follow-ups, but the child warrant stopped the branch because it only allowed drafting.",
+      "Comms Agent tried to send the prepared follow-ups to a recipient outside its approved recipient and domain bounds, so the warrant engine blocked the branch before approval or provider execution.",
   });
+}
+
+function createGmailSendBlockedCopy(input: {
+  authorization: AuthorizationResult;
+}): {
+  summary: string;
+  title: string;
+  description?: string;
+} {
+  if (
+    !input.authorization.allowed &&
+    (input.authorization.code === "warrant_revoked" ||
+      input.authorization.code === "ancestor_revoked")
+  ) {
+    return {
+      summary: "Comms Agent tried to send again after Maya revoked the branch.",
+      title: "Post-revoke send blocked",
+      description:
+        "After Maya revokes the Comms branch, the same branch can no longer send even to previously approved recipients because its warrant has lost authority.",
+    };
+  }
+
+  return {
+    summary: "Comms Agent was blocked before it could send the investor follow-up.",
+    title: "Investor follow-up send blocked",
+  };
+}
+
+export function executeGmailSendAction(input: ExecuteActionBaseInput & {
+  adapter: GmailSendAdapter;
+  user: DemoUser;
+  recipients: string[];
+}): ExecutedScenarioAction {
+  const action: ActionAttempt = {
+    id: input.actionId,
+    kind: "gmail.send",
+    agentId: input.warrant.agentId,
+    warrantId: input.warrant.id,
+    requestedAt: input.requestedAt,
+    target: {
+      recipients: input.recipients,
+    },
+    usage: input.usage,
+  };
+  const authorization = authorizeAction({
+    warrant: input.warrant,
+    warrants: input.warrants,
+    action,
+    now: input.requestedAt,
+  });
+
+  if (!authorization.allowed) {
+    const blockedCopy = createGmailSendBlockedCopy({ authorization });
+
+    return createBlockedActionRecord({
+      action,
+      warrant: input.warrant,
+      authorization,
+      fallbackSummary: blockedCopy.summary,
+      fallbackResource: `Send investor follow-up to ${input.recipients.join(" and ")}`,
+      blockedTitle: blockedCopy.title,
+      blockedDescription: blockedCopy.description,
+    });
+  }
+
+  const adapterResult = input.adapter.sendApprovedFollowUp({
+    user: input.user,
+    recipients: input.recipients,
+  });
+
+  return {
+    attempt: {
+      ...action,
+      rootRequestId: authorization.lineage.rootRequestId,
+      parentWarrantId: authorization.lineage.parentWarrantId,
+      createdAt: input.requestedAt,
+      summary: adapterResult.summary,
+      resource: adapterResult.resource,
+      outcome: "allowed",
+      outcomeReason: adapterResult.outcomeReason,
+      authorization: createAuthorizationSnapshot(authorization),
+      providerState: adapterResult.providerState,
+      providerHeadline: adapterResult.providerHeadline,
+      providerDetail: adapterResult.providerDetail,
+    },
+    timelineEvent: {
+      id: `${input.actionId}:timeline`,
+      at: input.requestedAt,
+      kind: "action.allowed",
+      actorKind: "agent",
+      actorId: input.warrant.agentId,
+      warrantId: input.warrant.id,
+      parentWarrantId: input.warrant.parentId,
+      actionId: input.actionId,
+      approvalId: null,
+      revocationId: null,
+      title: adapterResult.timelineTitle,
+      description: adapterResult.timelineDescription,
+    },
+  };
 }
