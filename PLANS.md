@@ -733,7 +733,6 @@ This is Milestone 2 / Workstream B. It provides the proof that delegated authori
 ### Scope
 
 In scope:
-
 - shared warrant and action contract updates needed for the engine
 - core warrant domain types and resource-constraint structures
 - parent-to-child narrowing validation
@@ -1828,3 +1827,68 @@ Out of scope:
 - Marking the Comms agent as blocked for the overreach beat must not accidentally undermine the earlier successful draft action or muddle later approval/revocation slices.
 - The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.
 - If the demo page does not render both the denial and the approval gate explicitly, viewers may still misread the branch as “just pending approval” and miss the proof that policy blocked an earlier attempt.
+
+## ExecPlan — Auth0 Foundation Validation Pass (2026-03-23)
+
+### Objective
+
+Run a concrete validation pass on the Auth0 foundation branch so we can separate what is proven live in this worktree from what still depends on a human-completed Auth0 or Google session.
+
+### Demo relevance
+
+This validates the first two core demo beats and clarifies how they connect to the later delegated-action story:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+
+It also prevents the demo from overstating what is already real versus what is still staged.
+
+### Scope
+
+In scope:
+
+- verify local env-driven Auth0 runtime behavior in this worktree
+- boot the app and exercise login, logout, and Google connect entry points at the route boundary
+- inspect the current root shell and the provider-action placeholders it exposes
+- verify the deterministic delegation and approval surfaces that currently ship in this branch
+- report exact gaps between implemented auth plumbing and true end-to-end provider-backed execution
+
+Out of scope:
+
+- changing product behavior unless testing exposes a clear branch-specific defect
+- claiming Google Calendar or Gmail actions executed live without a signed-in delegated session
+- claiming the deterministic delegation demo is already driven by real Auth0-backed agent execution
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- optional documentation or small fixes only if testing reveals branch-specific issues
+
+### Invariants to preserve
+
+- Auth0-backed external access must remain visibly distinct from local Warrant and approval logic.
+- The report must distinguish route-level verification from human-completed browser flows.
+- The branch must not claim live Gmail or Calendar execution without direct evidence.
+
+### Implementation steps
+
+1. Confirm the active worktree state, env setup, and current auth/provider modules.
+2. Run repo-native validation to catch regressions before live route checks.
+3. Boot the Next.js app on the expected local port and verify `/`, `/auth/login`, `/auth/logout`, `/auth/connect`, and `/demo`.
+4. Inspect whether root-page provider-action panels are real, placeholder, or partially wired.
+5. Summarize the entire Auth0 and Google workflow from dashboard configuration through app runtime behavior, with exact verified versus unverified boundaries.
+
+### Validation steps
+
+- `npm run validate`
+- `npm run dev -- --port 3000`
+- `curl -s -D - -o /dev/null http://127.0.0.1:3000/auth/login`
+- `curl -s -D - -o /dev/null http://127.0.0.1:3000/auth/logout`
+- `curl -s -D - -o /dev/null "http://127.0.0.1:3000/auth/connect?..."`
+- `curl -s http://127.0.0.1:3000`
+- `curl -s http://127.0.0.1:3000/demo`
+
+### Risks
+
+- True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
+- Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
