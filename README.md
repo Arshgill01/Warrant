@@ -152,7 +152,7 @@ The seeded scenario now includes:
 
 The merged demo route now supports a small rehearsal-only reset path backed by deterministic presets.
 
-- In local `development`, `/demo` shows gated controls to restore the canonical main scenario or a revocation replay state.
+- In local `development`, `/demo` shows gated controls to restore the canonical approval-gate moment (`main`) or the post-revocation replay state (`comms-revoked`).
 - Outside local development, the controls stay hidden unless `WARRANT_ENABLE_DEMO_TOOLS=true`.
 - The current rehearsal state is stored in `WARRANT_DEMO_STATE_FILE` when set, or `/tmp/warrant-demo-state.json` by default.
 - `POST /api/demo/state` accepts either JSON like `{"preset":"main"}` or a form post with `preset=main` / `preset=comms-revoked`.

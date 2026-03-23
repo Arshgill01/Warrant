@@ -284,7 +284,7 @@ export function DemoSurface({
     [scenario],
   );
   const currentApprovalState = toSendApprovalState(
-    examples.commsPendingApproval.status,
+    examples.commsSendApproval.status,
   );
   const commsBranchRevoked = examples.commsChildWarrant.status === "revoked";
   const approvalBoundaries = commsBranchRevoked
@@ -492,7 +492,7 @@ export function DemoSurface({
             meta={
               postRevokeAction
                 ? `Policy code: ${postRevokeAction.authorization.code}`
-                : examples.commsPendingApproval.title
+                : examples.commsSendApproval.title
             }
           />
         </div>
@@ -529,12 +529,12 @@ export function DemoSurface({
                   Current approval request
                 </p>
                 <h3 className="text-2xl font-semibold tracking-tight">
-                  {examples.commsPendingApproval.title}
+                  {examples.commsSendApproval.title}
                 </h3>
               </div>
               <StatusPill
-                label={`${examples.commsPendingApproval.status} through ${examples.commsPendingApproval.provider}`}
-                tone={statusTone[examples.commsPendingApproval.status]}
+                label={`${examples.commsSendApproval.status} through ${examples.commsSendApproval.provider}`}
+                tone={statusTone[examples.commsSendApproval.status]}
               />
             </div>
 
@@ -544,7 +544,7 @@ export function DemoSurface({
                   Why approval is needed
                 </p>
                 <p className="text-sm leading-relaxed text-[var(--foreground)]">
-                  {examples.commsPendingApproval.reason}
+                  {examples.commsSendApproval.reason}
                 </p>
               </div>
               <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
@@ -552,7 +552,7 @@ export function DemoSurface({
                   Blast radius
                 </p>
                 <p className="text-sm leading-relaxed text-[var(--foreground)]">
-                  {examples.commsPendingApproval.blastRadius}
+                  {examples.commsSendApproval.blastRadius}
                 </p>
               </div>
             </div>
@@ -564,7 +564,7 @@ export function DemoSurface({
                     Exact action preview
                   </p>
                   <h4 className="text-lg font-semibold text-[var(--foreground)]">
-                    {examples.commsPendingApproval.preview.subject}
+                    {examples.commsSendApproval.preview.subject}
                   </h4>
                 </div>
                 <StatusPill label="gmail.send" tone="bg-slate-900 text-white" />
@@ -575,13 +575,13 @@ export function DemoSurface({
                     Recipients
                   </p>
                   <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
-                    To: {examples.commsPendingApproval.preview.to.join(", ")}
+                    To: {examples.commsSendApproval.preview.to.join(", ")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--foreground)]">
-                    Cc: {examples.commsPendingApproval.preview.cc.join(", ")}
+                    Cc: {examples.commsSendApproval.preview.cc.join(", ")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--foreground)]">
-                    Draft: {examples.commsPendingApproval.preview.draftId ?? "none"}
+                    Draft: {examples.commsSendApproval.preview.draftId ?? "none"}
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--panel-border)] bg-slate-50/70 p-4">
@@ -592,7 +592,7 @@ export function DemoSurface({
                     className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--foreground)]"
                     style={{ fontFamily: "inherit" }}
                   >
-                    {examples.commsPendingApproval.preview.bodyText}
+                    {examples.commsSendApproval.preview.bodyText}
                   </pre>
                 </div>
               </div>

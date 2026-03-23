@@ -105,7 +105,7 @@ describe("demo fixtures", () => {
     const graphView = loadDelegationGraphView();
     const timeline = loadTimelineEvents();
 
-    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("revoked");
+    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("pending-approval");
     expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.parentId).toBe(
       "warrant-planner-root-001",
     );
@@ -115,7 +115,7 @@ describe("demo fixtures", () => {
         ?.authorization.code,
     ).toBe("recipient_not_allowed");
     expect(timeline.map((event) => event.at)).toEqual([...timeline.map((event) => event.at)].sort());
-    expect(timeline.at(-1)?.actionId).toBe("action-comms-send-post-revoke-001");
+    expect(timeline.at(-1)?.actionId).toBe("action-comms-send-001");
 
     resetDemoState();
 

@@ -15,8 +15,8 @@ import {
   getDisplayScenarioExamples,
 } from "@/demo-fixtures/display";
 import {
+  createMainDemoScenario,
   createDefaultDemoScenario,
-  revokeCommsBranchScenario,
 } from "@/demo-fixtures/scenario";
 
 const DEMO_STATE_VERSION = 1;
@@ -179,16 +179,12 @@ function isStoredState(value: unknown): value is DemoStoredState {
   return isUsableDemoScenario(candidate.scenario);
 }
 
-function createCommsRevokedScenario(): DemoScenario {
-  return revokeCommsBranchScenario(createDefaultDemoScenario());
-}
-
 function createScenarioFromPreset(preset: DemoScenarioPreset): DemoScenario {
   switch (preset) {
     case "main":
-      return createDefaultDemoScenario();
+      return createMainDemoScenario();
     case "comms-revoked":
-      return createCommsRevokedScenario();
+      return createDefaultDemoScenario();
   }
 }
 
