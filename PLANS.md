@@ -1868,6 +1868,76 @@ Out of scope:
 
 - Auth0-backed external access must remain visibly distinct from local Warrant and approval logic.
 - The report must distinguish route-level verification from human-completed browser flows.
+
+## ExecPlan — Demo Rehearsal Reset And Replay Stability (2026-03-23)
+
+### Objective
+
+Add a deterministic, gated demo rehearsal state path so the merged main scenario can be reset, restored, and replayed without manual repair before recording.
+
+### Demo relevance
+
+This strengthens the full 3-minute story by making the seeded main scenario boringly repeatable. The demo should be able to return to a known-good starting point, recover from stale local state, and replay the core proof moments without requiring code edits or hand-fixing in-memory data.
+
+### Scope
+
+In scope:
+
+- a deterministic loader/reset controller for the merged demo scenario
+- one or more stable rehearsal presets derived from the canonical scenario
+- graceful recovery when stored demo state is stale, invalid, or half-complete
+- a clearly gated demo-only control path for reset/restore actions
+- demo-route updates so the rendered surface actually reflects the active rehearsal state
+- targeted tests plus repeated manual reset/preset verification
+
+Out of scope:
+
+- a broad admin dashboard or public operator surface
+- changing the core warrant, approval, or provider semantics beyond what is required for stable replay
+- introducing real persistence or database-backed demo state
+- expanding the scenario to new agents, integrations, or proof beats
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md`
+- `src/app/demo/page.tsx`
+- `src/app/api/demo/*`
+- `src/components/*`
+- `src/demo-fixtures/*`
+- `src/contracts/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- The canonical main scenario stays deterministic, with fixed ids, timestamps, recipients, and event ordering.
+- Demo tools must stay clearly gated and should not appear publicly unless explicitly enabled.
+- Reset and replay helpers must support the existing thesis rather than replace real warrant or Auth0 enforcement with mock-only shortcuts.
+- Any derived replay state should remain semantically honest: revocation should come from the warrant engine and approval status should stay legible.
+- The demo route must present sensible, legible states even when previously stored demo state is malformed or incomplete.
+
+### Implementation steps
+
+1. Add a small rehearsal-state model around the canonical scenario that can restore the default main path and a minimal set of deterministic replay presets.
+2. Back that model with a local demo-state store that reads and writes safely, validates stored state, and self-heals to the canonical preset if the saved state is stale or unusable.
+3. Update the demo fixture loader APIs so all graph, timeline, and example consumers resolve from the rehearsal state instead of a process-local singleton only.
+4. Add a gated demo-only route handler for reading and switching rehearsal state so resets work from both the browser and terminal.
+5. Make the `/demo` route dynamic, derive the visible approval state from the loaded scenario, and add a small gated rehearsal control surface that restores the main scenario and key replay states without becoming an admin UI.
+6. Add targeted tests for deterministic reset, preset replay, stale-state recovery, and route/helper gating, then run focused checks followed by the full repo validation gate.
+
+### Validation plan
+
+- `npm run test -- tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run test`
+- `npm run typecheck`
+- `npm run build`
+- repeated manual checks against the demo reset/preset path to confirm `/demo` returns to the canonical known-good state and can switch to the alternate replay state without leftover stale data
+
+### Risks
+
+- File-backed demo state improves rehearsal reliability locally, but it is still demo infrastructure rather than multi-user production persistence.
+- If the gated controls are too hidden they will not reduce setup friction; if they are too visible they risk becoming a public admin surface, so the gating needs to stay explicit.
+- The current timeline and display contracts are optimized for the canonical scenario, so alternate replay presets must stay narrow to avoid misleading UI states or accidental semantic drift.
 - The branch must not claim live Gmail or Calendar execution without direct evidence.
 
 ### Implementation steps

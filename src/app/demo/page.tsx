@@ -5,18 +5,23 @@ import {
   buildSendApprovalBoundarySummary,
   buildSendApprovalStateMatrix,
 } from "@/approvals";
+import { DemoRehearsalControls } from "@/components/demo/demo-rehearsal-controls";
+import type { SendApprovalState } from "@/contracts";
 import {
   loadDelegationGraphView,
+  loadDemoRehearsalSnapshot,
   loadDemoState,
   loadScenarioExamples,
   loadTimelineEvents,
-} from "@/demo-fixtures";
+} from "@/demo-fixtures/state";
 import { DelegationGraph } from "@/graph";
 
 export const metadata: Metadata = {
   title: "Warrant | Wave 1 Demo",
   description: "Unified Wave 1 demo surface with the seeded scenario, delegation graph, and lineage-aware timeline.",
 };
+
+export const dynamic = "force-dynamic";
 
 const statusTone: Record<string, string> = {
   active: "bg-[var(--accent-soft)] text-[var(--accent)]",
@@ -61,6 +66,21 @@ function formatDateTime(value: string, timeZone: string): string {
     timeStyle: "short",
     timeZone,
   }).format(new Date(value));
+}
+
+function resolveCurrentApprovalState(status: string | undefined): SendApprovalState {
+  switch (status) {
+    case "approved":
+      return "approved";
+    case "denied":
+      return "denied";
+    case "pending":
+      return "pending";
+    case "expired":
+      return "error";
+    default:
+      return "not-requested";
+  }
 }
 
 function ExampleCard({
@@ -211,13 +231,14 @@ function ProofStepCard({
 
 export default function DemoPage() {
   const authEnv = getAuth0Environment();
+  const rehearsal = loadDemoRehearsalSnapshot();
   const scenario = loadDemoState();
   const graphView = loadDelegationGraphView();
   const timeline = loadTimelineEvents();
   const examples = loadScenarioExamples();
   const commsPolicyDenial =
     examples.commsChildWarrant.latestPolicyDenial ?? examples.commsOverreachAction;
-  const currentApprovalState = "pending" as const;
+  const currentApprovalState = resolveCurrentApprovalState(examples.commsPendingApproval.status);
   const approvalBoundaries = buildSendApprovalBoundarySummary(currentApprovalState);
   const approvalStateMatrix = buildSendApprovalStateMatrix();
   
@@ -288,6 +309,18 @@ export default function DemoPage() {
           </div>
         </div>
       </section>
+
+      {rehearsal.controlsEnabled ? (
+        <DemoRehearsalControls
+          currentPreset={rehearsal.preset}
+          currentLabel={rehearsal.label}
+          currentDescription={rehearsal.description}
+          updatedAt={rehearsal.updatedAt}
+          recoveredFromInvalidState={rehearsal.recoveredFromInvalidState}
+          recoveryReason={rehearsal.recoveryReason}
+          presets={rehearsal.presets}
+        />
+      ) : null}
 
       {/* 2. Full-Width Delegation Graph */}
       <section className="w-full">
@@ -426,6 +459,13 @@ export default function DemoPage() {
             Auth0-backed approval result before Warrant can release the live Gmail execution path.
           </p>
         </div>
+
+        {rehearsal.preset === "comms-revoked" ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950">
+            This replay state keeps the pending approval request as historical context, but the Comms branch is already
+            revoked. No later send can execute unless you restore the main scenario first.
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <article className="rounded-[2rem] border border-[var(--panel-border)] bg-slate-50/60 p-6">
