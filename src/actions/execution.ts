@@ -290,10 +290,10 @@ export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & 
   return executeBlockedGmailSendAction({
     ...input,
     fallbackSummary:
-      "Attempted to send the drafted investor follow-ups, but the Comms warrant only allowed drafting.",
+      "Attempted to send the drafted investor follow-ups to an out-of-policy recipient.",
     fallbackResource: `Send email to ${input.recipients.join(" and ")}`,
     blockedTitle: "Comms send attempt denied",
     blockedDescription:
-      "Comms Agent tried to send the prepared follow-ups, but the child warrant stopped the branch because it only allowed drafting.",
+      "Comms Agent tried to send the prepared follow-ups to a recipient outside its approved recipient and domain bounds, so the warrant engine blocked the branch before approval or provider execution.",
   });
 }

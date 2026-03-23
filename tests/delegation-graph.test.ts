@@ -56,6 +56,10 @@ describe("delegation graph view model", () => {
     expect(pendingComms?.status).toBe("pending-approval");
     expect(pendingComms?.pendingApproval?.title).toBe("Approve investor follow-up send");
     expect(pendingComms?.statusSource).toBe("approval");
+    expect(pendingComms?.latestPolicyDenial?.id).toBe("action-comms-send-overreach-001");
+    expect(pendingComms?.latestPolicyDenial?.authorization.code).toBe(
+      "recipient_not_allowed",
+    );
 
     const deniedScenario = createDefaultDemoScenario();
     deniedScenario.approvals = [];
@@ -98,6 +102,7 @@ describe("delegation graph view model", () => {
 
     expect(deniedComms?.status).toBe("denied");
     expect(deniedComms?.latestAction?.id).toBe("action-comms-send-overreach-001");
+    expect(deniedComms?.latestPolicyDenial?.id).toBe("action-comms-send-overreach-001");
     expect(deniedComms?.statusReason).toBe("This warrant does not allow gmail.send.");
   });
 

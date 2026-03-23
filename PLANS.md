@@ -733,7 +733,6 @@ This is Milestone 2 / Workstream B. It provides the proof that delegated authori
 ### Scope
 
 In scope:
-
 - shared warrant and action contract updates needed for the engine
 - core warrant domain types and resource-constraint structures
 - parent-to-child narrowing validation
@@ -1759,17 +1758,17 @@ Focused checks:
 
 ### Objective
 
-Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a draft-only child warrant but attempts a real `gmail.send` action and is denied by the warrant engine with lineage-aware, UI-consumable denial details.
+Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a locally send-eligible child warrant for approved Northstar recipients, then attempts a real `gmail.send` action to an out-of-policy external recipient and is denied by the warrant engine before approval logic or provider execution becomes relevant.
 
 ### Demo relevance
 
-This is Milestone 4 in its clearest form. It proves that a child agent cannot silently inherit the parent planner's broader Gmail authority, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface.
+This is Milestone 4 in its clearest form. It proves that a child agent cannot use a generally send-capable branch to escape its narrower recipient/domain ceiling, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface while still preserving a separate approval-required send path for allowed recipients.
 
 ### Scope
 
 In scope:
 
-- one deterministic Comms overreach attempt for `gmail.send` under a `gmail.draft`-only child warrant
+- one deterministic Comms overreach attempt for `gmail.send` to an external recipient outside the child warrant's allowed recipient/domain constraints
 - real authorization through the existing warrant engine, not a UI-only guard
 - structured denied action data with machine-readable code, human-readable reason, acting agent, and warrant lineage
 - timeline/display/graph-friendly propagation of the denied result into the seeded demo scenario
@@ -1799,7 +1798,7 @@ Out of scope:
 ### Invariants to preserve
 
 - The denied result must come from real warrant authorization and preserve the two-layer model; the local warrant layer blocks before any external send path is treated as executable.
-- Child warrants can only narrow authority, so the Comms child must remain draft-only while the planner/root can still hold broader Gmail capability.
+- Child warrants can only narrow authority, so the Comms child may only send within the parent's approved Northstar recipient/domain ceiling even if the planner/root holds broader Gmail capability.
 - The seeded scenario must remain deterministic, with fixed ids, timestamps, recipients, and event ordering.
 - Denials must remain structured first and human-legible second so both tests and UI can consume the same result.
 - UI binding must stay thin: no hardcoded cosmetic denial that bypasses domain evaluation.
@@ -1807,23 +1806,27 @@ Out of scope:
 ### Implementation steps
 
 1. Extend the action-execution and demo contracts so blocked action attempts retain the underlying authorization denial code, lineage context, and branch attribution needed by display/UI layers.
-2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, emits a blocked action attempt, and produces a timeline-ready denial event without invoking provider send execution.
-3. Wire the main scenario to include the overreach attempt after the allowed draft action, keeping the Comms branch visibly blocked for the demo fixture.
-4. Update display and graph-facing summaries so the blocked Comms branch and its precise denial reason are easy to inspect in the demo page and node detail surface.
-5. Add targeted tests for the capability-missing overreach result, scenario lineage/ordering, and demo-display consumption before running repo validation.
+2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, evaluates recipient/domain constraints, emits a blocked action attempt, and produces a timeline-ready denial event without invoking approval or provider send execution.
+3. Wire the main scenario to include the overreach attempt after the allowed draft action and before the allowed-but-approval-gated send path, keeping the sequence explicit in the demo fixture.
+4. Update display and graph-facing summaries so the blocked Comms branch and its precise policy-denial reason are easy to inspect in the demo page and node detail surface, and remain visually distinct from the later approval-required state.
+5. Add an explicit demo-surface proof sequence that shows the policy denial before the later approval-gated allowed send so judges do not have to infer the distinction from raw state.
+6. Add targeted tests for the `recipient_not_allowed` or `domain_not_allowed` overreach result, scenario lineage/ordering, node-detail consumption, and demo-surface rendering before running repo validation.
 
 ### Validation plan
 
 - `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts`
+- `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts tests/routes.test.tsx`
 - `npm run typecheck`
 - `npm run build`
-- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial is not represented as a disabled-button-only state
+- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial remains distinct from the later approval-required state instead of collapsing into a disabled-button-only treatment
+- route-level render checks that the demo page shows the overreach denial and the later approval gate in one explicit proof sequence
 
 ### Risks
 
 - The current graph/detail contracts focus on warrant summaries, so surfacing the blocked action clearly may require careful extension to avoid coupling UI components directly to raw scenario internals.
 - Marking the Comms agent as blocked for the overreach beat must not accidentally undermine the earlier successful draft action or muddle later approval/revocation slices.
 - The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.
+- If the demo page does not render both the denial and the approval gate explicitly, viewers may still misread the branch as “just pending approval” and miss the proof that policy blocked an earlier attempt.
 
 ## ExecPlan — Branch-Specific Comms Revocation (2026-03-23)
 
@@ -1923,3 +1926,138 @@ Out of scope:
 - The current demo route is mostly server-rendered from fixture loaders, so making revocation interactive without forking state between server and client may require careful state hoisting.
 - Once Comms is revoked, its existing pending approval needs to stay historically visible without implying the branch can still execute, and that distinction may require small display-contract changes.
 - There is no deeper descendant under Comms in the current seeded tree, so descendant invalidation must be explicit in data and tests even if the visible graph branch is shallow.
+ 
+## ExecPlan — Auth0 Foundation Validation Pass (2026-03-23)
+
+### Objective
+
+Run a concrete validation pass on the Auth0 foundation branch so we can separate what is proven live in this worktree from what still depends on a human-completed Auth0 or Google session.
+
+### Demo relevance
+
+This validates the first two core demo beats and clarifies how they connect to the later delegated-action story:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+
+It also prevents the demo from overstating what is already real versus what is still staged.
+
+### Scope
+
+In scope:
+
+- verify local env-driven Auth0 runtime behavior in this worktree
+- boot the app and exercise login, logout, and Google connect entry points at the route boundary
+- inspect the current root shell and the provider-action placeholders it exposes
+- verify the deterministic delegation and approval surfaces that currently ship in this branch
+- report exact gaps between implemented auth plumbing and true end-to-end provider-backed execution
+
+Out of scope:
+
+- changing product behavior unless testing exposes a clear branch-specific defect
+- claiming Google Calendar or Gmail actions executed live without a signed-in delegated session
+- claiming the deterministic delegation demo is already driven by real Auth0-backed agent execution
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- optional documentation or small fixes only if testing reveals branch-specific issues
+
+### Invariants to preserve
+
+- Auth0-backed external access must remain visibly distinct from local Warrant and approval logic.
+- The report must distinguish route-level verification from human-completed browser flows.
+
+### Implementation steps
+
+1. Confirm the active worktree state, env setup, and current auth/provider modules.
+2. Run repo-native validation to catch regressions before live route checks.
+3. Boot the Next.js app on the expected local port and verify `/`, `/auth/login`, `/auth/logout`, `/auth/connect`, and `/demo`.
+4. Inspect whether root-page provider-action panels are real, placeholder, or partially wired.
+5. Summarize the entire Auth0 and Google workflow from dashboard configuration through app runtime behavior, with exact verified versus unverified boundaries.
+
+### Validation steps
+
+- `npm run validate`
+- `npm run dev -- --port 3000`
+- `curl -s -D - -o /dev/null http://127.0.0.1:3000/auth/login`
+- `curl -s -D - -o /dev/null http://127.0.0.1:3000/auth/logout`
+- `curl -s -D - -o /dev/null "http://127.0.0.1:3000/auth/connect?..."`
+- `curl -s http://127.0.0.1:3000`
+- `curl -s http://127.0.0.1:3000/demo`
+
+### Risks
+
+- True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
+- Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
+
+## ExecPlan — Demo Rehearsal Reset And Replay Stability (2026-03-23)
+
+### Objective
+
+Add a deterministic, gated demo rehearsal state path so the merged main scenario can be reset, restored, and replayed without manual repair before recording.
+
+### Demo relevance
+
+This strengthens the full 3-minute story by making the seeded main scenario boringly repeatable. The demo should be able to return to a known-good starting point, recover from stale local state, and replay the core proof moments without requiring code edits or hand-fixing in-memory data.
+
+### Scope
+
+In scope:
+
+- a deterministic loader/reset controller for the merged demo scenario
+- one or more stable rehearsal presets derived from the canonical scenario
+- graceful recovery when stored demo state is stale, invalid, or half-complete
+- a clearly gated demo-only control path for reset/restore actions
+- demo-route updates so the rendered surface actually reflects the active rehearsal state
+- targeted tests plus repeated manual reset/preset verification
+
+Out of scope:
+
+- a broad admin dashboard or public operator surface
+- changing the core warrant, approval, or provider semantics beyond what is required for stable replay
+- introducing real persistence or database-backed demo state
+- expanding the scenario to new agents, integrations, or proof beats
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md`
+- `src/app/demo/page.tsx`
+- `src/app/api/demo/*`
+- `src/components/*`
+- `src/demo-fixtures/*`
+- `src/contracts/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- The canonical main scenario stays deterministic, with fixed ids, timestamps, recipients, and event ordering.
+- Demo tools must stay clearly gated and should not appear publicly unless explicitly enabled.
+- Reset and replay helpers must support the existing thesis rather than replace real warrant or Auth0 enforcement with mock-only shortcuts.
+- Any derived replay state should remain semantically honest: revocation should come from the warrant engine and approval status should stay legible.
+- The demo route must present sensible, legible states even when previously stored demo state is malformed or incomplete.
+
+### Implementation steps
+
+1. Add a small rehearsal-state model around the canonical scenario that can restore the default main path and a minimal set of deterministic replay presets.
+2. Back that model with a local demo-state store that reads and writes safely, validates stored state, and self-heals to the canonical preset if the saved state is stale or unusable.
+3. Update the demo fixture loader APIs so all graph, timeline, and example consumers resolve from the rehearsal state instead of a process-local singleton only.
+4. Add a gated demo-only route handler for reading and switching rehearsal state so resets work from both the browser and terminal.
+5. Make the `/demo` route dynamic, derive the visible approval state from the loaded scenario, and add a small gated rehearsal control surface that restores the main scenario and key replay states without becoming an admin UI.
+6. Add targeted tests for deterministic reset, preset replay, stale-state recovery, and route/helper gating, then run focused checks followed by the full repo validation gate.
+
+### Validation plan
+
+- `npm run test -- tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run test`
+- `npm run typecheck`
+- `npm run build`
+- repeated manual checks against the demo reset/preset path to confirm `/demo` returns to the canonical known-good state and can switch to the alternate replay state without leftover stale data
+
+### Risks
+
+- File-backed demo state improves rehearsal reliability locally, but it is still demo infrastructure rather than multi-user production persistence.
+- If the gated controls are too hidden they will not reduce setup friction; if they are too visible they risk becoming a public admin surface, so the gating needs to stay explicit.
+- The current timeline and display contracts are optimized for the canonical scenario, so alternate replay presets must stay narrow to avoid misleading UI states or accidental semantic drift.
+- The branch must not claim live Gmail or Calendar execution without direct evidence.

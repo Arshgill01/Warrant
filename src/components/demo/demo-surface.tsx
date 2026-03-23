@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   buildSendApprovalBoundarySummary,
@@ -261,9 +262,11 @@ function buildRevokedApprovalBoundarySummary(): {
 export function DemoSurface({
   initialScenario,
   authConfigured,
+  controls,
 }: {
   initialScenario: DemoScenario;
   authConfigured: boolean;
+  controls?: ReactNode;
 }) {
   const [scenario, setScenario] = useState(initialScenario);
 
@@ -403,6 +406,8 @@ export function DemoSurface({
           </div>
         </div>
       </section>
+
+      {controls}
 
       <section className="w-full">
         <DelegationGraph

@@ -134,7 +134,7 @@ The default deterministic scenario lives in `src/demo-fixtures` and is centered 
 Shared consumers should prefer these exports:
 
 - `createDefaultDemoScenario()` for a fresh canonical snapshot
-- `loadDemoState()` and `resetDemoState()` for in-memory rehearsal state
+- `loadDemoState()` and `resetDemoState()` from `src/demo-fixtures/state` for server-side rehearsal state
 - `createDelegationGraphView()` or `loadDelegationGraphView()` for graph-ready display data
 - `createTimelineEventDisplayRecords()` or `loadTimelineEvents()` for timeline-ready display data
 - `getDisplayScenarioExamples()` or `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
@@ -147,6 +147,17 @@ The seeded scenario now includes:
 - a blocked Comms send overreach to an unapproved external recipient, denied by warrant policy before any provider send can execute
 - a locally eligible Comms send attempt that stops in `approval-required`
 - a pending Auth0 approval request with exact preview, recipients, and blast-radius copy
+
+## Demo rehearsal tools
+
+The merged demo route now supports a small rehearsal-only reset path backed by deterministic presets.
+
+- In local `development`, `/demo` shows gated controls to restore the canonical main scenario or a revocation replay state.
+- Outside local development, the controls stay hidden unless `WARRANT_ENABLE_DEMO_TOOLS=true`.
+- The current rehearsal state is stored in `WARRANT_DEMO_STATE_FILE` when set, or `/tmp/warrant-demo-state.json` by default.
+- `POST /api/demo/state` accepts either JSON like `{"preset":"main"}` or a form post with `preset=main` / `preset=comms-revoked`.
+
+If the stored demo state is stale, invalid, or half-written, Warrant automatically repairs it back to the canonical main scenario instead of failing the demo page.
 
 ## Shared display contracts
 
