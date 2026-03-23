@@ -4,7 +4,7 @@ Warrant is a demo-first Auth0 for AI Agents hackathon project built around one t
 
 **OAuth was designed for apps. AI agents need warrants.**
 
-This worktree implements the Auth0-facing shell for the foundation milestone. It makes sign-in, Google connection state, and delegated Gmail or Calendar access setup visible before the warrant engine and graph land.
+This worktree now includes the Auth0-facing shell, the warrant engine, deterministic demo fixtures, the delegation graph, and the approval-gated Gmail send path used in the Wave 2 demo.
 
 ## Stack
 
@@ -90,6 +90,8 @@ Connected-account prerequisites come from Auth0's Token Vault docs: the Google c
 - Gmail draft and Gmail send stay distinct: draft can succeed without implying send is allowed to execute.
 - Gmail send remains a separate execution boundary that requires an explicit upstream release before it will hit the live provider path.
 - The shell keeps local Warrant policy distinct from Auth0-backed external capability so later branches can prove the two-layer model clearly.
+- The demo route now models the sensitive send approval ladder explicitly: `not-requested`, `pending`, `approved`, `denied`, `unavailable`, and `error`.
+- Auth0 is intentionally visible in that flow: local Warrant eligibility and Auth0-backed approval are shown as separate gates before final Gmail execution becomes ready.
 
 ## What works now vs later
 
@@ -138,6 +140,13 @@ Shared consumers should prefer these exports:
 - `getDisplayScenarioExamples()` or `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
 
 This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
+
+The seeded scenario now includes:
+
+- a successful Comms draft action
+- a blocked Comms send overreach to an unapproved external recipient, denied by warrant policy before any provider send can execute
+- a locally eligible Comms send attempt that stops in `approval-required`
+- a pending Auth0 approval request with exact preview, recipients, and blast-radius copy
 
 ## Shared display contracts
 

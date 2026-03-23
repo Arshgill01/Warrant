@@ -1,15 +1,31 @@
-import type { ActionKind, ActionAttemptOutcome } from "@/contracts/action";
+import type {
+  ActionAuthorizationSnapshot,
+  ActionAttemptOutcome,
+  ActionKind,
+  ProviderActionState,
+} from "@/contracts/action";
 import type { AgentRole } from "@/contracts/agent";
-import type { ApprovalStatus } from "@/contracts/approval";
+import type {
+  ApprovalRequestPreview,
+  ApprovalStatus,
+} from "@/contracts/approval";
 import type { LedgerActorKind, LedgerEventKind } from "@/contracts/audit";
 
 export type DisplayStatus =
   | "idle"
   | "active"
   | "blocked"
-  | "pending"
+  | "pending-approval"
   | "revoked"
-  | "expired";
+  | "expired"
+  | "denied";
+
+export type DisplayStatusSource =
+  | "agent"
+  | "approval"
+  | "action"
+  | "provider"
+  | "warrant";
 
 export interface DisplayField {
   label: string;
@@ -23,6 +39,8 @@ export interface DelegationGraphNodeRecord {
   label: string;
   role: AgentRole;
   status: DisplayStatus;
+  statusReason: string;
+  statusSource: DisplayStatusSource;
   purpose: string;
   capabilityBadges: string[];
   canDelegate: boolean;
@@ -38,26 +56,6 @@ export interface DelegationGraphEdgeRecord {
 
 export type GraphNodeDTO = DelegationGraphNodeRecord;
 export type GraphEdgeDTO = DelegationGraphEdgeRecord;
-
-export interface WarrantDisplaySummary {
-  id: string;
-  parentId: string | null;
-  rootRequestId: string;
-  agentId: string;
-  agentLabel: string;
-  agentRole: AgentRole;
-  status: DisplayStatus;
-  purpose: string;
-  capabilities: string[];
-  constraints: DisplayField[];
-  createdAt: string;
-  expiresAt: string;
-  canDelegate: boolean;
-  maxChildren: number;
-  revokedAt: string | null;
-  revocationReason: string | null;
-}
-
 export interface ActionAttemptDisplayRecord {
   id: string;
   kind: ActionKind;
@@ -71,7 +69,11 @@ export interface ActionAttemptDisplayRecord {
   resource: string;
   outcome: ActionAttemptOutcome;
   outcomeReason: string;
+  authorization: ActionAuthorizationSnapshot;
   approvalRequestId: string | null;
+  providerState: ProviderActionState | null;
+  providerHeadline: string | null;
+  providerDetail: string | null;
 }
 
 export interface ApprovalStateDisplayRecord {
@@ -83,12 +85,37 @@ export interface ApprovalStateDisplayRecord {
   status: ApprovalStatus;
   title: string;
   reason: string;
-  preview: string;
+  preview: ApprovalRequestPreview;
   requestedAt: string;
   expiresAt: string;
   decidedAt: string | null;
   affectedRecipients: string[];
   blastRadius: string;
+  provider: "auth0";
+}
+
+export interface WarrantDisplaySummary {
+  id: string;
+  parentId: string | null;
+  parentLabel: string | null;
+  rootRequestId: string;
+  agentId: string;
+  agentLabel: string;
+  agentRole: AgentRole;
+  status: DisplayStatus;
+  statusReason: string;
+  statusSource: DisplayStatusSource;
+  purpose: string;
+  capabilities: string[];
+  constraints: DisplayField[];
+  createdAt: string;
+  expiresAt: string;
+  canDelegate: boolean;
+  maxChildren: number;
+  revokedAt: string | null;
+  revocationReason: string | null;
+  latestAction: ActionAttemptDisplayRecord | null;
+  pendingApproval: ApprovalStateDisplayRecord | null;
 }
 
 export interface TimelineEventDisplayRecord {
@@ -118,4 +145,7 @@ export interface DisplayScenarioExampleSet {
   commsChildWarrant: WarrantDisplaySummary;
   calendarAction: ActionAttemptDisplayRecord;
   commsDraftAction: ActionAttemptDisplayRecord;
+  commsOverreachAction: ActionAttemptDisplayRecord;
+  commsSendAction: ActionAttemptDisplayRecord;
+  commsPendingApproval: ApprovalStateDisplayRecord;
 }

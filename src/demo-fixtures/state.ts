@@ -1,4 +1,5 @@
 import type {
+  ApprovalStateDisplayRecord,
   DelegationGraphDTO,
   DisplayScenarioExampleSet,
   DemoScenario,
@@ -6,6 +7,7 @@ import type {
 } from "@/contracts";
 import { createDefaultDemoScenario } from "@/demo-fixtures/scenario";
 import {
+  createApprovalStateDisplayRecords,
   createDelegationGraphView,
   createTimelineEventDisplayRecords,
   getDisplayScenarioExamples,
@@ -35,6 +37,10 @@ export function loadDelegationGraphView(): DelegationGraphDTO {
 
 export function loadTimelineEvents(): TimelineEventDisplayRecord[] {
   return createTimelineEventDisplayRecords(loadDemoState());
+}
+
+export function loadApprovalStates(): ApprovalStateDisplayRecord[] {
+  return createApprovalStateDisplayRecords(loadDemoState());
 }
 
 export function loadScenarioExamples(): DisplayScenarioExampleSet {

@@ -1,5 +1,6 @@
 import type {
   ActionAttempt,
+  ActionAuthorizationSnapshot,
   DemoActionAttempt,
   DemoUser,
   LedgerEvent,
@@ -9,7 +10,7 @@ import type {
   CalendarReadAdapter,
   GmailDraftAdapter,
 } from "@/actions/provider-adapters";
-import { authorizeAction } from "@/warrants";
+import { authorizeAction, type AuthorizationResult } from "@/warrants";
 
 export interface ExecutedScenarioAction {
   attempt: DemoActionAttempt;
@@ -25,36 +26,53 @@ interface ExecuteActionBaseInput {
   usage?: ActionAttempt["usage"];
 }
 
+function createAuthorizationSnapshot(
+  authorization: AuthorizationResult,
+): ActionAuthorizationSnapshot {
+  return {
+    allowed: authorization.allowed,
+    code: authorization.code,
+    message: authorization.message,
+    effectiveStatus: authorization.effectiveStatus,
+    blockedByWarrantId: authorization.allowed
+      ? null
+      : authorization.blockedByWarrantId,
+  };
+}
+
 function createBlockedActionRecord(input: {
   action: ActionAttempt;
   warrant: WarrantContract;
-  warrants: readonly WarrantContract[];
-  requestedAt: string;
+  authorization: AuthorizationResult;
   fallbackSummary: string;
   fallbackResource: string;
   blockedTitle: string;
+  blockedDescription?: string;
 }): ExecutedScenarioAction {
-  const authorization = authorizeAction({
-    warrant: input.warrant,
-    warrants: input.warrants,
-    action: input.action,
-    now: input.requestedAt,
-  });
+  if (input.authorization.allowed) {
+    throw new Error(
+      `Blocked action record ${input.action.id} requires a denied authorization result.`,
+    );
+  }
 
   return {
     attempt: {
       ...input.action,
-      rootRequestId: input.warrant.rootRequestId,
-      parentWarrantId: input.warrant.parentId,
-      createdAt: input.requestedAt,
+      rootRequestId: input.authorization.lineage.rootRequestId,
+      parentWarrantId: input.authorization.lineage.parentWarrantId,
+      createdAt: input.action.requestedAt,
       summary: input.fallbackSummary,
       resource: input.fallbackResource,
       outcome: "blocked",
-      outcomeReason: authorization.message,
+      outcomeReason: input.authorization.message,
+      authorization: createAuthorizationSnapshot(input.authorization),
+      providerState: null,
+      providerHeadline: null,
+      providerDetail: null,
     },
     timelineEvent: {
       id: `${input.action.id}:timeline`,
-      at: input.requestedAt,
+      at: input.action.requestedAt,
       kind: "action.blocked",
       actorKind: "agent",
       actorId: input.warrant.agentId,
@@ -64,7 +82,7 @@ function createBlockedActionRecord(input: {
       approvalId: null,
       revocationId: null,
       title: input.blockedTitle,
-      description: authorization.message,
+      description: input.blockedDescription ?? input.authorization.message,
     },
   };
 }
@@ -95,8 +113,7 @@ export function executeCalendarReadAction(input: ExecuteActionBaseInput & {
     return createBlockedActionRecord({
       action,
       warrant: input.warrant,
-      warrants: input.warrants,
-      requestedAt: input.requestedAt,
+      authorization,
       fallbackSummary:
         "Calendar Agent was blocked before it could inspect tomorrow's availability.",
       fallbackResource: `Calendar window for ${input.targetDate}`,
@@ -129,6 +146,10 @@ export function executeCalendarReadAction(input: ExecuteActionBaseInput & {
       resource: adapterResult.resource,
       outcome: "allowed",
       outcomeReason: adapterResult.outcomeReason,
+      authorization: createAuthorizationSnapshot(authorization),
+      providerState: adapterResult.providerState,
+      providerHeadline: adapterResult.providerHeadline,
+      providerDetail: adapterResult.providerDetail,
     },
     timelineEvent: {
       id: `${input.actionId}:timeline`,
@@ -175,8 +196,7 @@ export function executeGmailDraftAction(input: ExecuteActionBaseInput & {
     return createBlockedActionRecord({
       action,
       warrant: input.warrant,
-      warrants: input.warrants,
-      requestedAt: input.requestedAt,
+      authorization,
       fallbackSummary:
         "Comms Agent was blocked before it could draft the investor follow-ups.",
       fallbackResource: `Drafts for ${input.recipients.join(" and ")}`,
@@ -200,6 +220,10 @@ export function executeGmailDraftAction(input: ExecuteActionBaseInput & {
       resource: adapterResult.resource,
       outcome: "allowed",
       outcomeReason: adapterResult.outcomeReason,
+      authorization: createAuthorizationSnapshot(authorization),
+      providerState: adapterResult.providerState,
+      providerHeadline: adapterResult.providerHeadline,
+      providerDetail: adapterResult.providerDetail,
     },
     timelineEvent: {
       id: `${input.actionId}:timeline`,
@@ -216,4 +240,44 @@ export function executeGmailDraftAction(input: ExecuteActionBaseInput & {
       description: adapterResult.timelineDescription,
     },
   };
+}
+
+export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & {
+  recipients: string[];
+}): ExecutedScenarioAction {
+  const action: ActionAttempt = {
+    id: input.actionId,
+    kind: "gmail.send",
+    agentId: input.warrant.agentId,
+    warrantId: input.warrant.id,
+    requestedAt: input.requestedAt,
+    target: {
+      recipients: input.recipients,
+    },
+    usage: input.usage,
+  };
+  const authorization = authorizeAction({
+    warrant: input.warrant,
+    warrants: input.warrants,
+    action,
+    now: input.requestedAt,
+  });
+
+  if (authorization.allowed) {
+    throw new Error(
+      `Comms overreach action ${input.actionId} unexpectedly passed warrant authorization.`,
+    );
+  }
+
+  return createBlockedActionRecord({
+    action,
+    warrant: input.warrant,
+    authorization,
+    fallbackSummary:
+      "Attempted to send the drafted investor follow-ups, but the Comms warrant only allowed drafting.",
+    fallbackResource: `Send email to ${input.recipients.join(" and ")}`,
+    blockedTitle: "Comms send attempt denied",
+    blockedDescription:
+      "Comms Agent tried to send the prepared follow-ups, but the child warrant stopped the branch because it only allowed drafting.",
+  });
 }

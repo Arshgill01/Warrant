@@ -1,4 +1,8 @@
 import type { ProviderConnectionSnapshot } from "@/contracts/connection";
+import type {
+  EffectiveWarrantStatus,
+  WarrantDecisionCode,
+} from "@/contracts/policy";
 
 export type ActionKind =
   | "calendar.read"
@@ -51,6 +55,14 @@ export interface ActionAttempt {
   requestedAt: string;
   target?: ActionTarget;
   usage?: ActionUsageSnapshot;
+}
+
+export interface ActionAuthorizationSnapshot {
+  allowed: boolean;
+  code: WarrantDecisionCode;
+  message: string;
+  effectiveStatus: EffectiveWarrantStatus;
+  blockedByWarrantId: string | null;
 }
 
 export interface LocalPolicyCheck {

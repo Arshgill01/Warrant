@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAuth0Environment } from "@/auth/env";
 import {
+  buildSendApprovalBoundarySummary,
+  buildSendApprovalStateMatrix,
+} from "@/approvals";
+import {
   loadDelegationGraphView,
   loadDemoState,
   loadScenarioExamples,
@@ -18,10 +22,22 @@ const statusTone: Record<string, string> = {
   active: "bg-[var(--accent-soft)] text-[var(--accent)]",
   allowed: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
+  denied: "bg-rose-50 text-rose-700",
   "approval-required": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+  "pending-approval": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+  pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+  approved: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
+  expired: "bg-slate-100 text-slate-600",
   revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)]",
   "warrant.issued": "bg-[var(--accent-soft)] text-[var(--accent)]",
   "scenario.loaded": "bg-slate-100 text-slate-700",
+  "approval.requested": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+};
+
+const pathStateTone: Record<"ready" | "blocked" | "pending", string> = {
+  ready: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
+  blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
+  pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
 };
 
 function StatusPill({ label, tone }: { label: string; tone: string }) {
@@ -80,12 +96,92 @@ function ExampleCard({
   );
 }
 
+function BoundaryCard({
+  eyebrow,
+  label,
+  state,
+  gate,
+  headline,
+  detail,
+  nextStep,
+}: {
+  eyebrow: string;
+  label: string;
+  state: "ready" | "blocked" | "pending";
+  gate: string;
+  headline: string;
+  detail: string;
+  nextStep: string | null;
+}) {
+  return (
+    <article className="rounded-2xl border border-[var(--panel-border)] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{eyebrow}</p>
+          <h3 className="text-lg font-semibold text-[var(--foreground)]">{label}</h3>
+        </div>
+        <StatusPill label={state} tone={pathStateTone[state]} />
+      </div>
+      <p className="mb-2 text-sm font-medium text-[var(--foreground)]">{headline}</p>
+      <p className="mb-3 text-sm leading-relaxed text-[var(--muted)]">{detail}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+        Gate: {gate}
+      </p>
+      {nextStep ? (
+        <p className="mt-3 text-sm font-medium text-[var(--foreground)]">Next: {nextStep}</p>
+      ) : null}
+    </article>
+  );
+}
+
+function ApprovalStateCard({
+  label,
+  headline,
+  detail,
+  nextStep,
+  executionReady,
+  isCurrent,
+}: {
+  label: string;
+  headline: string;
+  detail: string;
+  nextStep: string | null;
+  executionReady: boolean;
+  isCurrent: boolean;
+}) {
+  return (
+    <article
+      className={`rounded-2xl border p-5 shadow-sm ${
+        isCurrent
+          ? "border-[var(--accent)] bg-[var(--accent-soft)]/40"
+          : "border-[var(--panel-border)] bg-white"
+      }`}
+    >
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
+        <StatusPill
+          label={executionReady ? "execution ready" : "still blocked"}
+          tone={executionReady ? statusTone.approved : statusTone.blocked}
+        />
+      </div>
+      <p className="mb-2 text-sm font-medium text-[var(--foreground)]">{headline}</p>
+      <p className="mb-3 text-sm leading-relaxed text-[var(--muted)]">{detail}</p>
+      {nextStep ? (
+        <p className="text-sm font-medium text-[var(--foreground)]">Next: {nextStep}</p>
+      ) : null}
+    </article>
+  );
+}
+
 export default function DemoPage() {
   const authEnv = getAuth0Environment();
   const scenario = loadDemoState();
   const graphView = loadDelegationGraphView();
   const timeline = loadTimelineEvents();
   const examples = loadScenarioExamples();
+  const currentApprovalState = "pending" as const;
+  const approvalBoundaries = buildSendApprovalBoundarySummary(currentApprovalState);
+  const approvalStateMatrix = buildSendApprovalStateMatrix();
   
   const agentCounts = scenario.agents.reduce<Record<string, number>>((counts, agent) => {
     counts[agent.status] = (counts[agent.status] ?? 0) + 1;
@@ -181,7 +277,7 @@ export default function DemoPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <ExampleCard
             eyebrow="Calendar Warrant"
             title={examples.calendarChildWarrant.purpose}
@@ -195,7 +291,7 @@ export default function DemoPage() {
             title={examples.commsChildWarrant.purpose}
             statusKey={examples.commsChildWarrant.status}
             statusLabel={examples.commsChildWarrant.status}
-            detail="Planner Agent delegates drafting-only authority to Comms Agent so follow-ups stay inside a role-appropriate ceiling."
+            detail="Planner Agent delegates bounded draft-plus-send authority, but the live send path is still paused behind Auth0 approval."
             meta={`Capabilities: ${examples.commsChildWarrant.capabilities.join(", ")}`}
           />
           <ExampleCard
@@ -214,6 +310,146 @@ export default function DemoPage() {
             detail={examples.commsDraftAction.outcomeReason}
             meta={examples.commsDraftAction.resource}
           />
+          <ExampleCard
+            eyebrow="Blocked Overreach"
+            title={examples.commsOverreachAction.summary}
+            statusKey={examples.commsOverreachAction.outcome}
+            statusLabel={examples.commsOverreachAction.outcome.replace("-", " ")}
+            detail={examples.commsOverreachAction.outcomeReason}
+            meta={`Policy code: ${examples.commsOverreachAction.authorization.code}`}
+          />
+          <ExampleCard
+            eyebrow="Sensitive Send"
+            title={examples.commsSendAction.summary}
+            statusKey={examples.commsSendAction.outcome}
+            statusLabel={examples.commsSendAction.outcome.replace("-", " ")}
+            detail={examples.commsSendAction.outcomeReason}
+            meta={examples.commsPendingApproval.title}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-white p-8 shadow-sm lg:p-12">
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">Sensitive Action Approval</p>
+          <h2 className="text-3xl font-semibold tracking-tight">Draft authority is not send authority.</h2>
+          <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+            The Comms branch can draft the follow-up immediately. Sending the exact email below still requires an
+            Auth0-backed approval result before Warrant can release the live Gmail execution path.
+          </p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <article className="rounded-[2rem] border border-[var(--panel-border)] bg-slate-50/60 p-6">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+                  Current approval request
+                </p>
+                <h3 className="text-2xl font-semibold tracking-tight">{examples.commsPendingApproval.title}</h3>
+              </div>
+              <StatusPill
+                label={`${examples.commsPendingApproval.status} through ${examples.commsPendingApproval.provider}`}
+                tone={statusTone[examples.commsPendingApproval.status]}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Why approval is needed</p>
+                <p className="text-sm leading-relaxed text-[var(--foreground)]">{examples.commsPendingApproval.reason}</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Blast radius</p>
+                <p className="text-sm leading-relaxed text-[var(--foreground)]">{examples.commsPendingApproval.blastRadius}</p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[1.5rem] border border-[var(--panel-border)] bg-white p-5">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Exact action preview</p>
+                  <h4 className="text-lg font-semibold text-[var(--foreground)]">
+                    {examples.commsPendingApproval.preview.subject}
+                  </h4>
+                </div>
+                <StatusPill label="gmail.send" tone="bg-slate-900 text-white" />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-[var(--panel-border)] bg-slate-50/70 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Recipients</p>
+                  <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
+                    To: {examples.commsPendingApproval.preview.to.join(", ")}
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--foreground)]">
+                    Cc: {examples.commsPendingApproval.preview.cc.join(", ")}
+                  </p>
+                  <p className="mt-2 text-sm text-[var(--foreground)]">
+                    Draft: {examples.commsPendingApproval.preview.draftId ?? "none"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[var(--panel-border)] bg-slate-50/70 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Body preview</p>
+                  <pre className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--foreground)]" style={{ fontFamily: "inherit" }}>
+                    {examples.commsPendingApproval.preview.bodyText}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <div className="grid gap-4">
+            <BoundaryCard
+              eyebrow="Policy"
+              label={approvalBoundaries.localEligibility.label}
+              state={approvalBoundaries.localEligibility.state}
+              gate={approvalBoundaries.localEligibility.gate}
+              headline={approvalBoundaries.localEligibility.headline}
+              detail={approvalBoundaries.localEligibility.detail}
+              nextStep={approvalBoundaries.localEligibility.nextStep}
+            />
+            <BoundaryCard
+              eyebrow="Approval"
+              label={approvalBoundaries.approvalRequirement.label}
+              state={approvalBoundaries.approvalRequirement.state}
+              gate={approvalBoundaries.approvalRequirement.gate}
+              headline={approvalBoundaries.approvalRequirement.headline}
+              detail={approvalBoundaries.approvalRequirement.detail}
+              nextStep={approvalBoundaries.approvalRequirement.nextStep}
+            />
+            <BoundaryCard
+              eyebrow="Execution"
+              label={approvalBoundaries.executionReadiness.label}
+              state={approvalBoundaries.executionReadiness.state}
+              gate={approvalBoundaries.executionReadiness.gate}
+              headline={approvalBoundaries.executionReadiness.headline}
+              detail={approvalBoundaries.executionReadiness.detail}
+              nextStep={approvalBoundaries.executionReadiness.nextStep}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">State Model</p>
+              <h3 className="text-2xl font-semibold tracking-tight">What changes when approval changes</h3>
+            </div>
+            <StatusPill label={`current: ${currentApprovalState}`} tone={statusTone[currentApprovalState]} />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {approvalStateMatrix.map((state) => (
+              <ApprovalStateCard
+                key={state.state}
+                label={state.label}
+                headline={state.headline}
+                detail={state.detail}
+                nextStep={state.nextStep}
+                executionReady={state.executionReady}
+                isCurrent={state.state === currentApprovalState}
+              />
+            ))}
+          </div>
         </div>
       </section>
 

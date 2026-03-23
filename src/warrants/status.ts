@@ -1,9 +1,9 @@
+import type { EffectiveWarrantStatus } from "@/contracts/policy";
 import type { WarrantContract } from "@/contracts/warrant";
 import { createWarrantMap, toTimestamp } from "@/warrants/helpers";
 import { createReason } from "@/warrants/reasons";
 import type {
   EffectiveWarrantEvaluation,
-  EffectiveWarrantStatus,
 } from "@/warrants/types";
 
 export function evaluateWarrantStatus(

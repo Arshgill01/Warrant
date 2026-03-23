@@ -1,4 +1,14 @@
-import type { CalendarWindowConstraint, DemoUser } from "@/contracts";
+import type {
+  CalendarWindowConstraint,
+  DemoUser,
+  ProviderActionState,
+} from "@/contracts";
+
+interface DeterministicProviderAdapterMeta {
+  providerState: ProviderActionState;
+  providerHeadline: string;
+  providerDetail: string;
+}
 
 export interface CalendarReadAdapterInput {
   user: DemoUser;
@@ -7,7 +17,7 @@ export interface CalendarReadAdapterInput {
   calendarWindow: CalendarWindowConstraint;
 }
 
-export interface CalendarReadAdapterOutput {
+export interface CalendarReadAdapterOutput extends DeterministicProviderAdapterMeta {
   summary: string;
   resource: string;
   outcomeReason: string;
@@ -27,7 +37,7 @@ export interface GmailDraftAdapterInput {
   recipients: string[];
 }
 
-export interface GmailDraftAdapterOutput {
+export interface GmailDraftAdapterOutput extends DeterministicProviderAdapterMeta {
   summary: string;
   resource: string;
   outcomeReason: string;
@@ -51,6 +61,11 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
     calendar: {
       readAvailability(input) {
         return {
+          providerState: "success",
+          providerHeadline:
+            "Calendar Agent reached the delegated Google Calendar path successfully.",
+          providerDetail:
+            "The deterministic Wave 2 adapter simulates a successful Auth0-backed calendar read for the bounded scheduling window.",
           summary:
             "Reviewed tomorrow's availability before drafting the investor update.",
           resource: `Calendar window for ${input.targetDate}`,
@@ -67,14 +82,19 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
     comms: {
       createFollowUpDrafts(input) {
         return {
+          providerState: "success",
+          providerHeadline:
+            "Comms Agent reached the delegated Gmail draft path successfully.",
+          providerDetail:
+            "The deterministic Wave 2 adapter simulates a successful Auth0-backed Gmail draft creation for the approved recipients.",
           summary:
             "Drafted investor follow-up emails for the approved internal recipients.",
           resource: `Drafts for ${input.recipients.join(" and ")}`,
           outcomeReason:
-            "The Comms child warrant allows drafting follow-ups for the approved Northstar recipients but does not include send authority.",
+            "The Comms child warrant allows drafting follow-ups immediately, while live sending remains gated behind a separate approval step.",
           timelineTitle: "Investor follow-up drafts created",
           timelineDescription:
-            "Comms Agent drafts the follow-up emails for the approved Northstar recipients and stops at draft creation for later approval-track work.",
+            "Comms Agent drafts the follow-up emails for the approved Northstar recipients and stops before live send so the approval layer can review the exact message.",
           draftIds: ["draft-investor-update-001", "draft-investor-update-002"],
           preview:
             "Subject: Investor update for tomorrow\n\nSharing the draft update and proposed follow-up timing before we send anything externally.",

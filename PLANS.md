@@ -1563,3 +1563,264 @@ Out of scope:
 - The current shared contracts do not yet include orchestration-specific execution metadata, so new types may be needed if the existing display shape proves too narrow.
 - The action layer already has Auth0-path helpers for connection readiness; the new execution adapters must not blur those concerns or duplicate policy logic inconsistently.
 - Replacing static demo fixtures with generated scenario data could expose latent assumptions in the demo UI or tests that currently rely on hard-coded ids or ordering.
+
+## ExecPlan — Wave 2 Graph Binding To Shared State (2026-03-23)
+
+### Objective
+
+Bind the delegation graph UI to the real shared Wave 2 state surfaces so graph nodes, edges, and node details are derived from orchestration, warrant, approval, and provider-action outputs instead of graph-local assumptions.
+
+### Demo relevance
+
+This is directly on the core three-minute path. The graph is the main proof artifact for delegated authority, blocked overreach, approval-gated actions, and branch revocation. If the graph is not reading the same state as the rest of the product story, the thesis becomes less credible.
+
+### Scope
+
+In scope:
+
+- audit and use the shared Wave 2 contract surfaces from `src/contracts/*`
+- bind the graph from real scenario state produced by the current orchestration path
+- extend the graph-facing display DTOs only where needed to carry truthful node status and detail data
+- map warrant, action, approval, and provider-state signals into stable graph node and edge state
+- support the graph statuses needed for the demo: active, blocked, pending approval, revoked, expired, denied
+- keep the existing graph component surface and stable layout behavior
+- update node-detail rendering so it reflects real status, capability, expiry, and recent status context
+- add targeted tests for the new binding logic and state transitions
+
+Out of scope:
+
+- redesigning the graph UI
+- broad warrant-engine redesign
+- replacing the deterministic seeded scenario with live provider execution
+- full approval UX or persistence changes beyond reflecting current shared state
+- deep new graph interactions beyond the existing selection and revoke affordances
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/display.ts`
+- `src/contracts/demo.ts`
+- `src/actions/provider-adapters.ts`
+- `src/actions/execution.ts`
+- `src/demo-fixtures/display.ts`
+- `src/demo-fixtures/state.ts`
+- `src/components/graph/*`
+- `src/graph/*`
+- `src/app/demo/page.tsx`
+- `tests/*`
+
+### Invariants to preserve
+
+- Keep the graph shallow, stable, and demo-legible.
+- Keep domain-to-view translation in explicit adapters instead of scattering warrant internals through presentational components.
+- Keep the graph fed by shared DTOs/contracts, not graph-local mock data.
+- Preserve the existing graph component prop surface where practical.
+- Keep branch revocation visually obvious and limited to the selected branch and descendants.
+- Do not conflate Auth0/provider-state concerns with local warrant authorization; reflect both honestly when present.
+
+### Implementation steps
+
+1. Extend the shared graph/display DTOs only where needed so node status and detail panels can represent real action, approval, and provider context without reaching back into raw domain models.
+2. Update action execution records to retain the structured policy/provider status needed by the graph-binding layer.
+3. Refactor the display adapter that builds graph data so it derives node status from the latest relevant warrant, action, approval, and provider signals in the shared scenario state.
+4. Keep the current stable node/edge layout logic, but update graph nodes, edges, and node details to consume the richer DTOs and distinct status treatments.
+5. Add targeted tests covering active, blocked, pending approval, revoked, expired, and denied graph states plus node-detail accuracy.
+6. Run lint, typecheck, test, build, then run the app locally and verify the graph remains readable and visually stable when rendered from the bound state.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run dev -- --port 3000`
+
+Manual scenario checks:
+
+- `/demo` renders the graph from the shared scenario state
+- node details show capabilities, purpose, expiry, and status reason from shared DTOs
+- approval-required or denied state changes are reflected on the affected branch without layout drift
+- revoke interaction still clearly marks the branch and descendants
+
+### Risks
+
+- The current deterministic orchestration output does not yet persist full live provider envelopes, so the binding layer may need semi-live fields that represent Wave 2 provider status without overfitting to today’s demo state.
+- The graph currently mutates revoked presentation state locally; keeping that demo interaction while staying truthful to the shared data boundary needs care.
+- Adding richer detail DTOs may expose assumptions in the existing node-detail panel or demo page proof-point cards that were safe with the older, narrower summaries.
+
+Focused checks:
+
+- Comms draft action succeeds without needing send approval
+- Comms send path is locally eligible but not execution-ready before approval
+- the seeded approval request includes exact preview, recipients, blast radius, and Auth0-specific reason text
+- approved state flips execution readiness while denied, unavailable, and error stay blocked
+- `/demo` renders the approval surface and state model in a way that is legible for the demo
+
+### Risks
+
+- The repo does not yet have a real approval backend, so the demo must stay honest that this slice is deterministic and UI-modeled rather than callback-driven.
+- Changing the Comms child warrant to include local send eligibility could blur the earlier “draft-only” story if the UI copy does not clearly explain that approval is still required for execution.
+- Adding more approval metadata may expose existing display-contract assumptions in the demo route or tests that currently only expect simple pending approval records.
+
+## ExecPlan — Sensitive Send Approval Flow (2026-03-23)
+
+### Objective
+
+Implement the Comms Agent sensitive-action approval flow so drafting and sending remain separate, Auth0 is visibly load-bearing for real-world execution, and approval outcome changes whether send can proceed.
+
+### Demo relevance
+
+This is Milestone 5 work and one of the strongest proof points in the three-minute story:
+
+1. Comms Agent drafts useful follow-up emails without friction
+2. the same branch cannot send just because local Warrant policy allows the category
+3. Auth0-backed approval becomes the explicit control surface for live external execution
+4. judges can see pending, approved, denied, unavailable, and error states in one legible demo path
+
+### Scope
+
+In scope:
+
+- explicit approval-request and send-approval-state modeling for the Gmail send path
+- deterministic seeded scenario updates so Comms drafting and sending are separate but related steps
+- a visible send preview surface with recipients, blast radius, and plain-language approval reason
+- clear separation between local action eligibility, approval requirement, approval state, and final execution readiness
+- demo-surface rendering for not-requested, pending, approved, denied, unavailable, and error states
+- focused tests for scenario wiring, approval-state logic, and route rendering
+
+Out of scope:
+
+- real Auth0 approval callbacks or persistence
+- new provider integrations beyond Google
+- redesigning unrelated graph or auth-shell sections
+- branch revocation implementation changes
+- broad warrant-engine refactors unrelated to the send-approval story
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md`
+- `src/contracts/approval.ts`
+- `src/contracts/demo.ts`
+- `src/contracts/display.ts`
+- `src/contracts/audit.ts`
+- `src/approvals/*`
+- `src/agents/*`
+- `src/demo-fixtures/*`
+- `src/app/demo/page.tsx`
+- `src/components/graph/*`
+- `tests/*`
+
+### Invariants to preserve
+
+- Draft and send must remain distinct capabilities or execution states.
+- Local Warrant allow must stay separate from Auth0-backed approval and provider execution.
+- Child warrants may only narrow parent authority.
+- The flow must stay deterministic and demo-ready without hidden server-only state changes.
+- User-facing copy must describe consequences, not OAuth jargon.
+
+### Implementation steps
+
+1. Extend approval contracts with a narrow send-approval state model and an explicit approval request shape that can carry exact preview, recipients, and blast-radius text.
+2. Update the deterministic planner scenario so Comms keeps draft capability, gains bounded local send eligibility, and emits a pending send approval request plus a lineage-aware send action that is blocked on approval.
+3. Add approval helpers that compute the visible state ladder from `not-requested` through `error`, including when execution becomes ready and when Auth0 is the blocking layer.
+4. Render a dedicated approval surface on `/demo` that shows:
+   - exact send preview
+   - recipients
+   - plain-language approval reason
+   - blast radius
+   - local eligibility vs approval gate vs execution readiness
+   - the state ladder for pending, approved, denied, unavailable, and error outcomes
+5. Update graph/display adapters and any related node-status rendering needed to keep pending approval legible without conflating it with revocation or policy denial.
+6. Add targeted tests, then run the standard repo validation commands.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Focused checks:
+
+- Comms draft action succeeds without needing send approval
+- Comms send path is locally eligible but not execution-ready before approval
+- the seeded approval request includes exact preview, recipients, blast radius, and Auth0-specific reason text
+- approved state flips execution readiness while denied, unavailable, and error stay blocked
+- `/demo` renders the approval surface and state model in a way that is legible for the demo
+
+### Risks
+
+- The repo does not yet have a real approval backend, so the demo must stay honest that this slice is deterministic and UI-modeled rather than callback-driven.
+- Changing the Comms child warrant to include local send eligibility could blur the earlier “draft-only” story if the UI copy does not clearly explain that approval is still required for execution.
+- Adding more approval metadata may expose existing display-contract assumptions in the demo route or tests that currently only expect simple pending approval records.
+
+## ExecPlan — Comms Overreach Proof (2026-03-23)
+
+### Objective
+
+Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a draft-only child warrant but attempts a real `gmail.send` action and is denied by the warrant engine with lineage-aware, UI-consumable denial details.
+
+### Demo relevance
+
+This is Milestone 4 in its clearest form. It proves that a child agent cannot silently inherit the parent planner's broader Gmail authority, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface.
+
+### Scope
+
+In scope:
+
+- one deterministic Comms overreach attempt for `gmail.send` under a `gmail.draft`-only child warrant
+- real authorization through the existing warrant engine, not a UI-only guard
+- structured denied action data with machine-readable code, human-readable reason, acting agent, and warrant lineage
+- timeline/display/graph-friendly propagation of the denied result into the seeded demo scenario
+- targeted UI updates that make the denied branch and denial reason legible without redesigning the overall graph screen
+- tests covering the exact overreach case and its deterministic scenario output
+
+Out of scope:
+
+- multiple overreach variants in the same slice
+- generic permission-management frameworks or broad policy refactors
+- approval-flow implementation for allowed sends
+- unrelated redesign of the demo page or delegation graph layout
+- live provider-send execution changes beyond preserving the existing external-boundary contract
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/actions/*`
+- `src/agents/*`
+- `src/contracts/*`
+- `src/demo-fixtures/*`
+- `src/components/graph/*`
+- `src/graph/*`
+- `src/app/demo/page.tsx`
+- `tests/*`
+
+### Invariants to preserve
+
+- The denied result must come from real warrant authorization and preserve the two-layer model; the local warrant layer blocks before any external send path is treated as executable.
+- Child warrants can only narrow authority, so the Comms child must remain draft-only while the planner/root can still hold broader Gmail capability.
+- The seeded scenario must remain deterministic, with fixed ids, timestamps, recipients, and event ordering.
+- Denials must remain structured first and human-legible second so both tests and UI can consume the same result.
+- UI binding must stay thin: no hardcoded cosmetic denial that bypasses domain evaluation.
+
+### Implementation steps
+
+1. Extend the action-execution and demo contracts so blocked action attempts retain the underlying authorization denial code, lineage context, and branch attribution needed by display/UI layers.
+2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, emits a blocked action attempt, and produces a timeline-ready denial event without invoking provider send execution.
+3. Wire the main scenario to include the overreach attempt after the allowed draft action, keeping the Comms branch visibly blocked for the demo fixture.
+4. Update display and graph-facing summaries so the blocked Comms branch and its precise denial reason are easy to inspect in the demo page and node detail surface.
+5. Add targeted tests for the capability-missing overreach result, scenario lineage/ordering, and demo-display consumption before running repo validation.
+
+### Validation plan
+
+- `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts`
+- `npm run typecheck`
+- `npm run build`
+- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial is not represented as a disabled-button-only state
+
+### Risks
+
+- The current graph/detail contracts focus on warrant summaries, so surfacing the blocked action clearly may require careful extension to avoid coupling UI components directly to raw scenario internals.
+- Marking the Comms agent as blocked for the overreach beat must not accidentally undermine the earlier successful draft action or muddle later approval/revocation slices.
+- The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.

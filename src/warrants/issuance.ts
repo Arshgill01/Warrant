@@ -1,3 +1,4 @@
+import type { PolicyReason } from "@/contracts/policy";
 import type { WarrantContract } from "@/contracts/warrant";
 import {
   capabilitiesUseCalendar,
@@ -17,7 +18,6 @@ import type {
   ChildWarrantValidationResult,
   IssueChildWarrantResult,
   IssueRootWarrantInput,
-  PolicyReason,
   ValidateChildWarrantInput,
 } from "@/warrants/types";
 

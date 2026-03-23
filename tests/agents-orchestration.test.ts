@@ -25,22 +25,36 @@ describe("main scenario planner flow", () => {
         assignedRole: "comms",
         status: "completed",
       }),
+      expect.objectContaining({
+        id: "task-comms-send-approval-001",
+        assignedRole: "comms",
+        status: "delegated",
+      }),
     ]);
     expect(rootWarrant?.capabilities).toContain("gmail.send");
     expect(calendarWarrant?.capabilities).toEqual(["calendar.read"]);
-    expect(commsWarrant?.capabilities).toEqual(["gmail.draft"]);
-    expect(commsWarrant?.capabilities).not.toContain("gmail.send");
+    expect(commsWarrant?.capabilities).toEqual(["gmail.draft", "gmail.send"]);
+    expect(commsWarrant?.resourceConstraints.maxSends).toBe(1);
     expect(calendarWarrant?.parentId).toBe(rootWarrant?.id);
     expect(commsWarrant?.parentId).toBe(rootWarrant?.id);
   });
 
-  it("records lineage-aware allowed child actions for calendar and comms work", () => {
+  it("records draft success separately from send approval gating", () => {
     const run = runMainScenarioPlannerFlow();
     const calendarAction = run.scenario.actionAttempts.find(
       (action) => action.id === "action-calendar-read-001",
     );
     const commsAction = run.scenario.actionAttempts.find(
       (action) => action.id === "action-comms-draft-001",
+    );
+    const commsOverreachAction = run.scenario.actionAttempts.find(
+      (action) => action.id === "action-comms-send-overreach-001",
+    );
+    const commsSendAction = run.scenario.actionAttempts.find(
+      (action) => action.id === "action-comms-send-001",
+    );
+    const approval = run.scenario.approvals.find(
+      (request) => request.id === "approval-comms-send-001",
     );
 
     expect(calendarAction).toEqual(
@@ -50,6 +64,9 @@ describe("main scenario planner flow", () => {
         warrantId: "warrant-calendar-child-001",
         parentWarrantId: "warrant-planner-root-001",
         outcome: "allowed",
+        authorization: expect.objectContaining({
+          code: "allowed",
+        }),
       }),
     );
     expect(commsAction).toEqual(
@@ -59,6 +76,51 @@ describe("main scenario planner flow", () => {
         warrantId: "warrant-comms-child-001",
         parentWarrantId: "warrant-planner-root-001",
         outcome: "allowed",
+        authorization: expect.objectContaining({
+          code: "allowed",
+        }),
+      }),
+    );
+    expect(commsOverreachAction).toEqual(
+      expect.objectContaining({
+        rootRequestId: "request-investor-update-001",
+        agentId: "agent-comms-001",
+        warrantId: "warrant-comms-child-001",
+        parentWarrantId: "warrant-planner-root-001",
+        kind: "gmail.send",
+        outcome: "blocked",
+        authorization: expect.objectContaining({
+          code: "recipient_not_allowed",
+          blockedByWarrantId: "warrant-comms-child-001",
+        }),
+      }),
+    );
+    expect(commsOverreachAction?.outcomeReason).toMatch(/outside its warrant/i);
+    expect(commsSendAction).toEqual(
+      expect.objectContaining({
+        rootRequestId: "request-investor-update-001",
+        agentId: "agent-comms-001",
+        warrantId: "warrant-comms-child-001",
+        parentWarrantId: "warrant-planner-root-001",
+        outcome: "approval-required",
+        approvalRequestId: "approval-comms-send-001",
+        authorization: expect.objectContaining({
+          code: "allowed",
+        }),
+      }),
+    );
+    expect(approval).toEqual(
+      expect.objectContaining({
+        provider: "auth0",
+        status: "pending",
+        warrantId: "warrant-comms-child-001",
+        affectedRecipients: ["partners@northstar.vc", "finance@northstar.vc"],
+      }),
+    );
+    expect(approval?.preview).toEqual(
+      expect.objectContaining({
+        actionKind: "gmail.send",
+        subject: "Investor update follow-up for April 18",
       }),
     );
     expect(run.scenario.timeline.map((event) => event.kind)).toEqual([
@@ -68,7 +130,10 @@ describe("main scenario planner flow", () => {
       "warrant.issued",
       "action.allowed",
       "action.allowed",
+      "action.blocked",
+      "approval.requested",
     ]);
+    expect(run.scenario.agents.find((agent) => agent.id === "agent-comms-001")?.status).toBe("active");
   });
 
   it("stays stable across repeated deterministic runs", () => {
