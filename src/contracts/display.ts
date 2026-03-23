@@ -115,6 +115,7 @@ export interface WarrantDisplaySummary {
   revokedAt: string | null;
   revocationReason: string | null;
   latestAction: ActionAttemptDisplayRecord | null;
+  latestPolicyDenial: ActionAttemptDisplayRecord | null;
   pendingApproval: ApprovalStateDisplayRecord | null;
 }
 

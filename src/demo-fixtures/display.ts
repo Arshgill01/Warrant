@@ -87,6 +87,10 @@ function formatConstraintFields(
   return fields;
 }
 
+function isPolicyDeniedAction(record: ActionAttemptDisplayRecord): boolean {
+  return record.outcome === "blocked" && record.providerState === null;
+}
+
 function getLatestRecordsByWarrantId<Record extends { warrantId: string; requestedAt?: string; expiresAt?: string }>(
   records: Record[],
   getAt: (record: Record) => string,
@@ -212,6 +216,10 @@ export function createWarrantDisplaySummaries(
     actionRecords,
     (record) => record.requestedAt,
   );
+  const latestPolicyDenialByWarrantId = getLatestRecordsByWarrantId(
+    actionRecords.filter(isPolicyDeniedAction),
+    (record) => record.requestedAt,
+  );
   const pendingApprovalByWarrantId = getLatestRecordsByWarrantId(
     approvalRecords.filter((approval) => approval.status === "pending"),
     (record) => record.requestedAt,
@@ -229,6 +237,8 @@ export function createWarrantDisplaySummaries(
       ? agentsById.get(parentWarrant.agentId)?.label ?? parentWarrant.agentId
       : null;
     const latestAction = latestActionByWarrantId.get(warrant.id) ?? null;
+    const latestPolicyDenial =
+      latestPolicyDenialByWarrantId.get(warrant.id) ?? null;
     const pendingApproval = pendingApprovalByWarrantId.get(warrant.id) ?? null;
     const status = resolveDisplayStatus({
       agentStatus: agent.status,
@@ -262,6 +272,7 @@ export function createWarrantDisplaySummaries(
       revokedAt: warrant.revokedAt,
       revocationReason: warrant.revocationReason,
       latestAction,
+      latestPolicyDenial,
       pendingApproval,
     };
   });

@@ -1759,17 +1759,17 @@ Focused checks:
 
 ### Objective
 
-Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a draft-only child warrant but attempts a real `gmail.send` action and is denied by the warrant engine with lineage-aware, UI-consumable denial details.
+Implement one deep, thesis-proof overreach scenario where the Comms Agent holds a locally send-eligible child warrant for approved Northstar recipients, then attempts a real `gmail.send` action to an out-of-policy external recipient and is denied by the warrant engine before approval logic or provider execution becomes relevant.
 
 ### Demo relevance
 
-This is Milestone 4 in its clearest form. It proves that a child agent cannot silently inherit the parent planner's broader Gmail authority, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface.
+This is Milestone 4 in its clearest form. It proves that a child agent cannot use a generally send-capable branch to escape its narrower recipient/domain ceiling, and it gives judges a concrete blocked action they can inspect in both the domain model and the demo surface while still preserving a separate approval-required send path for allowed recipients.
 
 ### Scope
 
 In scope:
 
-- one deterministic Comms overreach attempt for `gmail.send` under a `gmail.draft`-only child warrant
+- one deterministic Comms overreach attempt for `gmail.send` to an external recipient outside the child warrant's allowed recipient/domain constraints
 - real authorization through the existing warrant engine, not a UI-only guard
 - structured denied action data with machine-readable code, human-readable reason, acting agent, and warrant lineage
 - timeline/display/graph-friendly propagation of the denied result into the seeded demo scenario
@@ -1799,7 +1799,7 @@ Out of scope:
 ### Invariants to preserve
 
 - The denied result must come from real warrant authorization and preserve the two-layer model; the local warrant layer blocks before any external send path is treated as executable.
-- Child warrants can only narrow authority, so the Comms child must remain draft-only while the planner/root can still hold broader Gmail capability.
+- Child warrants can only narrow authority, so the Comms child may only send within the parent's approved Northstar recipient/domain ceiling even if the planner/root holds broader Gmail capability.
 - The seeded scenario must remain deterministic, with fixed ids, timestamps, recipients, and event ordering.
 - Denials must remain structured first and human-legible second so both tests and UI can consume the same result.
 - UI binding must stay thin: no hardcoded cosmetic denial that bypasses domain evaluation.
@@ -1807,20 +1807,24 @@ Out of scope:
 ### Implementation steps
 
 1. Extend the action-execution and demo contracts so blocked action attempts retain the underlying authorization denial code, lineage context, and branch attribution needed by display/UI layers.
-2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, emits a blocked action attempt, and produces a timeline-ready denial event without invoking provider send execution.
-3. Wire the main scenario to include the overreach attempt after the allowed draft action, keeping the Comms branch visibly blocked for the demo fixture.
-4. Update display and graph-facing summaries so the blocked Comms branch and its precise denial reason are easy to inspect in the demo page and node detail surface.
-5. Add targeted tests for the capability-missing overreach result, scenario lineage/ordering, and demo-display consumption before running repo validation.
+2. Add a deterministic Comms `gmail.send` overreach execution path that routes through `authorizeAction`, evaluates recipient/domain constraints, emits a blocked action attempt, and produces a timeline-ready denial event without invoking approval or provider send execution.
+3. Wire the main scenario to include the overreach attempt after the allowed draft action and before the allowed-but-approval-gated send path, keeping the sequence explicit in the demo fixture.
+4. Update display and graph-facing summaries so the blocked Comms branch and its precise policy-denial reason are easy to inspect in the demo page and node detail surface, and remain visually distinct from the later approval-required state.
+5. Add an explicit demo-surface proof sequence that shows the policy denial before the later approval-gated allowed send so judges do not have to infer the distinction from raw state.
+6. Add targeted tests for the `recipient_not_allowed` or `domain_not_allowed` overreach result, scenario lineage/ordering, node-detail consumption, and demo-surface rendering before running repo validation.
 
 ### Validation plan
 
 - `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts`
+- `npm run test -- tests/warrant-engine.test.ts tests/agents-orchestration.test.ts tests/delegation-graph.test.ts tests/routes.test.tsx`
 - `npm run typecheck`
 - `npm run build`
-- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial is not represented as a disabled-button-only state
+- manual verification on `/demo` that the Comms branch shows a blocked send attempt with warrant attribution and a precise reason, and that the denial remains distinct from the later approval-required state instead of collapsing into a disabled-button-only treatment
+- route-level render checks that the demo page shows the overreach denial and the later approval gate in one explicit proof sequence
 
 ### Risks
 
 - The current graph/detail contracts focus on warrant summaries, so surfacing the blocked action clearly may require careful extension to avoid coupling UI components directly to raw scenario internals.
 - Marking the Comms agent as blocked for the overreach beat must not accidentally undermine the earlier successful draft action or muddle later approval/revocation slices.
 - The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.
+- If the demo page does not render both the denial and the approval gate explicitly, viewers may still misread the branch as “just pending approval” and miss the proof that policy blocked an earlier attempt.
