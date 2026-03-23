@@ -5,8 +5,6 @@ import {
   ReactFlow,
   Background,
   Controls,
-  useNodesState,
-  useEdgesState,
   type NodeMouseHandler,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -21,7 +19,6 @@ import type {
 import {
   buildDelegationGraphEdges,
   buildDelegationGraphNodes,
-  collectDescendantNodeIds,
 } from "@/graph/view-model";
 
 const nodeTypes = {
@@ -32,6 +29,7 @@ type DelegationGraphProps = {
   graphNodes: GraphNodeDTO[];
   graphEdges: GraphEdgeDTO[];
   warrantSummaries: WarrantDisplaySummary[];
+  onRevoke?: (warrantId: string) => void;
   eyebrow?: string;
   title?: string;
   description?: string;
@@ -40,89 +38,37 @@ type DelegationGraphProps = {
 export function DelegationGraph({
   graphNodes,
   graphEdges,
-  warrantSummaries: initialSummaries,
+  warrantSummaries,
+  onRevoke,
   eyebrow = "Authority Graph",
   title = "Delegation Tree",
   description = "Nodes represent warrants. Revoking a node invalidates its entire branch.",
 }: DelegationGraphProps) {
-  const baseNodes = useMemo(
+  const nodes = useMemo(
     () => buildDelegationGraphNodes({ graphNodes }),
     [graphNodes],
   );
-  const baseEdges = useMemo(() => buildDelegationGraphEdges(graphEdges), [graphEdges]);
-  const [summaries, setSummaries] = useState(initialSummaries);
-  const [nodes, setNodes, onNodesChange] = useNodesState(baseNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(baseEdges);
+  const edges = useMemo(() => buildDelegationGraphEdges(graphEdges), [graphEdges]);
   const [selectedWarrantId, setSelectedWarrantId] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
-    setSummaries(initialSummaries);
-    setNodes(baseNodes);
-    setEdges(baseEdges);
     setSelectedWarrantId(null);
-  }, [baseEdges, baseNodes, initialSummaries, setEdges, setNodes]);
+  }, [edges, nodes, warrantSummaries]);
 
   const onNodeClick = useCallback<NodeMouseHandler<AgentNode>>((_, node) => {
     setSelectedWarrantId(node.id);
   }, []);
 
   const selectedWarrant = useMemo(
-    () => summaries.find((summary) => summary.id === selectedWarrantId) || null,
-    [selectedWarrantId, summaries],
+    () => warrantSummaries.find((summary) => summary.id === selectedWarrantId) || null,
+    [selectedWarrantId, warrantSummaries],
   );
 
   const handleRevoke = useCallback((warrantId: string) => {
-    const toRevoke = new Set(collectDescendantNodeIds(graphNodes, warrantId));
-
-    setSummaries((currentSummaries) =>
-      currentSummaries.map((summary) =>
-        toRevoke.has(summary.id)
-          ? {
-              ...summary,
-              status: "revoked",
-              statusReason: "This branch was revoked from the delegation graph.",
-              statusSource: "warrant",
-              revokedAt: summary.revokedAt ?? new Date().toISOString(),
-              revocationReason:
-                summary.revocationReason ??
-                "This branch was revoked from the delegation graph.",
-            }
-          : summary,
-      ),
-    );
-
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (toRevoke.has(node.id)) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              status: "revoked",
-              statusReason: "This branch was revoked from the delegation graph.",
-              isRevoked: true,
-            },
-          };
-        }
-        return node;
-      })
-    );
-
-    setEdges((eds) =>
-      eds.map((edge) => {
-        if (toRevoke.has(edge.source) || toRevoke.has(edge.target)) {
-          return {
-            ...edge,
-            animated: false,
-            style: { ...edge.style, stroke: "#cbd5e1", opacity: 0.5 },
-          };
-        }
-        return edge;
-      })
-    );
-  }, [graphNodes, setEdges, setNodes]);
+    onRevoke?.(warrantId);
+  }, [onRevoke]);
 
   if (!isMounted) {
     return (
@@ -147,8 +93,6 @@ export function DelegationGraph({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           fitView

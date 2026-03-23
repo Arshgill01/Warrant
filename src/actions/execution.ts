@@ -242,8 +242,12 @@ export function executeGmailDraftAction(input: ExecuteActionBaseInput & {
   };
 }
 
-export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & {
+export function executeBlockedGmailSendAction(input: ExecuteActionBaseInput & {
   recipients: string[];
+  fallbackSummary: string;
+  fallbackResource: string;
+  blockedTitle: string;
+  blockedDescription: string;
 }): ExecutedScenarioAction {
   const action: ActionAttempt = {
     id: input.actionId,
@@ -265,7 +269,7 @@ export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & 
 
   if (authorization.allowed) {
     throw new Error(
-      `Comms overreach action ${input.actionId} unexpectedly passed warrant authorization.`,
+      `Blocked Gmail send action ${input.actionId} unexpectedly passed warrant authorization.`,
     );
   }
 
@@ -273,6 +277,18 @@ export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & 
     action,
     warrant: input.warrant,
     authorization,
+    fallbackSummary: input.fallbackSummary,
+    fallbackResource: input.fallbackResource,
+    blockedTitle: input.blockedTitle,
+    blockedDescription: input.blockedDescription,
+  });
+}
+
+export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & {
+  recipients: string[];
+}): ExecutedScenarioAction {
+  return executeBlockedGmailSendAction({
+    ...input,
     fallbackSummary:
       "Attempted to send the drafted investor follow-ups, but the Comms warrant only allowed drafting.",
     fallbackResource: `Send email to ${input.recipients.join(" and ")}`,

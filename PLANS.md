@@ -1824,3 +1824,102 @@ Out of scope:
 - The current graph/detail contracts focus on warrant summaries, so surfacing the blocked action clearly may require careful extension to avoid coupling UI components directly to raw scenario internals.
 - Marking the Comms agent as blocked for the overreach beat must not accidentally undermine the earlier successful draft action or muddle later approval/revocation slices.
 - The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.
+
+## ExecPlan — Branch-Specific Comms Revocation (2026-03-23)
+
+### Objective
+
+Implement real branch-specific revocation for the Comms warrant so a user-triggered revoke invalidates that branch and its descendants, records the decision in the canonical scenario history, and leaves the Calendar branch active.
+
+### Demo relevance
+
+This is Milestone 6 and the final core proof beat in the demo:
+
+1. the user deliberately revokes the Comms branch
+2. Warrant visibly marks that branch as dead instead of merely hidden
+3. later Comms actions fail because of revoked delegated authority
+4. Calendar remains active, proving revocation is branch-specific rather than system-wide
+
+It also needs to compose with the already-merged overreach-proof and approval-flow surfaces rather than replacing them.
+
+### Scope
+
+In scope:
+
+- canonical demo-state revocation of the Comms warrant branch
+- explicit descendant invalidation using the warrant engine’s revoke path
+- revocation records and timeline events attributable to the user action
+- a structured post-revoke blocked Comms action that fails because the branch is revoked
+- graph and detail-panel rendering that clearly distinguishes revoked from denied and pending-approval
+- preserving active Calendar behavior in the same seeded scenario
+- low-complexity handling so pending approval on a revoked branch no longer implies executability
+
+Out of scope:
+
+- redesigning the delegation graph layout or overall demo page
+- re-implementing approval-flow or overreach-proof logic
+- persistence, backend APIs, or multi-user revoke workflows
+- generic revoke frameworks beyond the seeded demo path
+- unrelated provider integration changes
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/main-scenario.ts`
+- `src/actions/execution.ts`
+- `src/contracts/action.ts`
+- `src/contracts/demo.ts`
+- `src/contracts/display.ts`
+- `src/contracts/audit.ts`
+- `src/demo-fixtures/display.ts`
+- `src/demo-fixtures/state.ts`
+- `src/graph/delegation-graph.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/app/demo/page.tsx`
+- `tests/agents-orchestration.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/delegation-graph.test.ts`
+- `tests/routes.test.tsx`
+- `tests/warrant-engine.test.ts`
+
+### Invariants to preserve
+
+- Revoking a warrant invalidates descendants and must be explicit in both data and UI.
+- Revoked, denied, blocked, and pending-approval must remain visually and behaviorally distinct.
+- Later Comms failures after revoke must come from real warrant authorization state, not silent UI suppression.
+- Calendar branch behavior must remain active and usable after Comms revocation.
+- Every revoke and post-revoke failure must preserve lineage and remain visible in history.
+- Approval and provider layers must stay conceptually separate from local warrant revocation.
+- The seeded demo path must remain deterministic and repeatable.
+
+### Implementation steps
+
+1. Inspect and reuse the existing warrant-engine revoke helper, then define the minimal scenario-state transition needed to apply it to the Comms branch.
+2. Extend the deterministic main scenario so it:
+   - records the pre-existing overreach and approval beats
+   - applies a user-driven Comms branch revocation
+   - emits revocation records and timeline entries
+   - attempts one later Comms action that fails explicitly because the branch is revoked
+   - keeps Calendar active
+3. Add a small execution helper for post-revoke blocked actions if needed, reusing `authorizeAction` so the failure reason is structured and lineage-aware.
+4. Update display adapters so revoked warrants, revoked-branch approvals, and post-revoke blocked attempts render from shared scenario state instead of graph-local mutation.
+5. Replace the graph component’s cosmetic revoke-only state handling with a callback-driven update that uses canonical demo state, while preserving the current layout and node-detail affordance.
+6. Update tests for warrant revocation, scenario lineage, graph rendering, and route output, then run repo validation and a manual `/demo` verification if the local app can be started.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- manual verification on `/demo` that:
+  - Comms shows revoked status distinctly from denied and pending approval
+  - a later Comms action is blocked because the branch is revoked
+  - Calendar remains active in the same view
+  - revocation and post-revoke failure appear in the timeline with attribution
+
+### Risks
+
+- The current demo route is mostly server-rendered from fixture loaders, so making revocation interactive without forking state between server and client may require careful state hoisting.
+- Once Comms is revoked, its existing pending approval needs to stay historically visible without implying the branch can still execute, and that distinction may require small display-contract changes.
+- There is no deeper descendant under Comms in the current seeded tree, so descendant invalidation must be explicit in data and tests even if the visible graph branch is shallow.
