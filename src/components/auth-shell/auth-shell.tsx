@@ -218,8 +218,8 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             <p>{googleSetup.headline}</p>
             <p>{googleSetup.detail}</p>
             <p className="text-sm leading-6 text-[var(--muted)]">
-              This branch keeps the base session, provider connection, and future Gmail or Calendar delegated-access
-              inputs visible. Real provider actions land later.
+              This branch keeps the base session and provider connection inputs visible while the homepage exercises the
+              live Calendar availability, Gmail draft, and send-email boundaries through Auth0-backed Google access.
             </p>
           </div>
 
