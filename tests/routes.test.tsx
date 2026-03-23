@@ -51,8 +51,14 @@ describe("route rendering", () => {
     expect(html).toContain("Sensitive Action Approval");
     expect(html).toContain("Draft authority is not send authority.");
     expect(html).toContain("Approve investor follow-up send");
+    expect(html).toContain("Approval control moment");
+    expect(html).toContain("current: approved");
     expect(html).toContain("What changes when approval changes");
     expect(html).toContain("Lineage-Aware Timeline");
+    expect(html).toContain("Approval Approved");
+    expect(html).toContain("Comms branch revoked");
+    expect(html).toContain("Post-revoke send blocked");
+    expect(html).toContain("Planner Agent -&gt; Comms Agent");
     expect(html).toContain("Draft and send internal investor follow-up emails for approved recipients, but only after explicit approval.");
     expect(html).toContain("Attempted to send the drafted investor follow-ups to an out-of-policy recipient.");
     expect(html).toContain("Policy code: recipient_not_allowed");

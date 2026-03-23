@@ -21,8 +21,8 @@ describe("delegation graph view model", () => {
     expect(nodes).toHaveLength(3);
     expect(planner?.data.label).toBe("Planner Agent");
     expect(calendar?.data.role).toBe("calendar");
-    expect(comms?.data.status).toBe("pending-approval");
-    expect(comms?.data.statusReason).toContain("explicitly approve");
+    expect(comms?.data.status).toBe("revoked");
+    expect(comms?.data.statusReason).toContain("withdrawn immediately");
     expect(calendar?.position.y).toBe(comms?.position.y);
     expect(planner?.position.y).toBeLessThan(calendar?.position.y ?? Number.MAX_SAFE_INTEGER);
   });
@@ -43,32 +43,54 @@ describe("delegation graph view model", () => {
     expect(commsBranch).toEqual(["warrant-comms-child-001"]);
   });
 
-  it("maps pending approval and denied status from shared scenario state", () => {
-    const pendingView = createDelegationGraphView(createDefaultDemoScenario());
-    const pendingComms = pendingView.warrantSummaries.find(
+  it("maps approval history and policy denial from shared scenario state", () => {
+    const revokedView = createDelegationGraphView(createDefaultDemoScenario());
+    const revokedComms = revokedView.warrantSummaries.find(
       (summary) => summary.id === "warrant-comms-child-001",
     );
 
-    expect(pendingComms?.status).toBe("pending-approval");
-    expect(pendingComms?.pendingApproval?.title).toBe("Approve investor follow-up send");
-    expect(pendingComms?.statusSource).toBe("approval");
-    expect(pendingComms?.latestPolicyDenial?.id).toBe("action-comms-send-overreach-001");
-    expect(pendingComms?.latestPolicyDenial?.authorization.code).toBe(
+    expect(revokedComms?.status).toBe("revoked");
+    expect(revokedComms?.latestApproval?.title).toBe("Approve investor follow-up send");
+    expect(revokedComms?.latestApproval?.status).toBe("approved");
+    expect(revokedComms?.statusSource).toBe("warrant");
+    expect(revokedComms?.latestPolicyDenial?.id).toBe("action-comms-send-overreach-001");
+    expect(revokedComms?.latestPolicyDenial?.authorization.code).toBe(
       "recipient_not_allowed",
     );
 
     const deniedScenario = createDefaultDemoScenario();
+    const deniedCommsWarrant = deniedScenario.warrants.find(
+      (warrant) => warrant.id === "warrant-comms-child-001",
+    );
+    const deniedCommsAgent = deniedScenario.agents.find(
+      (agent) => agent.id === "agent-comms-001",
+    );
+
+    if (!deniedCommsWarrant || !deniedCommsAgent) {
+      throw new Error("Expected comms branch in denied scenario test.");
+    }
+
+    deniedCommsWarrant.status = "active";
+    deniedCommsWarrant.revokedAt = null;
+    deniedCommsWarrant.revocationReason = null;
+    deniedCommsWarrant.revocationSourceId = null;
+    deniedCommsWarrant.revokedBy = null;
+    deniedCommsAgent.status = "active";
+    deniedScenario.actionAttempts = deniedScenario.actionAttempts.filter(
+      (action) => action.id !== "action-comms-send-post-revoke-001",
+    );
     deniedScenario.approvals = [];
+    deniedScenario.revocations = [];
 
     deniedScenario.actionAttempts.push({
       id: "action-comms-send-overreach-001",
       kind: "gmail.send",
       agentId: "agent-comms-001",
       warrantId: "warrant-comms-child-001",
-      requestedAt: "2026-04-17T09:11:00.000Z",
+      requestedAt: "2026-04-17T09:15:00.000Z",
       rootRequestId: "request-investor-update-001",
       parentWarrantId: "warrant-planner-root-001",
-      createdAt: "2026-04-17T09:11:00.000Z",
+      createdAt: "2026-04-17T09:15:00.000Z",
       target: {
         recipients: ["partners@northstar.vc"],
       },

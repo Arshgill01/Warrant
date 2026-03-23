@@ -216,38 +216,43 @@ export function NodeDetailPanel({
           </section>
         )}
 
-        {warrant.pendingApproval && (
+        {warrant.latestApproval && (
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-[var(--accent)]" />
               <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
-                Approval state
+                Latest approval
               </h4>
             </div>
             <div className="space-y-3 rounded-2xl border border-amber-100 bg-amber-50/60 p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-[var(--foreground)]">
-                  {warrant.pendingApproval.title}
+                  {warrant.latestApproval.title}
                 </p>
                 <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
-                  {warrant.pendingApproval.status}
+                  {warrant.latestApproval.status}
                 </span>
               </div>
               <p className="text-sm leading-relaxed text-[var(--foreground)]">
-                {warrant.pendingApproval.reason}
+                {warrant.latestApproval.reason}
               </p>
               <div className="grid gap-2 text-xs text-[var(--muted)]">
                 <p>
-                  Requested: {formatDateTime(warrant.pendingApproval.requestedAt)}
+                  Requested: {formatDateTime(warrant.latestApproval.requestedAt)}
                 </p>
                 <p>
-                  Expires: {formatDateTime(warrant.pendingApproval.expiresAt)}
+                  Expires: {formatDateTime(warrant.latestApproval.expiresAt)}
                 </p>
+                {warrant.latestApproval.decidedAt ? (
+                  <p>
+                    Decided: {formatDateTime(warrant.latestApproval.decidedAt)}
+                  </p>
+                ) : null}
                 <p>
                   Recipients:{" "}
-                  {warrant.pendingApproval.affectedRecipients.join(", ")}
+                  {warrant.latestApproval.affectedRecipients.join(", ")}
                 </p>
-                <p>Blast radius: {warrant.pendingApproval.blastRadius}</p>
+                <p>Blast radius: {warrant.latestApproval.blastRadius}</p>
               </div>
             </div>
           </section>

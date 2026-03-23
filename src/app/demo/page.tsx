@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getAuth0Environment } from "@/auth/env";
 import {
   buildSendApprovalBoundarySummary,
+  mapApprovalStatusToSendApprovalState,
   buildSendApprovalStateMatrix,
 } from "@/approvals";
 import {
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 
 const statusTone: Record<string, string> = {
   active: "bg-[var(--accent-soft)] text-[var(--accent)]",
+  info: "bg-slate-100 text-slate-700",
   allowed: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
   denied: "bg-rose-50 text-rose-700",
@@ -217,7 +219,9 @@ export default function DemoPage() {
   const examples = loadScenarioExamples();
   const commsPolicyDenial =
     examples.commsChildWarrant.latestPolicyDenial ?? examples.commsOverreachAction;
-  const currentApprovalState = "pending" as const;
+  const currentApprovalState = mapApprovalStatusToSendApprovalState(
+    examples.commsSendApproval.status,
+  );
   const approvalBoundaries = buildSendApprovalBoundarySummary(currentApprovalState);
   const approvalStateMatrix = buildSendApprovalStateMatrix();
   
@@ -362,7 +366,7 @@ export default function DemoPage() {
             statusKey={examples.commsSendAction.outcome}
             statusLabel={examples.commsSendAction.outcome.replace("-", " ")}
             detail={examples.commsSendAction.outcomeReason}
-            meta={examples.commsPendingApproval.title}
+            meta={examples.commsSendApproval.title}
           />
         </div>
       </section>
@@ -409,8 +413,8 @@ export default function DemoPage() {
             statusLabel={examples.commsSendAction.outcome.replace("-", " ")}
             detail={examples.commsSendAction.outcomeReason}
             meta={[
-              `Approval request: ${examples.commsPendingApproval.id}`,
-              `Recipients: ${examples.commsPendingApproval.affectedRecipients.join(", ")}`,
+              `Approval request: ${examples.commsSendApproval.id}`,
+              `Recipients: ${examples.commsSendApproval.affectedRecipients.join(", ")}`,
               `Root request: ${examples.commsSendAction.rootRequestId}`,
             ]}
           />
@@ -422,8 +426,8 @@ export default function DemoPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">Sensitive Action Approval</p>
           <h2 className="text-3xl font-semibold tracking-tight">Draft authority is not send authority.</h2>
           <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
-            The Comms branch can draft the follow-up immediately. Sending the exact email below still requires an
-            Auth0-backed approval result before Warrant can release the live Gmail execution path.
+            The Comms branch could draft immediately, then needed explicit Auth0 approval before the live send executed.
+            The same branch was revoked afterward, which is why the audit timeline matters as much as the approval card.
           </p>
         </div>
 
@@ -432,24 +436,24 @@ export default function DemoPage() {
             <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
-                  Current approval request
+                  Approval control moment
                 </p>
-                <h3 className="text-2xl font-semibold tracking-tight">{examples.commsPendingApproval.title}</h3>
+                <h3 className="text-2xl font-semibold tracking-tight">{examples.commsSendApproval.title}</h3>
               </div>
               <StatusPill
-                label={`${examples.commsPendingApproval.status} through ${examples.commsPendingApproval.provider}`}
-                tone={statusTone[examples.commsPendingApproval.status]}
+                label={`${examples.commsSendApproval.status} through ${examples.commsSendApproval.provider}`}
+                tone={statusTone[examples.commsSendApproval.status]}
               />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Why approval is needed</p>
-                <p className="text-sm leading-relaxed text-[var(--foreground)]">{examples.commsPendingApproval.reason}</p>
+                <p className="text-sm leading-relaxed text-[var(--foreground)]">{examples.commsSendApproval.reason}</p>
               </div>
               <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Blast radius</p>
-                <p className="text-sm leading-relaxed text-[var(--foreground)]">{examples.commsPendingApproval.blastRadius}</p>
+                <p className="text-sm leading-relaxed text-[var(--foreground)]">{examples.commsSendApproval.blastRadius}</p>
               </div>
             </div>
 
@@ -458,7 +462,7 @@ export default function DemoPage() {
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Exact action preview</p>
                   <h4 className="text-lg font-semibold text-[var(--foreground)]">
-                    {examples.commsPendingApproval.preview.subject}
+                    {examples.commsSendApproval.preview.subject}
                   </h4>
                 </div>
                 <StatusPill label="gmail.send" tone="bg-slate-900 text-white" />
@@ -467,19 +471,19 @@ export default function DemoPage() {
                 <div className="rounded-xl border border-[var(--panel-border)] bg-slate-50/70 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Recipients</p>
                   <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
-                    To: {examples.commsPendingApproval.preview.to.join(", ")}
+                    To: {examples.commsSendApproval.preview.to.join(", ")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--foreground)]">
-                    Cc: {examples.commsPendingApproval.preview.cc.join(", ")}
+                    Cc: {examples.commsSendApproval.preview.cc.join(", ")}
                   </p>
                   <p className="mt-2 text-sm text-[var(--foreground)]">
-                    Draft: {examples.commsPendingApproval.preview.draftId ?? "none"}
+                    Draft: {examples.commsSendApproval.preview.draftId ?? "none"}
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--panel-border)] bg-slate-50/70 p-4">
                   <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Body preview</p>
                   <pre className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--foreground)]" style={{ fontFamily: "inherit" }}>
-                    {examples.commsPendingApproval.preview.bodyText}
+                    {examples.commsSendApproval.preview.bodyText}
                   </pre>
                 </div>
               </div>
@@ -546,41 +550,59 @@ export default function DemoPage() {
         <div className="mb-8 space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">Audit</p>
           <h2 className="text-3xl font-semibold tracking-tight">Lineage-Aware Timeline</h2>
-          <p className="text-sm text-[var(--muted)]">A cryptographic trail of all issued warrants and action attempts.</p>
+          <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+            A concise ledger of who acted, which warrant branch they acted under, and why the system allowed,
+            paused, approved, revoked, or blocked each step.
+          </p>
         </div>
 
         <div className="space-y-4">
-          {timeline.map((event) => (
+          {timeline.map((event, index) => (
             <article
               key={event.id}
-              className="group flex flex-col gap-6 rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-sm transition-all hover:border-[var(--muted)]/20 hover:shadow-md md:flex-row md:items-center"
+              className="group grid gap-5 rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-sm transition-all hover:border-[var(--muted)]/20 hover:shadow-md lg:grid-cols-[88px_minmax(0,1fr)_320px]"
             >
-              <div className="flex-1 space-y-3">
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+                  Step {String(index + 1).padStart(2, "0")}
+                </span>
+                <p className="text-xs font-semibold text-[var(--foreground)]">
+                  {formatDateTime(event.at, scenario.timezone)}
+                </p>
+              </div>
+
+              <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <StatusPill 
-                    label={event.kind.replace(".", " ")} 
-                    tone={statusTone[event.kind.split(".")[1]] || statusTone[event.kind] || statusTone.revoked} 
+                  <StatusPill
+                    label={`${event.kindLabel} ${event.resultLabel}`}
+                    tone={statusTone[event.resultTone]}
                   />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                    {formatDateTime(event.at, scenario.timezone)}
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
+                    {event.branchLabel}
                   </span>
                 </div>
-                <h3 className="text-lg font-semibold text-[var(--foreground)] tracking-tight">{event.title}</h3>
+                <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">{event.title}</h3>
                 <p className="text-sm leading-relaxed text-[var(--muted)]">{event.description}</p>
               </div>
-              
-              <div className="flex flex-col gap-2 rounded-xl border border-[var(--panel-border)] bg-slate-50/50 p-4 font-mono text-[10px] text-[var(--muted)] transition-all group-hover:bg-white md:min-w-[300px]">
-                <div className="flex justify-between border-b border-[var(--panel-border)]/50 pb-2">
-                  <span className="font-bold uppercase tracking-tighter opacity-50">Actor</span>
+
+              <div className="grid gap-2 rounded-2xl border border-[var(--panel-border)] bg-slate-50/60 p-4 text-[11px] text-[var(--muted)] transition-all group-hover:bg-white">
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)]/70 pb-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">Actor</span>
                   <span className="font-semibold text-[var(--foreground)]">{event.actorLabel}</span>
                 </div>
-                <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
-                  <span className="font-bold uppercase tracking-tighter opacity-50">Warrant</span>
-                  <span className="font-semibold text-[var(--accent)]">{event.warrantId ?? "—"}</span>
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)]/70 py-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">Branch</span>
+                  <span className="text-right font-semibold text-[var(--foreground)]">{event.branchLabel}</span>
                 </div>
-                <div className="flex justify-between pt-2">
-                  <span className="font-bold uppercase tracking-tighter opacity-50">Parent</span>
-                  <span className="font-semibold">{event.parentWarrantId ?? "root"}</span>
+                <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)]/70 py-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">Warrant</span>
+                  <span className="font-mono font-semibold text-[var(--accent)]">{event.warrantId ?? "root"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <span className="font-bold uppercase tracking-[0.18em]">Parent</span>
+                  <span className="font-mono font-semibold text-[var(--foreground)]">
+                    {event.parentWarrantId ?? "root"}
+                  </span>
                 </div>
               </div>
             </article>

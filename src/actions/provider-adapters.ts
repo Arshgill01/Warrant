@@ -51,9 +51,28 @@ export interface GmailDraftAdapter {
   createFollowUpDrafts(input: GmailDraftAdapterInput): GmailDraftAdapterOutput;
 }
 
+export interface GmailSendAdapterInput {
+  user: DemoUser;
+  recipients: string[];
+}
+
+export interface GmailSendAdapterOutput extends DeterministicProviderAdapterMeta {
+  summary: string;
+  resource: string;
+  outcomeReason: string;
+  timelineTitle: string;
+  timelineDescription: string;
+  messageId: string;
+}
+
+export interface GmailSendAdapter {
+  sendApprovedFollowUp(input: GmailSendAdapterInput): GmailSendAdapterOutput;
+}
+
 export interface ScenarioActionAdapters {
   calendar: CalendarReadAdapter;
   comms: GmailDraftAdapter;
+  gmailSend: GmailSendAdapter;
 }
 
 export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapters {
@@ -98,6 +117,26 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
           draftIds: ["draft-investor-update-001", "draft-investor-update-002"],
           preview:
             "Subject: Investor update for tomorrow\n\nSharing the draft update and proposed follow-up timing before we send anything externally.",
+        };
+      },
+    },
+    gmailSend: {
+      sendApprovedFollowUp(input) {
+        return {
+          providerState: "success",
+          providerHeadline:
+            "Comms Agent reached the delegated Gmail send path successfully.",
+          providerDetail:
+            "The deterministic Wave 2 adapter simulates an Auth0-approved Gmail send for the exact recipients that Maya reviewed.",
+          summary:
+            "Sent the approved investor follow-up to the bounded Northstar recipients.",
+          resource: `Live send to ${input.recipients.join(" and ")}`,
+          outcomeReason:
+            "The send stayed inside the child warrant and executed only after Auth0 approved the exact message.",
+          timelineTitle: "Approved investor follow-up sent",
+          timelineDescription:
+            "Comms Agent executes the live Gmail send only after Maya approves the exact message, proving that local warrant allowance still depends on the external approval gate.",
+          messageId: "msg-investor-update-001",
         };
       },
     },

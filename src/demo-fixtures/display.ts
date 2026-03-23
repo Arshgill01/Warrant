@@ -10,8 +10,10 @@ import type {
   GraphEdgeDTO,
   GraphNodeDTO,
   TimelineEventDisplayRecord,
+  TimelineEventTone,
   WarrantDisplaySummary,
 } from "@/contracts";
+import type { LedgerEventKind } from "@/contracts";
 
 const capabilityLabels: Record<ActionKind, string> = {
   "calendar.read": "Read calendar",
@@ -21,6 +23,56 @@ const capabilityLabels: Record<ActionKind, string> = {
   "gmail.send": "Send email",
   "warrant.issue": "Delegate child warrants",
   "warrant.revoke": "Revoke warrants",
+};
+
+const timelineEventMeta: Record<
+  LedgerEventKind,
+  {
+    kindLabel: string;
+    resultLabel: string;
+    resultTone: TimelineEventTone;
+  }
+> = {
+  "scenario.loaded": {
+    kindLabel: "Scenario",
+    resultLabel: "Loaded",
+    resultTone: "info",
+  },
+  "warrant.issued": {
+    kindLabel: "Warrant",
+    resultLabel: "Issued",
+    resultTone: "info",
+  },
+  "action.allowed": {
+    kindLabel: "Action",
+    resultLabel: "Completed",
+    resultTone: "allowed",
+  },
+  "action.blocked": {
+    kindLabel: "Action",
+    resultLabel: "Blocked",
+    resultTone: "blocked",
+  },
+  "approval.requested": {
+    kindLabel: "Approval",
+    resultLabel: "Requested",
+    resultTone: "pending",
+  },
+  "approval.approved": {
+    kindLabel: "Approval",
+    resultLabel: "Approved",
+    resultTone: "approved",
+  },
+  "approval.denied": {
+    kindLabel: "Approval",
+    resultLabel: "Denied",
+    resultTone: "blocked",
+  },
+  "warrant.revoked": {
+    kindLabel: "Branch",
+    resultLabel: "Revoked",
+    resultTone: "revoked",
+  },
 };
 
 const required = <Value>(value: Value | undefined, message: string): Value => {
@@ -88,7 +140,12 @@ function formatConstraintFields(
 }
 
 function isPolicyDeniedAction(record: ActionAttemptDisplayRecord): boolean {
-  return record.outcome === "blocked" && record.providerState === null;
+  return (
+    record.outcome === "blocked" &&
+    record.providerState === null &&
+    record.authorization.code !== "warrant_revoked" &&
+    record.authorization.code !== "ancestor_revoked"
+  );
 }
 
 function getLatestRecordsByWarrantId<Record extends { warrantId: string; requestedAt?: string; expiresAt?: string }>(
@@ -106,6 +163,28 @@ function getLatestRecordsByWarrantId<Record extends { warrantId: string; request
   });
 
   return latestByWarrantId;
+}
+
+function getWarrantLineagePath(
+  warrantId: string,
+  warrantsById: Map<string, DemoScenario["warrants"][number]>,
+  agentLabelsById: Map<string, string>,
+): string[] {
+  const path: string[] = [];
+  let currentId: string | null = warrantId;
+
+  while (currentId) {
+    const warrant = warrantsById.get(currentId);
+
+    if (!warrant) {
+      break;
+    }
+
+    path.unshift(agentLabelsById.get(warrant.agentId) ?? warrant.agentId);
+    currentId = warrant.parentId;
+  }
+
+  return path;
 }
 
 function resolveDisplayStatus(input: {
@@ -224,6 +303,10 @@ export function createWarrantDisplaySummaries(
     approvalRecords.filter((approval) => approval.status === "pending"),
     (record) => record.requestedAt,
   );
+  const latestApprovalByWarrantId = getLatestRecordsByWarrantId(
+    approvalRecords,
+    (record) => record.decidedAt ?? record.requestedAt,
+  );
 
   return scenario.warrants.map((warrant) => {
     const agent = required(
@@ -273,6 +356,7 @@ export function createWarrantDisplaySummaries(
       revocationReason: warrant.revocationReason,
       latestAction,
       latestPolicyDenial,
+      latestApproval: latestApprovalByWarrantId.get(warrant.id) ?? null,
       pendingApproval,
     };
   });
@@ -338,29 +422,50 @@ export function createTimelineEventDisplayRecords(
   scenario: DemoScenario,
 ): TimelineEventDisplayRecord[] {
   const agentLabelsById = new Map(scenario.agents.map((agent) => [agent.id, agent.label]));
+  const warrantsById = new Map(scenario.warrants.map((warrant) => [warrant.id, warrant]));
 
   return [...scenario.timeline]
     .sort((left, right) => left.at.localeCompare(right.at))
-    .map((event) => ({
-      id: event.id,
-      at: event.at,
-      kind: event.kind,
-      actorKind: event.actorKind,
-      actorId: event.actorId,
-      actorLabel:
-        event.actorKind === "user"
-          ? scenario.user.label
-          : event.actorKind === "agent"
-            ? agentLabelsById.get(event.actorId) ?? event.actorId
-            : "System",
-      warrantId: event.warrantId,
-      parentWarrantId: event.parentWarrantId,
-      actionId: event.actionId,
-      approvalId: event.approvalId,
-      revocationId: event.revocationId,
-      title: event.title,
-      description: event.description,
-    }));
+    .map((event) => {
+      const meta = timelineEventMeta[event.kind];
+      const lineagePath = event.warrantId
+        ? getWarrantLineagePath(event.warrantId, warrantsById, agentLabelsById)
+        : [scenario.user.label];
+      const warrantLabel = event.warrantId
+        ? agentLabelsById.get(warrantsById.get(event.warrantId)?.agentId ?? "") ?? null
+        : null;
+      const parentWarrantLabel = event.parentWarrantId
+        ? agentLabelsById.get(warrantsById.get(event.parentWarrantId)?.agentId ?? "") ?? null
+        : null;
+
+      return {
+        id: event.id,
+        at: event.at,
+        kind: event.kind,
+        kindLabel: meta.kindLabel,
+        resultLabel: meta.resultLabel,
+        resultTone: meta.resultTone,
+        actorKind: event.actorKind,
+        actorId: event.actorId,
+        actorLabel:
+          event.actorKind === "user"
+            ? scenario.user.label
+            : event.actorKind === "agent"
+              ? agentLabelsById.get(event.actorId) ?? event.actorId
+              : "System",
+        warrantId: event.warrantId,
+        warrantLabel,
+        parentWarrantId: event.parentWarrantId,
+        parentWarrantLabel,
+        actionId: event.actionId,
+        approvalId: event.approvalId,
+        revocationId: event.revocationId,
+        branchLabel: lineagePath.join(" -> "),
+        lineagePath,
+        title: event.title,
+        description: event.description,
+      };
+    });
 }
 
 export function createDelegationGraphView(
@@ -433,7 +538,7 @@ export function getDisplayScenarioExamples(
       actionRecordsById.get(scenario.examples.commsSendActionId),
       `Missing action ${scenario.examples.commsSendActionId}`,
     ),
-    commsPendingApproval: required(
+    commsSendApproval: required(
       approvalRecordsById.get(scenario.examples.commsSendApprovalId),
       `Missing approval ${scenario.examples.commsSendApprovalId}`,
     ),

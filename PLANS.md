@@ -1892,3 +1892,88 @@ Out of scope:
 
 - True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
 - Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
+
+## ExecPlan — Lineage-Aware Audit Timeline (2026-03-23)
+
+### Objective
+
+Build a concise, lineage-aware audit timeline for the seeded main scenario so judges can follow the exact sequence of delegation, enforcement, approval control, revocation, and post-revoke blocking without reading raw logs.
+
+### Demo relevance
+
+This is Workstream F and directly strengthens the core proof sequence in the 3-minute demo:
+
+1. root warrant issued
+2. child warrants issued
+3. useful child actions succeed
+4. overreach is denied
+5. sensitive send pauses for approval
+6. approval decision becomes visible
+7. one branch is revoked
+8. later action from that branch is blocked because authority is gone
+
+It matters because the proof moments already exist, but they are not yet easy to inspect as one attributable story.
+
+### Scope
+
+In scope:
+
+- extend the seeded scenario so the canonical timeline covers approval outcome, branch revocation, and a post-revoke blocked attempt
+- add or refine audit event contracts and display adapters so each event carries actor, warrant, parent warrant, and lineage or branch context needed by the UI
+- render a concise ledger or timeline on `/demo` with human-readable event descriptions and compact attribution
+- keep the audit surface aligned with existing warrant, approval, and revocation logic rather than inventing parallel state
+- add targeted tests for event ordering, attribution, and timeline rendering
+
+Out of scope:
+
+- building a generic developer log viewer
+- persistence, search, filtering, or export features
+- redesigning the existing graph UI beyond what is needed to align the timeline story
+- adding live provider execution beyond the current deterministic scenario
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/audit.ts`
+- `src/contracts/display.ts`
+- `src/contracts/demo.ts`
+- `src/agents/main-scenario.ts`
+- `src/demo-fixtures/display.ts`
+- `src/demo-fixtures/state.ts`
+- `src/app/demo/page.tsx`
+- `src/approvals/*`
+- `src/warrants/revocation.ts`
+- `tests/agents-orchestration.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/routes.test.tsx`
+
+### Invariants to preserve
+
+- Every meaningful event must remain attributable through lineage: root request, acting agent, warrant, parent warrant, timestamp, and result.
+- The timeline must reflect real domain decisions already modeled in the repo: local warrant denial, Auth0 approval gating, and descendant invalidation after revocation.
+- Child warrants may only narrow authority; the audit layer must explain decisions, not weaken or bypass enforcement.
+- The seeded scenario must stay deterministic, with fixed ids, timestamps, ordering, and human-readable copy.
+- The UI must stay concise and serious; it should help a judge explain the system, not bury them in developer diagnostics.
+
+### Implementation steps
+
+1. Audit the current seeded scenario, approval flow, and revocation logic to identify the missing proof moments and the thinnest contract changes needed to represent them.
+2. Extend the audit event model and display adapters so rendered records include event classification, actor label, warrant lineage, branch attribution, and concise explanation text.
+3. Update the canonical main scenario to include the full proof chain after the current pending approval point: approval decision, branch revocation, and one blocked post-revoke action from the revoked branch.
+4. Rework the `/demo` timeline section into a concise ledger view that emphasizes sequence, attribution, and “why the system decided this” instead of raw ids alone.
+5. Add targeted tests for event kind ordering, attribution fields, deterministic fixture output, and demo-page rendering of the new proof moments.
+6. Run repo-native validation, boot the app locally, and verify the seeded timeline visually in the browser.
+
+### Validation steps
+
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run typecheck`
+- `npm run build`
+- `npm run dev -- --port 3000`
+- manual verification on `http://127.0.0.1:3000/demo` that the timeline shows the full seeded proof sequence in the expected order and clearly attributes each event to its agent and warrant lineage
+
+### Risks
+
+- The current scenario stops at `approval.requested`, so extending it without muddying existing proof cards requires careful sequencing and copy discipline.
+- Approval and revocation state already influence graph summaries; adding fuller audit records could expose drift between display adapters and the seeded scenario if both are not updated together.
+- Manual browser verification depends on the local Next.js server booting cleanly in this environment.

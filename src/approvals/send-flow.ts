@@ -1,6 +1,7 @@
 import type {
   ActionPathSnapshot,
   ApprovalRequest,
+  ApprovalStatus,
   SendApprovalBoundarySummary,
   SendApprovalState,
   SendApprovalStateRecord,
@@ -114,6 +115,32 @@ export function createSendApprovalRequest(input: {
     blastRadius: input.blastRadius,
     provider: "auth0",
   };
+}
+
+export function decideApprovalRequest(input: {
+  request: ApprovalRequest;
+  status: Exclude<ApprovalStatus, "pending">;
+  decidedAt: string;
+}): ApprovalRequest {
+  return {
+    ...input.request,
+    status: input.status,
+    decidedAt: input.decidedAt,
+  };
+}
+
+export function mapApprovalStatusToSendApprovalState(
+  status: ApprovalStatus,
+): Extract<SendApprovalState, "pending" | "approved" | "denied"> {
+  switch (status) {
+    case "approved":
+      return "approved";
+    case "denied":
+    case "expired":
+      return "denied";
+    case "pending":
+      return "pending";
+  }
 }
 
 export function buildSendApprovalStateRecord(
