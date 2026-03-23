@@ -1892,3 +1892,72 @@ Out of scope:
 
 - True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
 - Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
+
+## ExecPlan — Auth0 Full-Workflow Sync Branch (2026-03-23)
+
+### Objective
+
+Create a clean up-to-date testing branch from current `master`, carry forward any missing auth-shell validation notes, and run a deeper practical validation pass against the latest merged Gmail, Calendar, approval, and delegation surfaces.
+
+### Demo relevance
+
+This closes the gap between the older foundation-only auth shell and the current merged demo path. It validates whether the full story now works as a product, not just as isolated branch slices:
+
+1. user signs in
+2. user connects Google through Auth0
+3. provider-backed actions become visibly usable
+4. delegation, approval, and overreach proof remain legible
+
+### Scope
+
+In scope:
+
+- move the new validation-plan commit onto `master`
+- create a fresh testing branch from the latest `master`
+- inspect the merged app structure in that branch
+- run repo-native validation and local boot checks there
+- verify which Gmail, Calendar, approval, and delegation paths are actually implemented versus still simulated
+- document exact blockers for any missing true end-to-end external execution
+
+Out of scope:
+
+- broad product refactors unrelated to testing findings
+- claiming live Gmail or Calendar execution without direct evidence from the merged branch
+- changing tenant or Google dashboard configuration outside what local app testing reveals
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- optional docs or small fixes only if the merged testing branch exposes concrete defects
+
+### Invariants to preserve
+
+- Auth0-backed provider access must remain visibly separate from local warrant and approval logic.
+- The merged branch should be validated against its real implemented behavior, not the older auth-shell assumptions.
+- Report route-level, UI-level, and external-provider-level verification separately.
+
+### Implementation steps
+
+1. Cherry-pick the validation-plan commit onto `master`.
+2. Create a new testing branch from updated `master`.
+3. Compare the merged branch’s auth, provider-action, approval, and delegation modules against the older foundation shell.
+4. Run validation commands and live local route/UI checks.
+5. If practical defects are found in the merged branch, fix them in the testing branch with targeted validation.
+6. Report exactly what is now truly working end to end and what still depends on manual Auth0 or Google interaction.
+
+### Validation steps
+
+- `git cherry-pick 193e60e`
+- `git worktree add /tmp/wt-auth-full-validation -b feat/auth-full-validation master`
+- `npm install`
+- `npm run lint`
+- `npm run test`
+- `npm run typecheck`
+- `npm run build`
+- `npm run dev -- --port 3000`
+- local HTTP checks for `/`, `/auth/login`, `/auth/logout`, and provider-specific surfaces
+
+### Risks
+
+- The latest merged branch may still rely on deterministic fixtures for parts of the agent or approval story.
+- Real provider-backed Calendar and Gmail execution may still require a browser-completed connected-account session that cannot be fabricated from the terminal alone.
