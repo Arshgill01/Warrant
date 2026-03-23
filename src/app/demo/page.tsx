@@ -173,12 +173,50 @@ function ApprovalStateCard({
   );
 }
 
+function ProofStepCard({
+  eyebrow,
+  title,
+  statusKey,
+  statusLabel,
+  detail,
+  meta,
+}: {
+  eyebrow: string;
+  title: string;
+  statusKey: string;
+  statusLabel: string;
+  detail: string;
+  meta: string[];
+}) {
+  return (
+    <article className="rounded-[1.75rem] border border-[var(--panel-border)] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">{eyebrow}</p>
+          <h3 className="text-lg font-semibold tracking-tight text-[var(--foreground)]">{title}</h3>
+        </div>
+        <StatusPill label={statusLabel} tone={statusTone[statusKey] || statusTone.active} />
+      </div>
+      <p className="text-sm leading-relaxed text-[var(--foreground)]">{detail}</p>
+      <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+        {meta.map((item) => (
+          <p key={item} className="text-xs font-medium text-[var(--muted)]">
+            {item}
+          </p>
+        ))}
+      </div>
+    </article>
+  );
+}
+
 export default function DemoPage() {
   const authEnv = getAuth0Environment();
   const scenario = loadDemoState();
   const graphView = loadDelegationGraphView();
   const timeline = loadTimelineEvents();
   const examples = loadScenarioExamples();
+  const commsPolicyDenial =
+    examples.commsChildWarrant.latestPolicyDenial ?? examples.commsOverreachAction;
   const currentApprovalState = "pending" as const;
   const approvalBoundaries = buildSendApprovalBoundarySummary(currentApprovalState);
   const approvalStateMatrix = buildSendApprovalStateMatrix();
@@ -325,6 +363,56 @@ export default function DemoPage() {
             statusLabel={examples.commsSendAction.outcome.replace("-", " ")}
             detail={examples.commsSendAction.outcomeReason}
             meta={examples.commsPendingApproval.title}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-slate-50/60 p-8 shadow-sm lg:p-12">
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">Proof Sequence</p>
+          <h2 className="text-3xl font-semibold tracking-tight">One branch, two different gates.</h2>
+          <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+            The Comms branch succeeds at bounded drafting, gets denied immediately when it overreaches local recipient policy,
+            and only reaches Auth0 approval when it retries a send that stays inside the warrant&apos;s bounds.
+          </p>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-3">
+          <ProofStepCard
+            eyebrow="Step 1"
+            title="Bounded draft succeeds"
+            statusKey={examples.commsDraftAction.outcome}
+            statusLabel={examples.commsDraftAction.outcome.replace("-", " ")}
+            detail={examples.commsDraftAction.outcomeReason}
+            meta={[
+              `Action: ${examples.commsDraftAction.kind}`,
+              `Warrant: ${examples.commsDraftAction.warrantId}`,
+              `Resource: ${examples.commsDraftAction.resource}`,
+            ]}
+          />
+          <ProofStepCard
+            eyebrow="Step 2"
+            title="Overreach is denied by local warrant policy"
+            statusKey="denied"
+            statusLabel="policy denied"
+            detail={commsPolicyDenial.outcomeReason}
+            meta={[
+              `Decision code: ${commsPolicyDenial.authorization.code}`,
+              `Blocked by warrant: ${commsPolicyDenial.authorization.blockedByWarrantId ?? commsPolicyDenial.warrantId}`,
+              `Parent warrant: ${commsPolicyDenial.parentWarrantId ?? "root"}`,
+            ]}
+          />
+          <ProofStepCard
+            eyebrow="Step 3"
+            title="Allowed send pauses for approval instead"
+            statusKey={examples.commsSendAction.outcome}
+            statusLabel={examples.commsSendAction.outcome.replace("-", " ")}
+            detail={examples.commsSendAction.outcomeReason}
+            meta={[
+              `Approval request: ${examples.commsPendingApproval.id}`,
+              `Recipients: ${examples.commsPendingApproval.affectedRecipients.join(", ")}`,
+              `Root request: ${examples.commsSendAction.rootRequestId}`,
+            ]}
           />
         </div>
       </section>

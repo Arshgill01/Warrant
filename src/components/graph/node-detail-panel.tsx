@@ -60,11 +60,7 @@ export function NodeDetailPanel({
     warrant.status === "denied" ||
     warrant.status === "pending-approval";
   const isRoot = warrant.agentLabel === "Root User";
-  const latestPolicyDenial =
-    warrant.latestAction?.outcome === "blocked" &&
-    warrant.latestAction.providerState === null
-      ? warrant.latestAction
-      : null;
+  const latestPolicyDenial = warrant.latestPolicyDenial;
   const statusIcon = isRevoked ? (
     <Ban className="size-3.5" />
   ) : isAttentionState ? (

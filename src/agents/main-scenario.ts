@@ -10,6 +10,7 @@ import {
   createDeterministicScenarioActionAdapters,
   executeCalendarReadAction,
   executeGmailDraftAction,
+  executeGmailSendOverreachAction,
   type ScenarioActionAdapters,
 } from "@/actions";
 import { createSendApprovalRequest } from "@/approvals";
@@ -278,30 +279,16 @@ export function runMainScenarioPlannerFlow(
     adapter: adapters.comms,
   });
 
-  const commsOverreachRequestedAt = "2026-04-17T09:08:00.000Z";
-  const commsOverreachAction: ActionAttempt = {
-    id: "action-comms-send-overreach-001",
-    kind: "gmail.send",
-    agentId: commsWarrant.agentId,
-    warrantId: commsWarrant.id,
-    requestedAt: commsOverreachRequestedAt,
-    target: {
-      recipients: ["ceo@external-partner.com"],
-    },
+  const commsOverreach = executeGmailSendOverreachAction({
+    actionId: "action-comms-send-overreach-001",
+    requestedAt: "2026-04-17T09:08:00.000Z",
+    warrant: commsWarrant,
+    warrants,
+    recipients: ["ceo@external-partner.com"],
     usage: {
       sendsUsed: 0,
     },
-  };
-  const commsOverreachAuthorization = authorizeAction({
-    warrant: commsWarrant,
-    warrants,
-    action: commsOverreachAction,
-    now: commsOverreachRequestedAt,
   });
-
-  if (commsOverreachAuthorization.allowed) {
-    throw new Error("Comms overreach action unexpectedly passed warrant authorization.");
-  }
 
   const commsSendRequestedAt = "2026-04-17T09:10:00.000Z";
   const commsSendAction: ActionAttempt = {
@@ -399,27 +386,7 @@ export function runMainScenarioPlannerFlow(
     actionAttempts: [
       calendarAction.attempt,
       commsAction.attempt,
-      {
-        ...commsOverreachAction,
-        rootRequestId: commsOverreachAuthorization.lineage.rootRequestId,
-        parentWarrantId: commsOverreachAuthorization.lineage.parentWarrantId,
-        createdAt: commsOverreachRequestedAt,
-        summary:
-          "Attempted to send the drafted investor follow-ups to an unapproved external recipient.",
-        resource: "Send email to ceo@external-partner.com",
-        outcome: "blocked",
-        outcomeReason: commsOverreachAuthorization.message,
-        authorization: {
-          allowed: false,
-          code: commsOverreachAuthorization.code,
-          message: commsOverreachAuthorization.message,
-          effectiveStatus: commsOverreachAuthorization.effectiveStatus,
-          blockedByWarrantId: commsOverreachAuthorization.blockedByWarrantId,
-        },
-        providerState: null,
-        providerHeadline: null,
-        providerDetail: null,
-      },
+      commsOverreach.attempt,
       commsSendAttempt,
     ],
     approvals: [commsSendApproval],
@@ -458,21 +425,7 @@ export function runMainScenarioPlannerFlow(
       }),
       calendarAction.timelineEvent,
       commsAction.timelineEvent,
-      {
-        id: "event-comms-send-overreach-001",
-        at: commsOverreachRequestedAt,
-        kind: "action.blocked",
-        actorKind: "agent",
-        actorId: commsAgent.id,
-        warrantId: commsWarrant.id,
-        parentWarrantId: commsWarrant.parentId,
-        actionId: commsOverreachAction.id,
-        approvalId: null,
-        revocationId: null,
-        title: "Comms send overreach denied",
-        description:
-          "Comms Agent tried to send the follow-up to an unapproved external recipient, so the warrant engine blocked the branch before any live Gmail execution.",
-      },
+      commsOverreach.timelineEvent,
       {
         id: "event-comms-send-approval-requested-001",
         at: commsSendRequestedAt,
@@ -494,7 +447,7 @@ export function runMainScenarioPlannerFlow(
       commsChildWarrantId: commsWarrant.id,
       calendarActionId: calendarAction.attempt.id,
       commsDraftActionId: commsAction.attempt.id,
-      commsOverreachActionId: commsOverreachAction.id,
+      commsOverreachActionId: commsOverreach.attempt.id,
       commsSendActionId: commsSendAttempt.id,
       commsSendApprovalId: commsSendApproval.id,
     },

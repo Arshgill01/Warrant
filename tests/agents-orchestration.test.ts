@@ -96,6 +96,8 @@ describe("main scenario planner flow", () => {
       }),
     );
     expect(commsOverreachAction?.outcomeReason).toMatch(/outside its warrant/i);
+    expect(commsOverreachAction?.approvalRequestId).toBeUndefined();
+    expect(commsOverreachAction?.providerState).toBeNull();
     expect(commsSendAction).toEqual(
       expect.objectContaining({
         rootRequestId: "request-investor-update-001",

@@ -56,6 +56,12 @@ describe("demo fixtures", () => {
     expect(examples.commsSendAction.outcome).toBe("approval-required");
     expect(examples.commsPendingApproval.status).toBe("pending");
     expect(examples.commsChildWarrant.latestAction?.id).toBe("action-comms-send-001");
+    expect(examples.commsChildWarrant.latestPolicyDenial?.id).toBe(
+      "action-comms-send-overreach-001",
+    );
+    expect(examples.commsChildWarrant.latestPolicyDenial?.authorization.code).toBe(
+      "recipient_not_allowed",
+    );
   });
 
   it("loads graph and timeline views from the same canonical state and resets safely", () => {
@@ -75,6 +81,10 @@ describe("demo fixtures", () => {
       "warrant-planner-root-001",
     );
     expect(graphView.warrantSummaries.find((summary) => summary.id === "warrant-comms-child-001")?.latestAction?.providerState).toBeNull();
+    expect(
+      graphView.warrantSummaries.find((summary) => summary.id === "warrant-comms-child-001")?.latestPolicyDenial
+        ?.authorization.code,
+    ).toBe("recipient_not_allowed");
     expect(timeline.map((event) => event.at)).toEqual([...timeline.map((event) => event.at)].sort());
     expect(timeline.at(-1)?.actionId).toBe("action-comms-send-001");
 

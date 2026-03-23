@@ -15,6 +15,14 @@ export interface Auth0Environment {
   missingValues: string[];
 }
 
+export const auth0RequiredEnvKeys = ["AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "AUTH0_SECRET"] as const;
+
+export const auth0RecommendedEnvKeysNow = ["APP_BASE_URL", "AUTH0_GOOGLE_CONNECTION_NAME"] as const;
+
+export const auth0OptionalEnvKeysLater = ["AUTH0_AUDIENCE", "AUTH0_TOKEN_VAULT_CONNECTION_ID"] as const;
+
+export const auth0ShellOnlyOverrideKeys = ["WARRANT_GOOGLE_CONNECTION_STATE", "WARRANT_GOOGLE_CONNECTION_EMAIL"] as const;
+
 const providerConnectionStates: ProviderConnectionState[] = ["connected", "not-connected", "pending", "unavailable"];
 
 function readValue(value: string | undefined): string | null {
