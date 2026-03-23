@@ -1828,6 +1828,105 @@ Out of scope:
 - The manual `/demo` verification may be limited if local browser/runtime execution is unavailable in this environment, in which case the code and tests can prove the state but not a visual walkthrough.
 - If the demo page does not render both the denial and the approval gate explicitly, viewers may still misread the branch as “just pending approval” and miss the proof that policy blocked an earlier attempt.
 
+## ExecPlan — Branch-Specific Comms Revocation (2026-03-23)
+
+### Objective
+
+Implement real branch-specific revocation for the Comms warrant so a user-triggered revoke invalidates that branch and its descendants, records the decision in the canonical scenario history, and leaves the Calendar branch active.
+
+### Demo relevance
+
+This is Milestone 6 and the final core proof beat in the demo:
+
+1. the user deliberately revokes the Comms branch
+2. Warrant visibly marks that branch as dead instead of merely hidden
+3. later Comms actions fail because of revoked delegated authority
+4. Calendar remains active, proving revocation is branch-specific rather than system-wide
+
+It also needs to compose with the already-merged overreach-proof and approval-flow surfaces rather than replacing them.
+
+### Scope
+
+In scope:
+
+- canonical demo-state revocation of the Comms warrant branch
+- explicit descendant invalidation using the warrant engine’s revoke path
+- revocation records and timeline events attributable to the user action
+- a structured post-revoke blocked Comms action that fails because the branch is revoked
+- graph and detail-panel rendering that clearly distinguishes revoked from denied and pending-approval
+- preserving active Calendar behavior in the same seeded scenario
+- low-complexity handling so pending approval on a revoked branch no longer implies executability
+
+Out of scope:
+
+- redesigning the delegation graph layout or overall demo page
+- re-implementing approval-flow or overreach-proof logic
+- persistence, backend APIs, or multi-user revoke workflows
+- generic revoke frameworks beyond the seeded demo path
+- unrelated provider integration changes
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/main-scenario.ts`
+- `src/actions/execution.ts`
+- `src/contracts/action.ts`
+- `src/contracts/demo.ts`
+- `src/contracts/display.ts`
+- `src/contracts/audit.ts`
+- `src/demo-fixtures/display.ts`
+- `src/demo-fixtures/state.ts`
+- `src/graph/delegation-graph.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/app/demo/page.tsx`
+- `tests/agents-orchestration.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/delegation-graph.test.ts`
+- `tests/routes.test.tsx`
+- `tests/warrant-engine.test.ts`
+
+### Invariants to preserve
+
+- Revoking a warrant invalidates descendants and must be explicit in both data and UI.
+- Revoked, denied, blocked, and pending-approval must remain visually and behaviorally distinct.
+- Later Comms failures after revoke must come from real warrant authorization state, not silent UI suppression.
+- Calendar branch behavior must remain active and usable after Comms revocation.
+- Every revoke and post-revoke failure must preserve lineage and remain visible in history.
+- Approval and provider layers must stay conceptually separate from local warrant revocation.
+- The seeded demo path must remain deterministic and repeatable.
+
+### Implementation steps
+
+1. Inspect and reuse the existing warrant-engine revoke helper, then define the minimal scenario-state transition needed to apply it to the Comms branch.
+2. Extend the deterministic main scenario so it:
+   - records the pre-existing overreach and approval beats
+   - applies a user-driven Comms branch revocation
+   - emits revocation records and timeline entries
+   - attempts one later Comms action that fails explicitly because the branch is revoked
+   - keeps Calendar active
+3. Add a small execution helper for post-revoke blocked actions if needed, reusing `authorizeAction` so the failure reason is structured and lineage-aware.
+4. Update display adapters so revoked warrants, revoked-branch approvals, and post-revoke blocked attempts render from shared scenario state instead of graph-local mutation.
+5. Replace the graph component’s cosmetic revoke-only state handling with a callback-driven update that uses canonical demo state, while preserving the current layout and node-detail affordance.
+6. Update tests for warrant revocation, scenario lineage, graph rendering, and route output, then run repo validation and a manual `/demo` verification if the local app can be started.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- manual verification on `/demo` that:
+  - Comms shows revoked status distinctly from denied and pending approval
+  - a later Comms action is blocked because the branch is revoked
+  - Calendar remains active in the same view
+  - revocation and post-revoke failure appear in the timeline with attribution
+
+### Risks
+
+- The current demo route is mostly server-rendered from fixture loaders, so making revocation interactive without forking state between server and client may require careful state hoisting.
+- Once Comms is revoked, its existing pending approval needs to stay historically visible without implying the branch can still execute, and that distinction may require small display-contract changes.
+- There is no deeper descendant under Comms in the current seeded tree, so descendant invalidation must be explicit in data and tests even if the visible graph branch is shallow.
+
 ## ExecPlan — Auth0 Foundation Validation Pass (2026-03-23)
 
 ### Objective
@@ -1858,11 +1957,12 @@ Out of scope:
 - changing product behavior unless testing exposes a clear branch-specific defect
 - claiming Google Calendar or Gmail actions executed live without a signed-in delegated session
 - claiming the deterministic delegation demo is already driven by real Auth0-backed agent execution
+- optional documentation or small fixes only if testing reveals branch-specific issues
 
 ### Files/modules likely affected
 
 - `PLANS.md`
-- optional documentation or small fixes only if testing reveals branch-specific issues
+- optional documentation or small auth/runtime fixes only if validation exposes a real issue
 
 ### Invariants to preserve
 
@@ -1892,3 +1992,88 @@ Out of scope:
 
 - True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
 - Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
+
+## ExecPlan — Lineage-Aware Audit Timeline (2026-03-23)
+
+### Objective
+
+Build a concise, lineage-aware audit timeline for the seeded main scenario so judges can follow the exact sequence of delegation, enforcement, approval control, revocation, and post-revoke blocking without reading raw logs.
+
+### Demo relevance
+
+This is Workstream F and directly strengthens the core proof sequence in the 3-minute demo:
+
+1. root warrant issued
+2. child warrants issued
+3. useful child actions succeed
+4. overreach is denied
+5. sensitive send pauses for approval
+6. approval decision becomes visible
+7. one branch is revoked
+8. later action from that branch is blocked because authority is gone
+
+It matters because the proof moments already exist, but they are not yet easy to inspect as one attributable story.
+
+### Scope
+
+In scope:
+
+- extend the seeded scenario so the canonical timeline covers approval outcome, branch revocation, and a post-revoke blocked attempt
+- add or refine audit event contracts and display adapters so each event carries actor, warrant, parent warrant, and lineage or branch context needed by the UI
+- render a concise ledger or timeline on `/demo` with human-readable event descriptions and compact attribution
+- keep the audit surface aligned with existing warrant, approval, and revocation logic rather than inventing parallel state
+- add targeted tests for event ordering, attribution, and timeline rendering
+
+Out of scope:
+
+- building a generic developer log viewer
+- persistence, search, filtering, or export features
+- redesigning the existing graph UI beyond what is needed to align the timeline story
+- adding live provider execution beyond the current deterministic scenario
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/audit.ts`
+- `src/contracts/display.ts`
+- `src/contracts/demo.ts`
+- `src/agents/main-scenario.ts`
+- `src/demo-fixtures/display.ts`
+- `src/demo-fixtures/state.ts`
+- `src/app/demo/page.tsx`
+- `src/approvals/*`
+- `src/warrants/revocation.ts`
+- `tests/agents-orchestration.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/routes.test.tsx`
+
+### Invariants to preserve
+
+- Every meaningful event must remain attributable through lineage: root request, acting agent, warrant, parent warrant, timestamp, and result.
+- The timeline must reflect real domain decisions already modeled in the repo: local warrant denial, Auth0 approval gating, and descendant invalidation after revocation.
+- Child warrants may only narrow authority; the audit layer must explain decisions, not weaken or bypass enforcement.
+- The seeded scenario must stay deterministic, with fixed ids, timestamps, ordering, and human-readable copy.
+- The UI must stay concise and serious; it should help a judge explain the system, not bury them in developer diagnostics.
+
+### Implementation steps
+
+1. Audit the current seeded scenario, approval flow, and revocation logic to identify the missing proof moments and the thinnest contract changes needed to represent them.
+2. Extend the audit event model and display adapters so rendered records include event classification, actor label, warrant lineage, branch attribution, and concise explanation text.
+3. Update the canonical main scenario to include the full proof chain after the current pending approval point: approval decision, branch revocation, and one blocked post-revoke action from the revoked branch.
+4. Rework the `/demo` timeline section into a concise ledger view that emphasizes sequence, attribution, and “why the system decided this” instead of raw ids alone.
+5. Add targeted tests for event kind ordering, attribution fields, deterministic fixture output, and demo-page rendering of the new proof moments.
+6. Run repo-native validation, boot the app locally, and verify the seeded timeline visually in the browser.
+
+### Validation steps
+
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run typecheck`
+- `npm run build`
+- `npm run dev -- --port 3000`
+- manual verification on `http://127.0.0.1:3000/demo` that the timeline shows the full seeded proof sequence in the expected order and clearly attributes each event to its agent and warrant lineage
+
+### Risks
+
+- The current scenario stops at `approval.requested`, so extending it without muddying existing proof cards requires careful sequencing and copy discipline.
+- Approval and revocation state already influence graph summaries; adding fuller audit records could expose drift between display adapters and the seeded scenario if both are not updated together.
+- Manual browser verification depends on the local Next.js server booting cleanly in this environment.

@@ -5,7 +5,7 @@ import { NodeDetailPanel } from "@/components/graph/node-detail-panel";
 import { createDefaultDemoScenario, createDelegationGraphView } from "@/demo-fixtures";
 
 describe("node detail panel", () => {
-  it("renders the latest policy denial separately from the latest approval-gated execution", () => {
+  it("renders the latest policy denial separately from approval history and post-revoke execution state", () => {
     Object.assign(globalThis, {
       React,
     });
@@ -29,15 +29,16 @@ describe("node detail panel", () => {
 
     expect(html).toContain("Latest execution");
     expect(html).toContain("Latest Policy Denial");
-    expect(html).toContain("Approval state");
+    expect(html).toContain("Latest approval");
     expect(html).toContain(
-      "Prepared the investor follow-up send and stopped for approval.",
+      "Comms Agent tried to send again after Maya revoked the branch.",
     );
     expect(html).toContain(
       "Attempted to send the drafted investor follow-ups to an out-of-policy recipient.",
     );
     expect(html).toContain("recipient_not_allowed");
     expect(html).toContain("Approve investor follow-up send");
+    expect(html).toContain("approved");
     expect(html).toContain("warrant-comms-child-001");
   });
 });

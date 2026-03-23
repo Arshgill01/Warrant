@@ -4,6 +4,8 @@ export type LedgerEventKind =
   | "action.allowed"
   | "action.blocked"
   | "approval.requested"
+  | "approval.approved"
+  | "approval.denied"
   | "warrant.revoked";
 
 export type LedgerActorKind = "user" | "agent" | "system";

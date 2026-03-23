@@ -116,21 +116,37 @@ export interface WarrantDisplaySummary {
   revocationReason: string | null;
   latestAction: ActionAttemptDisplayRecord | null;
   latestPolicyDenial: ActionAttemptDisplayRecord | null;
+  latestApproval: ApprovalStateDisplayRecord | null;
   pendingApproval: ApprovalStateDisplayRecord | null;
 }
+
+export type TimelineEventTone =
+  | "info"
+  | "allowed"
+  | "blocked"
+  | "pending"
+  | "approved"
+  | "revoked";
 
 export interface TimelineEventDisplayRecord {
   id: string;
   at: string;
   kind: LedgerEventKind;
+  kindLabel: string;
+  resultLabel: string;
+  resultTone: TimelineEventTone;
   actorKind: LedgerActorKind;
   actorId: string;
   actorLabel: string;
   warrantId: string | null;
+  warrantLabel: string | null;
   parentWarrantId: string | null;
+  parentWarrantLabel: string | null;
   actionId: string | null;
   approvalId: string | null;
   revocationId: string | null;
+  branchLabel: string;
+  lineagePath: string[];
   title: string;
   description: string;
 }
@@ -148,5 +164,5 @@ export interface DisplayScenarioExampleSet {
   commsDraftAction: ActionAttemptDisplayRecord;
   commsOverreachAction: ActionAttemptDisplayRecord;
   commsSendAction: ActionAttemptDisplayRecord;
-  commsPendingApproval: ApprovalStateDisplayRecord;
+  commsSendApproval: ApprovalStateDisplayRecord;
 }

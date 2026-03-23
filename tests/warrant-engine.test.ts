@@ -220,6 +220,24 @@ describe("warrant engine", () => {
 
     expect(child?.status).toBe("revoked");
     expect(child?.revocationSourceId).toBe(parent.id);
+    expect(revoked.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          warrantId: parent.id,
+          metadata: expect.objectContaining({
+            inherited: false,
+            revocationSourceId: parent.id,
+          }),
+        }),
+        expect.objectContaining({
+          warrantId: issued.warrant.id,
+          metadata: expect.objectContaining({
+            inherited: true,
+            revocationSourceId: parent.id,
+          }),
+        }),
+      ]),
+    );
 
     const result = authorizeAction({
       warrant: child!,
