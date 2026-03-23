@@ -13,4 +13,3 @@ export const demoFixturesBoundary: WorktreeBoundary = {
 export * from "@/demo-fixtures/auth-shell";
 export * from "@/demo-fixtures/display";
 export * from "@/demo-fixtures/scenario";
-export * from "@/demo-fixtures/state";

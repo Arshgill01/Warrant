@@ -1,18 +1,41 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createDefaultDemoScenario,
   getDisplayScenarioExamples,
+  revokeCommsBranchScenario,
+} from "../src/demo-fixtures";
+import {
   loadDelegationGraphView,
+  loadDemoRehearsalSnapshot,
   loadDemoState,
   loadTimelineEvents,
   replaceDemoState,
-  revokeCommsBranchScenario,
   resetDemoState,
-} from "../src/demo-fixtures";
+  restoreDemoStatePreset,
+} from "../src/demo-fixtures/state";
+
+const originalDemoStateFile = process.env.WARRANT_DEMO_STATE_FILE;
+const demoStateFile = join(tmpdir(), `warrant-demo-state-${process.pid}.json`);
 
 describe("demo fixtures", () => {
   beforeEach(() => {
+    process.env.WARRANT_DEMO_STATE_FILE = demoStateFile;
+    rmSync(demoStateFile, { force: true });
     resetDemoState();
+  });
+
+  afterEach(() => {
+    rmSync(demoStateFile, { force: true });
+
+    if (originalDemoStateFile === undefined) {
+      delete process.env.WARRANT_DEMO_STATE_FILE;
+      return;
+    }
+
+    process.env.WARRANT_DEMO_STATE_FILE = originalDemoStateFile;
   });
 
   it("creates a deterministic canonical scenario with isolated copies", () => {
@@ -172,5 +195,65 @@ describe("demo fixtures", () => {
         kind: "action.blocked",
       }),
     );
+  });
+
+  it("restores the revoked replay preset through the warrant engine", () => {
+    restoreDemoStatePreset("comms-revoked");
+
+    const scenario = loadDemoState();
+    const rehearsal = loadDemoRehearsalSnapshot();
+    const commsAgent = scenario.agents.find((agent) => agent.id === "agent-comms-001");
+    const commsWarrant = scenario.warrants.find((warrant) => warrant.id === "warrant-comms-child-001");
+
+    expect(rehearsal.preset).toBe("comms-revoked");
+    expect(commsAgent?.status).toBe("revoked");
+    expect(commsWarrant?.status).toBe("revoked");
+    expect(scenario.revocations).toEqual([
+      expect.objectContaining({
+        warrantId: "warrant-comms-child-001",
+        revokedById: "user-maya-chen",
+      }),
+    ]);
+    expect(scenario.timeline.some((event) => event.kind === "warrant.revoked")).toBe(true);
+    expect(scenario.timeline.at(-1)).toEqual(
+      expect.objectContaining({
+        kind: "action.blocked",
+        actionId: "action-comms-send-post-revoke-001",
+        warrantId: "warrant-comms-child-001",
+      }),
+    );
+  });
+
+  it("self-heals stale or invalid stored demo state back to the canonical scenario", () => {
+    writeFileSync(
+      demoStateFile,
+      JSON.stringify({
+        version: 999,
+        kind: "preset",
+        preset: "broken",
+        scenario: null,
+        updatedAt: "2026-04-17T09:00:00.000Z",
+      }),
+      "utf8",
+    );
+
+    const rehearsal = loadDemoRehearsalSnapshot();
+    const scenario = loadDemoState();
+
+    expect(rehearsal.preset).toBe("main");
+    expect(rehearsal.recoveredFromInvalidState).toBe(true);
+    expect(rehearsal.recoveryReason).toMatch(/restored the canonical main scenario/i);
+    expect(scenario.agents[0]?.label).toBe("Planner Agent");
+    expect(scenario.revocations).toEqual([]);
+  });
+
+  it("flags recovery when the stored demo state file is half-written", () => {
+    writeFileSync(demoStateFile, "{broken", "utf8");
+
+    const rehearsal = loadDemoRehearsalSnapshot();
+
+    expect(rehearsal.preset).toBe("main");
+    expect(rehearsal.recoveredFromInvalidState).toBe(true);
+    expect(rehearsal.recoveryReason).toMatch(/half-written or unreadable/i);
   });
 });

@@ -1926,7 +1926,7 @@ Out of scope:
 - The current demo route is mostly server-rendered from fixture loaders, so making revocation interactive without forking state between server and client may require careful state hoisting.
 - Once Comms is revoked, its existing pending approval needs to stay historically visible without implying the branch can still execute, and that distinction may require small display-contract changes.
 - There is no deeper descendant under Comms in the current seeded tree, so descendant invalidation must be explicit in data and tests even if the visible graph branch is shallow.
-
+ 
 ## ExecPlan — Auth0 Foundation Validation Pass (2026-03-23)
 
 ### Objective
@@ -1957,18 +1957,16 @@ Out of scope:
 - changing product behavior unless testing exposes a clear branch-specific defect
 - claiming Google Calendar or Gmail actions executed live without a signed-in delegated session
 - claiming the deterministic delegation demo is already driven by real Auth0-backed agent execution
-- optional documentation or small fixes only if testing reveals branch-specific issues
 
 ### Files/modules likely affected
 
 - `PLANS.md`
-- optional documentation or small auth/runtime fixes only if validation exposes a real issue
+- optional documentation or small fixes only if testing reveals branch-specific issues
 
 ### Invariants to preserve
 
 - Auth0-backed external access must remain visibly distinct from local Warrant and approval logic.
 - The report must distinguish route-level verification from human-completed browser flows.
-- The branch must not claim live Gmail or Calendar execution without direct evidence.
 
 ### Implementation steps
 
@@ -1993,87 +1991,73 @@ Out of scope:
 - True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
 - Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
 
-## ExecPlan — Lineage-Aware Audit Timeline (2026-03-23)
+## ExecPlan — Demo Rehearsal Reset And Replay Stability (2026-03-23)
 
 ### Objective
 
-Build a concise, lineage-aware audit timeline for the seeded main scenario so judges can follow the exact sequence of delegation, enforcement, approval control, revocation, and post-revoke blocking without reading raw logs.
+Add a deterministic, gated demo rehearsal state path so the merged main scenario can be reset, restored, and replayed without manual repair before recording.
 
 ### Demo relevance
 
-This is Workstream F and directly strengthens the core proof sequence in the 3-minute demo:
-
-1. root warrant issued
-2. child warrants issued
-3. useful child actions succeed
-4. overreach is denied
-5. sensitive send pauses for approval
-6. approval decision becomes visible
-7. one branch is revoked
-8. later action from that branch is blocked because authority is gone
-
-It matters because the proof moments already exist, but they are not yet easy to inspect as one attributable story.
+This strengthens the full 3-minute story by making the seeded main scenario boringly repeatable. The demo should be able to return to a known-good starting point, recover from stale local state, and replay the core proof moments without requiring code edits or hand-fixing in-memory data.
 
 ### Scope
 
 In scope:
 
-- extend the seeded scenario so the canonical timeline covers approval outcome, branch revocation, and a post-revoke blocked attempt
-- add or refine audit event contracts and display adapters so each event carries actor, warrant, parent warrant, and lineage or branch context needed by the UI
-- render a concise ledger or timeline on `/demo` with human-readable event descriptions and compact attribution
-- keep the audit surface aligned with existing warrant, approval, and revocation logic rather than inventing parallel state
-- add targeted tests for event ordering, attribution, and timeline rendering
+- a deterministic loader/reset controller for the merged demo scenario
+- one or more stable rehearsal presets derived from the canonical scenario
+- graceful recovery when stored demo state is stale, invalid, or half-complete
+- a clearly gated demo-only control path for reset/restore actions
+- demo-route updates so the rendered surface actually reflects the active rehearsal state
+- targeted tests plus repeated manual reset/preset verification
 
 Out of scope:
 
-- building a generic developer log viewer
-- persistence, search, filtering, or export features
-- redesigning the existing graph UI beyond what is needed to align the timeline story
-- adding live provider execution beyond the current deterministic scenario
+- a broad admin dashboard or public operator surface
+- changing the core warrant, approval, or provider semantics beyond what is required for stable replay
+- introducing real persistence or database-backed demo state
+- expanding the scenario to new agents, integrations, or proof beats
 
 ### Files/modules likely affected
 
 - `PLANS.md`
-- `src/contracts/audit.ts`
-- `src/contracts/display.ts`
-- `src/contracts/demo.ts`
-- `src/agents/main-scenario.ts`
-- `src/demo-fixtures/display.ts`
-- `src/demo-fixtures/state.ts`
+- `README.md`
 - `src/app/demo/page.tsx`
-- `src/approvals/*`
-- `src/warrants/revocation.ts`
-- `tests/agents-orchestration.test.ts`
-- `tests/demo-fixtures.test.ts`
-- `tests/routes.test.tsx`
+- `src/app/api/demo/*`
+- `src/components/*`
+- `src/demo-fixtures/*`
+- `src/contracts/*`
+- `tests/*`
 
 ### Invariants to preserve
 
-- Every meaningful event must remain attributable through lineage: root request, acting agent, warrant, parent warrant, timestamp, and result.
-- The timeline must reflect real domain decisions already modeled in the repo: local warrant denial, Auth0 approval gating, and descendant invalidation after revocation.
-- Child warrants may only narrow authority; the audit layer must explain decisions, not weaken or bypass enforcement.
-- The seeded scenario must stay deterministic, with fixed ids, timestamps, ordering, and human-readable copy.
-- The UI must stay concise and serious; it should help a judge explain the system, not bury them in developer diagnostics.
+- The canonical main scenario stays deterministic, with fixed ids, timestamps, recipients, and event ordering.
+- Demo tools must stay clearly gated and should not appear publicly unless explicitly enabled.
+- Reset and replay helpers must support the existing thesis rather than replace real warrant or Auth0 enforcement with mock-only shortcuts.
+- Any derived replay state should remain semantically honest: revocation should come from the warrant engine and approval status should stay legible.
+- The demo route must present sensible, legible states even when previously stored demo state is malformed or incomplete.
 
 ### Implementation steps
 
-1. Audit the current seeded scenario, approval flow, and revocation logic to identify the missing proof moments and the thinnest contract changes needed to represent them.
-2. Extend the audit event model and display adapters so rendered records include event classification, actor label, warrant lineage, branch attribution, and concise explanation text.
-3. Update the canonical main scenario to include the full proof chain after the current pending approval point: approval decision, branch revocation, and one blocked post-revoke action from the revoked branch.
-4. Rework the `/demo` timeline section into a concise ledger view that emphasizes sequence, attribution, and “why the system decided this” instead of raw ids alone.
-5. Add targeted tests for event kind ordering, attribution fields, deterministic fixture output, and demo-page rendering of the new proof moments.
-6. Run repo-native validation, boot the app locally, and verify the seeded timeline visually in the browser.
+1. Add a small rehearsal-state model around the canonical scenario that can restore the default main path and a minimal set of deterministic replay presets.
+2. Back that model with a local demo-state store that reads and writes safely, validates stored state, and self-heals to the canonical preset if the saved state is stale or unusable.
+3. Update the demo fixture loader APIs so all graph, timeline, and example consumers resolve from the rehearsal state instead of a process-local singleton only.
+4. Add a gated demo-only route handler for reading and switching rehearsal state so resets work from both the browser and terminal.
+5. Make the `/demo` route dynamic, derive the visible approval state from the loaded scenario, and add a small gated rehearsal control surface that restores the main scenario and key replay states without becoming an admin UI.
+6. Add targeted tests for deterministic reset, preset replay, stale-state recovery, and route/helper gating, then run focused checks followed by the full repo validation gate.
 
-### Validation steps
+### Validation plan
 
-- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run test -- tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run test`
 - `npm run typecheck`
 - `npm run build`
-- `npm run dev -- --port 3000`
-- manual verification on `http://127.0.0.1:3000/demo` that the timeline shows the full seeded proof sequence in the expected order and clearly attributes each event to its agent and warrant lineage
+- repeated manual checks against the demo reset/preset path to confirm `/demo` returns to the canonical known-good state and can switch to the alternate replay state without leftover stale data
 
 ### Risks
 
-- The current scenario stops at `approval.requested`, so extending it without muddying existing proof cards requires careful sequencing and copy discipline.
-- Approval and revocation state already influence graph summaries; adding fuller audit records could expose drift between display adapters and the seeded scenario if both are not updated together.
-- Manual browser verification depends on the local Next.js server booting cleanly in this environment.
+- File-backed demo state improves rehearsal reliability locally, but it is still demo infrastructure rather than multi-user production persistence.
+- If the gated controls are too hidden they will not reduce setup friction; if they are too visible they risk becoming a public admin surface, so the gating needs to stay explicit.
+- The current timeline and display contracts are optimized for the canonical scenario, so alternate replay presets must stay narrow to avoid misleading UI states or accidental semantic drift.
+- The branch must not claim live Gmail or Calendar execution without direct evidence.
