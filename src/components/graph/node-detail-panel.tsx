@@ -35,6 +35,10 @@ function formatDisplayStatus(value: WarrantDisplaySummary["status"]): string {
   return value.replaceAll("_", " ");
 }
 
+function formatControlState(value: string): string {
+  return value.replaceAll("_", " ");
+}
+
 function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
@@ -236,7 +240,7 @@ export function NodeDetailPanel({
                   {warrant.latestApproval.title}
                 </p>
                 <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
-                  {warrant.latestApproval.status}
+                  {formatControlState(warrant.latestApproval.controlState)}
                 </span>
               </div>
               <p className="text-sm leading-relaxed text-[var(--foreground)]">

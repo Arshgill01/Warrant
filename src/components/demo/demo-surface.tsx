@@ -6,20 +6,22 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   buildSendApprovalBoundarySummary,
   buildSendApprovalStateMatrix,
 } from "@/approvals";
+import { DemoRehearsalControls } from "@/components/demo/demo-rehearsal-controls";
 import type {
   ActionPathSnapshot,
   DemoScenario,
   SendApprovalState,
 } from "@/contracts";
+import type { DemoRehearsalSnapshot } from "@/demo-fixtures/state";
 import {
   createActionAttemptDisplayRecords,
   createCommsRevokedDemoScenario,
+  createMainDemoScenario,
   createDelegationGraphView,
   createTimelineEventDisplayRecords,
   getDisplayScenarioExamples,
@@ -309,14 +311,64 @@ function buildRevokedApprovalBoundarySummary(): {
   };
 }
 
+function createScenarioFromPreset(
+  preset: DemoRehearsalSnapshot["preset"],
+): DemoScenario {
+  switch (preset) {
+    case "main":
+      return createMainDemoScenario();
+    case "comms-revoked":
+      return createCommsRevokedDemoScenario();
+  }
+}
+
+function scenariosAreEqual(left: DemoScenario, right: DemoScenario): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+type RehearsalControlsState = Pick<
+  DemoRehearsalSnapshot,
+  | "kind"
+  | "preset"
+  | "label"
+  | "description"
+  | "updatedAt"
+  | "controlsEnabled"
+  | "recoveredFromInvalidState"
+  | "recoveryReason"
+  | "presets"
+>;
+
+export function deriveRehearsalControlsState(input: {
+  rehearsal: DemoRehearsalSnapshot;
+  scenario: DemoScenario;
+}): RehearsalControlsState {
+  const presetScenario = createScenarioFromPreset(input.rehearsal.preset);
+  const divergedFromPreset =
+    input.rehearsal.kind === "preset" &&
+    !scenariosAreEqual(input.scenario, presetScenario);
+
+  if (!divergedFromPreset) {
+    return input.rehearsal;
+  }
+
+  return {
+    ...input.rehearsal,
+    kind: "custom",
+    label: `Custom state (modified from ${input.rehearsal.label})`,
+    description:
+      "This view diverged from the selected preset after an in-page change. Restore a preset to return to canonical rehearsal state.",
+  };
+}
+
 export function DemoSurface({
   initialScenario,
   authConfigured,
-  controls,
+  rehearsal,
 }: {
   initialScenario: DemoScenario;
   authConfigured: boolean;
-  controls?: ReactNode;
+  rehearsal?: DemoRehearsalSnapshot | null;
 }) {
   const [scenario, setScenario] = useState(initialScenario);
 
@@ -392,6 +444,16 @@ export function DemoSurface({
         return counts;
       }, {}),
     [graphView.warrantSummaries],
+  );
+  const controlsState = useMemo(
+    () =>
+      rehearsal
+        ? deriveRehearsalControlsState({
+            rehearsal,
+            scenario,
+          })
+        : null,
+    [rehearsal, scenario],
   );
 
   const handleRevokeBranch = useCallback((warrantId: string) => {
@@ -502,7 +564,18 @@ export function DemoSurface({
         </div>
       </section>
 
-      {controls}
+      {controlsState?.controlsEnabled ? (
+        <DemoRehearsalControls
+          currentPreset={controlsState.preset}
+          currentKind={controlsState.kind}
+          currentLabel={controlsState.label}
+          currentDescription={controlsState.description}
+          updatedAt={controlsState.updatedAt}
+          recoveredFromInvalidState={controlsState.recoveredFromInvalidState}
+          recoveryReason={controlsState.recoveryReason}
+          presets={controlsState.presets}
+        />
+      ) : null}
 
       <section className="w-full">
         <DelegationGraph
