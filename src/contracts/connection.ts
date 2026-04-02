@@ -1,4 +1,4 @@
-export type ProviderConnectionState = "connected" | "not-connected" | "pending" | "unavailable";
+export type ProviderConnectionState = "connected" | "not-connected" | "pending" | "expired" | "unavailable";
 
 export interface ProviderConnectionSnapshot {
   provider: "google";

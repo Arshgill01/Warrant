@@ -52,6 +52,8 @@ Optional shell-only overrides:
 
 Use the shell overrides only to rehearse UI states while the real Auth0 connected-account path is still being finalized. The real path uses Auth0 sign-in plus `/auth/connect`.
 
+The runtime treats setup as incomplete when any required value is missing or when `AUTH0_SECRET` is shorter than 32 characters (64 hex characters recommended).
+
 Google OAuth client credentials do not belong in this app env for this branch. Configure the Google social connection inside the Auth0 dashboard and let the app consume Auth0-managed delegated access.
 
 ## Local Auth0 setup
@@ -101,6 +103,7 @@ Working in this branch:
 - middleware-based auth route handling
 - signed-out, signed-in, and missing-config shell states
 - visible Google disconnected, connected, pending, and unavailable states
+- explicit expired delegated-access state when Auth0 cannot refresh the provider token path
 - visible Token Vault-ready connection contract for later Gmail and Calendar work
 
 Still requires external Auth0 dashboard configuration:

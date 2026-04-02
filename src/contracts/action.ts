@@ -35,6 +35,7 @@ export type ProviderActionState =
 export type ProviderActionFailureCode =
   | "provider-disconnected"
   | "provider-pending"
+  | "provider-expired"
   | "provider-unavailable"
   | "token-unavailable"
   | "execution-release-required"

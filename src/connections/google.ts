@@ -41,6 +41,11 @@ export const googleConnectionStateLegend: Array<{
     detail: "The provider handoff started, but the delegated path is not ready to use yet.",
   },
   {
+    state: "expired",
+    label: "Expired",
+    detail: "A previous Google link exists, but Auth0 can no longer mint delegated access until the session is refreshed.",
+  },
+  {
     state: "unavailable",
     label: "Unavailable",
     detail: "The shell is missing config or the delegated token path cannot be used right now.",
@@ -63,12 +68,21 @@ export function getGoogleConnectionSetupSnapshot(): ProviderConnectionSetupSnaps
   const authEnv = getAuth0Environment();
 
   if (!authEnv.isConfigured) {
+    const issueSummary = authEnv.configurationIssues.length
+      ? `Setup blockers: ${authEnv.configurationIssues.join(" | ")}.`
+      : null;
+
     return {
       provider: "google",
       status: "setup-required",
       headline: "Google delegated access depends on Auth0 app setup first.",
       detail:
-        "Finish the core Auth0 app env and dashboard URLs before the Google connected-account flow can hand off Calendar and Gmail access through Auth0.",
+        [
+          "Finish the Auth0 app env and dashboard URLs before the Google connected-account flow can hand off Calendar and Gmail access through Auth0.",
+          issueSummary,
+        ]
+          .filter(Boolean)
+          .join(" "),
       connectionName: authEnv.googleConnectionName,
       requestedScopes: [...googleDelegatedScopes],
       requestedAuthParams: Object.entries(googleConnectAuthorizationParams).map(([key, value]) => ({ key, value })),
@@ -132,6 +146,18 @@ function buildOverrideSnapshot(state: ProviderConnectionState, session: AuthSess
         detail: "This shell override keeps the provider disconnected until you link Google through Auth0.",
         actionLabel: session.state === "signed-in" ? "Connect Google with Auth0" : session.loginHref ? "Sign in with Auth0" : null,
         actionHref: session.state === "signed-in" ? connectHref : session.loginHref,
+        accountLabel,
+        tokenExpiresAt: null,
+        via: "shell-override",
+      };
+    case "expired":
+      return {
+        provider: "google",
+        state,
+        headline: "Google delegated access expired.",
+        detail: "The shell override marks the previous delegated path as expired until Auth0 re-establishes it.",
+        actionLabel: session.logoutHref ? "Refresh Auth0 session" : session.loginHref ? "Sign in with Auth0" : null,
+        actionHref: session.logoutHref ?? session.loginHref,
         accountLabel,
         tokenExpiresAt: null,
         via: "shell-override",
@@ -230,11 +256,11 @@ export async function getGoogleConnectionSnapshot(session: AuthSessionSnapshot):
         case AccessTokenForConnectionErrorCode.MISSING_REFRESH_TOKEN:
           return {
             provider: "google",
-            state: "unavailable",
-            headline: "Google access needs a fresh Auth0 session.",
+            state: "expired",
+            headline: "Google delegated access has expired.",
             detail: "Auth0 could not refresh the delegated token path. Sign in again to restore Google access cleanly.",
-            actionLabel: session.logoutHref ? "Log out" : null,
-            actionHref: session.logoutHref,
+            actionLabel: session.logoutHref ? "Refresh Auth0 session" : session.loginHref ? "Sign in with Auth0" : null,
+            actionHref: session.logoutHref ?? session.loginHref,
             accountLabel: getConnectedAccountLabel(session),
             tokenExpiresAt: null,
             via: "auth0-token-vault",

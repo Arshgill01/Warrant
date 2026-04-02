@@ -122,6 +122,7 @@ describe("auth shell environment", () => {
       AUTH0_CLIENT_ID: "client-id",
       AUTH0_CLIENT_SECRET: "client-secret",
       AUTH0_SECRET: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      APP_BASE_URL: "http://localhost:3000",
       AUTH0_GOOGLE_CONNECTION_NAME: "google-oauth2",
     };
 
@@ -137,6 +138,21 @@ describe("auth shell environment", () => {
     } finally {
       process.env = previousEnv;
     }
+  });
+
+  it("marks Auth0 setup invalid when secret length is too short", () => {
+    const environment = readAuth0Environment({
+      AUTH0_DOMAIN: "tenant.example.auth0.com",
+      AUTH0_CLIENT_ID: "client-id",
+      AUTH0_CLIENT_SECRET: "client-secret",
+      AUTH0_SECRET: "too-short",
+      APP_BASE_URL: "http://localhost:3000",
+    } as unknown as NodeJS.ProcessEnv);
+
+    expect(environment.isConfigured).toBe(false);
+    expect(environment.invalidValues).toEqual([
+      "AUTH0_SECRET must be at least 32 characters (64 hex characters recommended).",
+    ]);
   });
 });
 
@@ -156,6 +172,24 @@ describe("provider-backed action wrappers", () => {
 
     expect(result.state).toBe("disconnected");
     expect(result.failure?.code).toBe("provider-disconnected");
+    expect(result.data).toBeNull();
+  });
+
+  it("surfaces expired delegated Google access explicitly", async () => {
+    const result = await readCalendarAvailability(authShellProviderRequests.calendarAvailability, {
+      session: signedInSession,
+      connection: {
+        ...connectedGoogle,
+        state: "expired",
+        headline: "Google delegated access has expired.",
+        detail: "Refresh Auth0 before retrying Calendar access.",
+        actionLabel: "Refresh Auth0 session",
+        actionHref: "/auth/logout",
+      },
+    });
+
+    expect(result.state).toBe("unavailable");
+    expect(result.failure?.code).toBe("provider-expired");
     expect(result.data).toBeNull();
   });
 
@@ -233,6 +267,25 @@ describe("provider-backed action wrappers", () => {
       subject: authShellProviderRequests.gmailSend.subject,
     });
     expect(result.failure).toBeNull();
+  });
+
+  it("reports invalid provider payloads with a structured failure code", async () => {
+    const result = await prepareGmailDraft(authShellProviderRequests.gmailDraft, {
+      session: signedInSession,
+      connection: connectedGoogle,
+      accessToken: "token",
+      fetchFn: async () =>
+        new Response("<not-json>", {
+          status: 200,
+          headers: {
+            "Content-Type": "text/plain",
+          },
+        }),
+    });
+
+    expect(result.state).toBe("failed");
+    expect(result.failure?.code).toBe("provider-response-invalid");
+    expect(result.data).toBeNull();
   });
 });
 
