@@ -27,14 +27,14 @@ describe("node detail panel", () => {
       }),
     );
 
-    expect(html).toContain("Latest execution");
-    expect(html).toContain("Latest Policy Denial");
-    expect(html).toContain("Approval state");
+    expect(html).toContain("Latest action");
+    expect(html).toContain("Latest denied action");
+    expect(html).toContain("Approval request");
     expect(html).toContain(
       "Prepared the investor follow-up send and stopped for approval.",
     );
     expect(html).toContain(
-      "Attempted to send the drafted investor follow-ups to an out-of-policy recipient.",
+      "Tried to send the investor follow-up to a recipient outside this branch.",
     );
     expect(html).toContain("recipient_not_allowed");
     expect(html).toContain("Approve investor follow-up send");

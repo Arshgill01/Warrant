@@ -22,7 +22,7 @@ describe("delegation graph view model", () => {
     expect(planner?.data.label).toBe("Planner Agent");
     expect(calendar?.data.role).toBe("calendar");
     expect(comms?.data.status).toBe("pending-approval");
-    expect(comms?.data.statusReason).toContain("explicitly approve");
+    expect(comms?.data.statusReason).toContain("Maya must approve");
     expect(calendar?.position.y).toBe(comms?.position.y);
     expect(planner?.position.y).toBeLessThan(calendar?.position.y ?? Number.MAX_SAFE_INTEGER);
   });

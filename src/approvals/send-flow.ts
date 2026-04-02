@@ -14,39 +14,39 @@ function createApprovalStateRecord(
       return {
         state,
         label: "Not requested",
-        headline: "No Auth0 approval request exists yet.",
+        headline: "This exact email has not been submitted for approval yet.",
         detail:
-          "The Comms Agent can prepare the draft, but Warrant will not let the live Gmail send proceed until the exact email is submitted for Auth0-backed approval.",
-        nextStep: "Request approval for this exact send preview.",
+          "Comms can draft the message, but it cannot send a real email until Maya reviews this exact subject, body, and recipient list through Auth0.",
+        nextStep: "Submit this exact email for approval.",
         executionReady: false,
       };
     case "pending":
       return {
         state,
         label: "Pending",
-        headline: "Auth0 approval is pending for this exact email.",
+        headline: "Human approval is pending for this exact email.",
         detail:
-          "Recipients, subject, and body are frozen for review. The send path stays blocked until Auth0 returns an explicit decision.",
-        nextStep: "Wait for approval or deny the send.",
+          "Recipients, subject, and body are frozen for review. The real send stays blocked until Maya approves or denies this exact message.",
+        nextStep: "Wait for a human decision on this send.",
         executionReady: false,
       };
     case "approved":
       return {
         state,
         label: "Approved",
-        headline: "Auth0 approved this send request.",
+        headline: "Approval was granted for this exact email.",
         detail:
-          "The approval layer can now mint the explicit execution release that allows the Gmail send boundary to proceed.",
-        nextStep: "Execute the approved send through the Auth0-backed provider path.",
+          "Warrant now has the approval it needs to release one real Gmail send for this reviewed message.",
+        nextStep: "Run the approved send through the Auth0-backed Gmail path.",
         executionReady: true,
       };
     case "denied":
       return {
         state,
         label: "Denied",
-        headline: "The user denied this send request.",
+        headline: "Approval was denied for this exact email.",
         detail:
-          "Local Warrant policy still allows the category in principle, but this specific email remains blocked because Auth0 approval was refused.",
+          "The branch is allowed to ask for this kind of send, but this specific message stays blocked because Maya denied it.",
         nextStep: "Keep the message as a draft or revise it before requesting approval again.",
         executionReady: false,
       };
@@ -54,20 +54,20 @@ function createApprovalStateRecord(
       return {
         state,
         label: "Unavailable",
-        headline: "Auth0 approval is unavailable right now.",
+        headline: "The approval service is unavailable right now.",
         detail:
-          "Warrant can evaluate the local send authority, but it cannot reach the external approval control required to release the live email.",
-        nextStep: "Restore Auth0 approval availability before retrying this send.",
+          "Warrant can tell that this branch may request the send, but it cannot reach the external approval control needed to release the real email.",
+        nextStep: "Restore approval availability before retrying this send.",
         executionReady: false,
       };
     case "error":
       return {
         state,
         label: "Error",
-        headline: "Auth0 approval returned an unusable result.",
+        headline: "The approval result could not be trusted.",
         detail:
-          "The request exists, but Warrant could not derive a trustworthy approval decision, so send remains blocked.",
-        nextStep: "Retry the approval check or re-request approval for this message.",
+          "The request exists, but Warrant could not confirm a usable approval decision, so the send remains blocked.",
+        nextStep: "Retry the approval check or request approval again for this message.",
         executionReady: false,
       };
   }
@@ -127,7 +127,7 @@ export function buildSendApprovalStateRecord(
       ? {
           execute: true,
           releasedBy: "approval-layer",
-          reason: "Auth0 approved this exact Gmail send request.",
+          reason: "Human approval was granted for this exact Gmail send request.",
         }
       : null,
   };
@@ -140,7 +140,7 @@ function buildApprovalPathSnapshot(
 
   return {
     kind: "gmail.send",
-    label: "Auth0 approval requirement",
+    label: "Human approval check",
     state:
       state === "approved"
         ? "ready"
@@ -162,26 +162,26 @@ function buildExecutionPathSnapshot(
   if (state === "approved") {
     return {
       kind: "gmail.send",
-      label: "Final execution readiness",
+      label: "Real send release",
       state: "ready",
       gate: "auth0",
-      headline: "Auth0 can now release the live Gmail send.",
+      headline: "The real Gmail send can now be released.",
       detail:
-        "The local send category is allowed, approval is satisfied, and Warrant may hand the explicit release to the provider send boundary.",
-      nextStep: "Run the Gmail send with the approval-layer release.",
+        "Local policy allows the send, the human approval check passed, and Warrant may now hand one explicit release to the provider send boundary.",
+      nextStep: "Run the Gmail send with the approval release.",
     };
   }
 
   return {
     kind: "gmail.send",
-    label: "Final execution readiness",
+    label: "Real send release",
     state: state === "pending" ? "pending" : "blocked",
     gate: "auth0",
-    headline: "The live Gmail send is still blocked.",
+    headline: "The real Gmail send is still blocked.",
     detail:
       state === "pending"
-        ? "Auth0 has the request, but no execution release exists yet."
-        : "Without a valid Auth0 approval result, Warrant cannot release the live Gmail send.",
+        ? "Auth0 has the approval request, but no release exists yet to send a real email."
+        : "Without a valid approval result, Warrant cannot release the real Gmail send.",
     nextStep: record.nextStep,
   };
 }
@@ -192,12 +192,12 @@ export function buildSendApprovalBoundarySummary(
   return {
     localEligibility: {
       kind: "gmail.send",
-      label: "Local Warrant eligibility",
+      label: "Local warrant check",
       state: "ready",
       gate: "policy",
-      headline: "The Comms warrant allows this send category.",
+      headline: "This branch may request one bounded send.",
       detail:
-        "Draft and send stay separate. This child warrant can draft freely and may attempt a bounded send, but that still does not authorize live external execution by itself.",
+        "The child warrant lets Comms draft freely and ask to send one email to approved recipients. It does not let Comms send on its own.",
       nextStep: null,
     },
     approvalRequirement: buildApprovalPathSnapshot(state),

@@ -36,9 +36,9 @@ function buildPlannerAgent(): Omit<DemoAgent, "warrantId"> {
     role: "planner",
     label: "Planner Agent",
     status: "active",
-    purpose: "Break the investor-update request into bounded child-agent tasks.",
+    purpose: "Turn Maya's request into narrower child-agent tasks.",
     summary:
-      "Owns the root warrant, decides the deterministic two-agent plan, and delegates only the minimum authority each child needs.",
+      "Holds the parent warrant, decides the plan, and delegates only the minimum authority each child needs.",
     parentAgentId: null,
     externalSystems: ["gmail", "google-calendar"],
   };
@@ -52,7 +52,7 @@ function buildCalendarAgent(): Omit<DemoAgent, "warrantId"> {
     status: "active",
     purpose: "Check tomorrow's schedule before the investor update goes out.",
     summary:
-      "Can perform one bounded calendar read inside the April 18 scheduling window.",
+      "Can read one bounded calendar window. It cannot draft emails or send them.",
     parentAgentId: "agent-planner-001",
     externalSystems: ["google-calendar"],
   };
@@ -64,9 +64,9 @@ function buildCommsAgent(): Omit<DemoAgent, "warrantId"> {
     role: "comms",
     label: "Comms Agent",
     status: "active",
-    purpose: "Draft investor follow-up emails and queue bounded sends for approval.",
+    purpose: "Draft investor follow-up emails and queue one bounded send for approval.",
     summary:
-      "Can draft freely for approved Northstar recipients and may attempt one bounded send, but only after Auth0 approval releases execution.",
+      "Can draft for approved Northstar recipients and request one send. It cannot send a real email without approval.",
     parentAgentId: "agent-planner-001",
     externalSystems: ["gmail"],
   };
@@ -136,7 +136,7 @@ export function runMainScenarioPlannerFlow(
     createdBy: scenarioUser.id,
     agentId: plannerAgent.id,
     purpose:
-      "Prepare the April 18 investor update and delegate only bounded scheduling and drafting authority.",
+      "Prepare the April 18 investor update and delegate only narrower scheduling and email authority.",
     capabilities: [
       "calendar.read",
       "gmail.draft",
@@ -169,7 +169,7 @@ export function runMainScenarioPlannerFlow(
         id: "warrant-calendar-child-001",
         createdBy: plannerAgent.id,
         agentId: calendarAgent.id,
-        purpose: "Read tomorrow's bounded calendar window before drafting follow-ups.",
+        purpose: "Read tomorrow's calendar window before follow-up drafting begins.",
         capabilities: ["calendar.read"],
         resourceConstraints: {
           calendarWindow: {
@@ -194,7 +194,7 @@ export function runMainScenarioPlannerFlow(
         createdBy: plannerAgent.id,
         agentId: commsAgent.id,
         purpose:
-          "Draft and send internal investor follow-up emails for approved recipients, but only after explicit approval.",
+          "Draft investor follow-ups for approved recipients and request one send after approval.",
         capabilities: ["gmail.draft", "gmail.send"],
         resourceConstraints: {
           allowedDomains: ["northstar.vc"],
@@ -322,7 +322,7 @@ export function runMainScenarioPlannerFlow(
     requestedByAgentId: commsAgent.id,
     title: "Approve investor follow-up send",
     reason:
-      "Sending the draft email leaves draft-only mode and reaches external recipients, so Maya must explicitly approve the exact message through Auth0 before Warrant can release execution.",
+      "This action would send a real email to other people. Maya must approve this exact message before Warrant can release the send.",
     subject: "Investor update follow-up for April 18",
     bodyText:
       "Prepared follow-up for tomorrow's investor update.\n\nPlease confirm the owners, timing, and next asks before we send externally.",
@@ -332,7 +332,7 @@ export function runMainScenarioPlannerFlow(
     expiresAt: "2026-04-17T18:00:00.000Z",
     draftId: "draft-investor-update-001",
     blastRadius:
-      "Approving this request authorizes one live Gmail send from the Comms branch to the two approved Northstar recipients.",
+      "If approved, the Comms branch may send this one email to partners@northstar.vc and finance@northstar.vc.",
   });
 
   const commsSendAttempt = {
@@ -352,7 +352,7 @@ export function runMainScenarioPlannerFlow(
     resource: "Send to partners@northstar.vc and finance@northstar.vc",
     outcome: "approval-required" as const,
     outcomeReason:
-      "The Comms warrant allows one bounded send, but Warrant still requires Auth0 approval before the live Gmail action can execute.",
+      "This branch is allowed to request one bounded send, but it still cannot send a real email until Maya approves this exact message.",
     approvalRequestId: commsSendApproval.id,
   };
   const agents: DemoAgent[] = [
@@ -401,7 +401,7 @@ export function runMainScenarioPlannerFlow(
         warrant: rootWarrant,
         title: "Root planner warrant activated",
         description:
-          "Maya grants Planner Agent the parent warrant for the investor-update request, including delegation rights for narrower children.",
+          "Maya approves the parent warrant for Planner Agent. It may prepare the investor update and delegate only narrower child warrants.",
       }),
       createWarrantIssuedEvent({
         id: "event-calendar-warrant-issued-001",
@@ -409,9 +409,9 @@ export function runMainScenarioPlannerFlow(
         actorKind: "agent",
         actorId: plannerAgent.id,
         warrant: calendarWarrant,
-        title: "Calendar child warrant issued",
+        title: "Calendar child warrant delegated",
         description:
-          "Planner Agent narrows its authority to a single bounded calendar-read warrant for the April 18 schedule window.",
+          "Planner Agent delegates one narrower calendar warrant. Calendar Agent may read the April 18 window, but it cannot draft or send email.",
       }),
       createWarrantIssuedEvent({
         id: "event-comms-warrant-issued-001",
@@ -419,9 +419,9 @@ export function runMainScenarioPlannerFlow(
         actorKind: "agent",
         actorId: plannerAgent.id,
         warrant: commsWarrant,
-        title: "Comms child warrant issued",
+        title: "Comms child warrant delegated",
         description:
-          "Planner Agent issues a bounded comms warrant that allows drafting immediately but still requires approval before any live send can execute.",
+          "Planner Agent delegates a narrower comms warrant. Comms Agent may draft immediately and request one send, but it cannot send without approval.",
       }),
       calendarAction.timelineEvent,
       commsAction.timelineEvent,
@@ -437,9 +437,9 @@ export function runMainScenarioPlannerFlow(
         actionId: commsSendAction.id,
         approvalId: commsSendApproval.id,
         revocationId: null,
-        title: "Comms send paused for approval",
+        title: "Comms send waiting for approval",
         description:
-          "Comms Agent has a locally valid send path for the approved recipients, but Warrant pauses the live Gmail action until Maya approves the exact email through Auth0.",
+          "Comms Agent stayed inside its warrant, but the real Gmail send is paused until Maya approves this exact email through Auth0.",
       },
     ],
     examples: {

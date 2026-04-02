@@ -43,7 +43,7 @@ export function DelegationGraph({
   warrantSummaries: initialSummaries,
   eyebrow = "Authority Graph",
   title = "Delegation Tree",
-  description = "Nodes represent warrants. Revoking a node invalidates its entire branch.",
+  description = "Each node is a warrant. Revoking one node immediately removes authority from that entire branch.",
 }: DelegationGraphProps) {
   const baseNodes = useMemo(
     () => buildDelegationGraphNodes({ graphNodes }),
@@ -82,12 +82,12 @@ export function DelegationGraph({
           ? {
               ...summary,
               status: "revoked",
-              statusReason: "This branch was revoked from the delegation graph.",
+              statusReason: "This branch was revoked. This agent and any descendants can no longer act.",
               statusSource: "warrant",
               revokedAt: summary.revokedAt ?? new Date().toISOString(),
               revocationReason:
                 summary.revocationReason ??
-                "This branch was revoked from the delegation graph.",
+                "This branch was revoked. This agent and any descendants can no longer act.",
             }
           : summary,
       ),
@@ -101,7 +101,7 @@ export function DelegationGraph({
             data: {
               ...node.data,
               status: "revoked",
-              statusReason: "This branch was revoked from the delegation graph.",
+              statusReason: "This branch was revoked. This agent and any descendants can no longer act.",
               isRevoked: true,
             },
           };

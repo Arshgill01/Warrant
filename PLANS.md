@@ -1892,3 +1892,153 @@ Out of scope:
 
 - True end-to-end verification still requires an interactive signed-in browser session with the configured Auth0 tenant and Google connected-account flow.
 - Route-level success can prove the plumbing is present without proving delegated token retrieval has already succeeded for a real user.
+
+## ExecPlan — Consent Language Polish Pass (2026-03-23)
+
+### Objective
+
+Polish the user-facing consent and authorization language across the demo so a first-time viewer can immediately understand what each warrant authorizes, what it does not authorize, why approval is required, why overreach is denied, and what revocation or expiry changes.
+
+### Demo relevance
+
+This is a demo-critical polish slice spanning Milestone 4, Milestone 5, Milestone 6, and Milestone 7. It strengthens the exact moments judges need to understand quickly:
+
+1. root authority is explicitly granted
+2. child authority is narrower
+3. one send is denied by policy
+4. one send pauses for approval
+5. one branch can be revoked and loses authority
+6. the timeline explains those transitions in plain consequences
+
+### Scope
+
+In scope:
+
+- copy refinement for the root and child warrant surfaces on `/demo`
+- approval-screen and approval-state language updates
+- denial, revoked, and expired status-message refinement
+- timeline/event wording cleanup where it is user-facing
+- graph/node-detail wording cleanup so capability ceilings and branch state are legible
+- consistency pass to replace vague auth jargon with consequence-based language where appropriate
+
+Out of scope:
+
+- changing warrant logic, approval behavior, or provider execution behavior
+- redesigning the graph layout or demo information architecture
+- adding new actions, new approval states, or new integrations
+- broad visual redesign beyond text, labels, and small supporting headings
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/demo/page.tsx`
+- `src/approvals/send-flow.ts`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/components/graph/agent-node.tsx`
+- `src/demo-fixtures/display.ts`
+- `src/agents/main-scenario.ts`
+- `src/actions/provider-adapters.ts`
+- `src/actions/execution.ts`
+- `tests/routes.test.tsx`
+- `tests/delegation-graph.test.ts`
+- any other targeted tests that assert user-facing strings for these surfaces
+
+### Invariants to preserve
+
+- Do not change core product behavior or state transitions; this is a language pass, not a logic refactor.
+- Keep the two-layer model explicit: local warrant policy and Auth0-backed external approval/execution must remain separate.
+- Child warrants must still read as narrower than the parent/root warrant, never broader.
+- Revocation must still read as branch-wide and immediate for descendants.
+- Copy should prefer concrete consequences over OAuth jargon, but must remain precise and serious rather than marketing-heavy.
+- The seeded scenario must remain deterministic so current demo tests and screenshots stay stable apart from intended copy updates.
+
+### Implementation steps
+
+1. Review the current rendered `/demo` screens and the underlying copy sources for root warrant approval, child capabilities, approval-required send, denied overreach, revoked or expired states, and the timeline.
+2. Tighten fixture-driven copy in the seeded scenario and provider adapters so the event log, warrant purposes, approval request, and action outcomes all describe consequences in plain language.
+3. Update approval boundary summaries and approval-state language so it is obvious what is already allowed locally, what still needs human approval, and what remains blocked.
+4. Refine graph-node and node-detail labels, denial text, revocation text, expiry text, and capability framing so a selected node explains both authority and limits quickly.
+5. Adjust the demo page headings and proof-copy only where needed to make the thesis more immediate and coherent without making the UI wordier.
+6. Update any affected render tests, then run lint, typecheck, tests, and build plus a final manual `/demo` language review.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- manual review of `/demo` covering:
+  - root warrant approval framing
+  - child capability descriptions
+  - approval-required send language
+  - denied overreach explanation
+  - revoked and expired branch language
+  - timeline/event wording consistency
+
+### Risks
+
+- Much of the copy is fixture-backed, so inconsistent updates across fixtures and UI wrappers could leave the same concept worded differently in adjacent panels.
+- Some existing tests may assert exact strings, so the language pass can create mechanical failures even when behavior is unchanged.
+- The current demo route does not surface a live expired branch example, so expiry wording can be improved in shared UI and data contracts without a full rendered proof point unless a test or derived state covers it.
+
+## ExecPlan — Consent Risk Mitigation + Wave 3 Merge Check (2026-04-02)
+
+### Objective
+
+Reduce the remaining consent-polish risk by making revoked and expired branch meaning visible on the main `/demo` route, then check whether this branch merges cleanly with `int/wave3`.
+
+### Demo relevance
+
+This directly strengthens two late demo beats judges must understand quickly:
+
+1. what revocation changes
+2. what expiry changes
+
+It also lowers integration risk before this branch is combined with the temporary Wave 3 work.
+
+### Scope
+
+In scope:
+
+- a compact `/demo` surface for revoked and expired branch meaning using deterministic derived scenario variants
+- route-level wording and tests for those states
+- a non-destructive merge compatibility check against `int/wave3`
+
+Out of scope:
+
+- changing revocation or expiry logic
+- adding new real actions or deeper state machines
+- performing an actual branch merge commit
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/demo/page.tsx`
+- `tests/routes.test.tsx`
+
+### Invariants to preserve
+
+- keep the seeded demo deterministic
+- do not change warrant, approval, or revocation behavior
+- keep the main demo story concise and serious
+- do not disturb the current worktree while checking `int/wave3`
+
+### Implementation steps
+
+1. Derive revoked and expired warrant summaries from fixture variants inside the demo route without mutating the canonical loaded scenario.
+2. Render a compact state-reference section that explains what each end state means in plain language.
+3. Update route tests to assert the new state-reference copy.
+4. Run focused tests and full repo validation.
+5. Run a non-destructive merge analysis against `int/wave3` and capture whether conflicts exist.
+
+### Validation plan
+
+- `npm run test -- tests/routes.test.tsx`
+- `npm run validate`
+- `git merge-base HEAD int/wave3`
+- `git merge-tree $(git merge-base HEAD int/wave3) HEAD int/wave3`
+
+### Risks
+
+- A new `/demo` section could add noise if it becomes too explanatory rather than demonstrative.
+- `git merge-tree` can highlight textual conflicts without proving runtime compatibility, so a clean merge analysis is still weaker evidence than a fully merged test run.
