@@ -1,5 +1,6 @@
 type DemoRehearsalControlsProps = {
   currentPreset: string;
+  currentKind: "preset" | "custom";
   currentLabel: string;
   currentDescription: string;
   updatedAt: string;
@@ -22,6 +23,7 @@ function formatUpdatedAt(value: string): string {
 
 export function DemoRehearsalControls({
   currentPreset,
+  currentKind,
   currentLabel,
   currentDescription,
   updatedAt,
@@ -58,18 +60,29 @@ export function DemoRehearsalControls({
 
       <div className="grid gap-4 lg:grid-cols-2">
         {presets.map((preset) => {
-          const isActive = preset.id === currentPreset;
+          const isActive = currentKind === "preset" && preset.id === currentPreset;
+          const isSourcePreset = currentKind === "custom" && preset.id === currentPreset;
 
           return (
             <article
               key={preset.id}
-              className={`rounded-2xl border p-4 ${isActive ? "border-[var(--accent)] bg-[var(--accent-soft)]/40" : "border-[var(--panel-border)] bg-white"}`}
+              className={`rounded-2xl border p-4 ${
+                isActive
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)]/40"
+                  : isSourcePreset
+                    ? "border-amber-200 bg-amber-50/40"
+                    : "border-[var(--panel-border)] bg-white"
+              }`}
             >
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-[var(--foreground)]">{preset.label}</p>
                   <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    {isActive ? "Active preset" : "Available preset"}
+                    {isActive
+                      ? "Active preset"
+                      : isSourcePreset
+                        ? "Source preset"
+                        : "Available preset"}
                   </p>
                 </div>
                 <form action="/api/demo/state" method="post">

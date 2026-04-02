@@ -38,7 +38,8 @@ describe("node detail panel", () => {
     );
     expect(html).toContain("recipient_not_allowed");
     expect(html).toContain("Approve investor follow-up send");
-    expect(html).toContain("approved");
+    expect(html).toContain("approval approved");
+    expect(html).not.toContain(">approved</span>");
     expect(html).toContain("warrant-comms-child-001");
   });
 });

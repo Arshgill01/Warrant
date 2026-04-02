@@ -2342,3 +2342,81 @@ Out of scope:
 
 - Retaining a deprecated alias for compatibility can still invite accidental usage; docs and internal imports should bias strongly to explicit names.
 - Test fixtures that previously used ambiguous helper names may still pass while hiding intent unless import-level clarity is enforced consistently.
+
+## ExecPlan — Wave 3.5 Final Gate Blockers Closure (2026-04-02)
+
+### Objective
+
+Close the last two Wave 3.5 gate blockers with a surgical patch:
+
+1. remove canonical vocabulary leakage in the node-detail approval badge
+2. make rehearsal "current state" labeling truthful after in-page revoke mutations
+
+### Demo relevance
+
+This is the final Wave 3.5 gate-hardening slice before Wave 4. During the 3-minute demo, judges must see one coherent state vocabulary and truthful scenario state labels while revocation happens live.
+
+### Scope
+
+In scope:
+
+- update node-detail "Latest approval" badge to render canonical control-state terminology (or a direct truthful adapter)
+- preserve approval detail semantics while avoiding raw `pending|approved|denied` surface leakage where canonical control state is expected
+- ensure demo controls cannot present stale "main pre-revoke" as current after an in-page revoke mutation
+- introduce a minimal local-state truth signal (preset vs modified/custom) without redesigning the rehearsal UI
+- add/update focused tests for both regressions
+
+Out of scope:
+
+- graph layout or visual redesign
+- broad demo-mode architecture changes
+- new presets, new features, or Wave 4 work
+- auth/provider flow changes beyond preserving existing semantics
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/components/demo/demo-surface.tsx`
+- `src/components/demo/demo-rehearsal-controls.tsx`
+- `src/app/demo/page.tsx`
+- `src/demo-fixtures/state.ts`
+- `tests/node-detail-panel.test.tsx`
+- `tests/routes.test.tsx`
+- `tests/demo-fixtures.test.ts`
+- optional targeted test additions if needed
+
+### Invariants to preserve
+
+- canonical control-state taxonomy remains the source of truth for UI state terms
+- main preset remains pre-revoke; comms-revoked preset remains post-revoke
+- in-page revoke still revokes only the Comms branch and keeps Calendar behavior intact
+- reset/preset switching behavior and deterministic fixtures remain unchanged
+- no regression to blocked-overreach, approval, revocation, and timeline proof moments
+
+### Implementation steps
+
+1. Confirm the current node-detail approval badge path and switch it to canonical control-state labeling from the existing display record.
+2. Add a minimal rehearsal-control props shape that can represent either preset-backed state or local mutated/custom state.
+3. In the demo surface, detect post-load local mutation (specifically in-page revoke path) and pass a truthful state label/description override to rehearsal controls.
+4. Keep preset switching/reset behavior unchanged; only adjust labeling truthfulness when local state diverges.
+5. Update focused tests for the node-detail approval badge and current-state labeling semantics after revoke.
+6. Run lint, typecheck, test, build, and one manual live browser verification path: main preset -> in-page revoke -> truthful label -> reset main -> comms-revoked preset.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- manual browser verification on `/demo` for:
+  - main preset load
+  - in-page revoke from graph/detail control
+  - truthful "current state" labeling after local mutation
+  - reset back to main preset
+  - comms-revoked preset restore
+
+### Risks
+
+- Because rehearsal metadata is loaded server-side, a client-side local mutation signal must be explicit to prevent stale labels without overhauling data flow.
+- Overly generic mutation detection could mark legitimate preset restores as custom; keep mutation state transitions narrow and deterministic.

@@ -2,7 +2,10 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { DemoScenario, WarrantDisplaySummary } from "@/contracts";
-import { DemoSurface } from "@/components/demo/demo-surface";
+import {
+  DemoSurface,
+  deriveRehearsalControlsState,
+} from "@/components/demo/demo-surface";
 import {
   createActionAttemptDisplayRecords,
   createApprovalStateDisplayRecords,
@@ -11,6 +14,7 @@ import {
   createMainDemoScenario,
   createTimelineEventDisplayRecords,
 } from "@/demo-fixtures";
+import type { DemoRehearsalSnapshot } from "@/demo-fixtures/state";
 
 const CALENDAR_WARRANT_ID = "warrant-calendar-child-001";
 const COMMS_WARRANT_ID = "warrant-comms-child-001";
@@ -113,6 +117,34 @@ function renderSurface(scenario: DemoScenario): string {
       authConfigured: false,
     }),
   );
+}
+
+function createMainPresetRehearsalSnapshot(): DemoRehearsalSnapshot {
+  return {
+    kind: "preset",
+    preset: "main",
+    label: "Main scenario (pre-revoke)",
+    description:
+      "Restores the canonical rehearsal state before revocation: draft succeeds, overreach is blocked, and the bounded send pauses for approval.",
+    updatedAt: "2026-04-17T09:00:00.000Z",
+    controlsEnabled: true,
+    recoveredFromInvalidState: false,
+    recoveryReason: null,
+    presets: [
+      {
+        id: "main",
+        label: "Main scenario (pre-revoke)",
+        description:
+          "Restores the canonical rehearsal state before revocation: draft succeeds, overreach is blocked, and the bounded send pauses for approval.",
+      },
+      {
+        id: "comms-revoked",
+        label: "Comms revoked (post-revoke)",
+        description:
+          "Restores the post-revoke replay state after Maya revokes the Comms branch so the graph and audit trail prove branch-level authority loss.",
+      },
+    ],
+  };
 }
 
 describe("state surface proof coverage", () => {
@@ -293,5 +325,31 @@ describe("state surface proof coverage", () => {
     expect(pendingHtml).not.toContain("current: branch revoked");
     expect(deniedApprovalHtml).not.toContain("current: approval pending");
     expect(revokedHtml).not.toContain("current: approval denied");
+  });
+
+  it("marks the rehearsal controls as custom when scenario state diverges from the selected preset", () => {
+    const rehearsal = createMainPresetRehearsalSnapshot();
+    const derived = deriveRehearsalControlsState({
+      rehearsal,
+      scenario: createCommsRevokedDemoScenario(),
+    });
+
+    expect(derived.kind).toBe("custom");
+    expect(derived.preset).toBe("main");
+    expect(derived.label).toContain("Custom state");
+    expect(derived.label).toContain("Main scenario (pre-revoke)");
+    expect(derived.description).toMatch(/diverged from the selected preset/i);
+  });
+
+  it("keeps the rehearsal controls on preset labeling when scenario matches the selected preset", () => {
+    const rehearsal = createMainPresetRehearsalSnapshot();
+    const derived = deriveRehearsalControlsState({
+      rehearsal,
+      scenario: createMainDemoScenario(),
+    });
+
+    expect(derived.kind).toBe("preset");
+    expect(derived.label).toBe("Main scenario (pre-revoke)");
+    expect(derived.description).toContain("canonical rehearsal state");
   });
 });
