@@ -15,25 +15,25 @@ import {
   getDisplayScenarioExamples,
 } from "@/demo-fixtures/display";
 import {
+  createCommsRevokedDemoScenario,
   createMainDemoScenario,
-  createDefaultDemoScenario,
 } from "@/demo-fixtures/scenario";
 
 const DEMO_STATE_VERSION = 1;
-const DEFAULT_PRESET = "main";
+const DEFAULT_REHEARSAL_PRESET = "main";
 
 const cloneScenario = <Value>(value: Value): Value => structuredClone(value);
 
 const presetCatalog = {
   main: {
-    label: "Main scenario",
+    label: "Main scenario (pre-revoke)",
     description:
-      "Restores the canonical rehearsal state: draft succeeds, overreach is blocked, and the bounded send pauses for approval.",
+      "Restores the canonical rehearsal state before revocation: draft succeeds, overreach is blocked, and the bounded send pauses for approval.",
   },
   "comms-revoked": {
-    label: "Comms revoked",
+    label: "Comms revoked (post-revoke)",
     description:
-      "Restores the same scenario after Maya revokes the Comms branch so the graph and audit trail prove branch-level authority loss.",
+      "Restores the post-revoke replay state after Maya revokes the Comms branch so the graph and audit trail prove branch-level authority loss.",
   },
 } as const;
 
@@ -88,10 +88,10 @@ function createStoredState(input: {
   };
 }
 
-function createDefaultStoredState(): DemoStoredState {
+function createMainPresetStoredState(): DemoStoredState {
   return createStoredState({
     kind: "preset",
-    preset: DEFAULT_PRESET,
+    preset: DEFAULT_REHEARSAL_PRESET,
     scenario: null,
   });
 }
@@ -182,14 +182,16 @@ function isStoredState(value: unknown): value is DemoStoredState {
 function createScenarioFromPreset(preset: DemoScenarioPreset): DemoScenario {
   switch (preset) {
     case "main":
+      // Main preset keeps the pre-revocation approval gate visible.
       return createMainDemoScenario();
     case "comms-revoked":
-      return createDefaultDemoScenario();
+      // Comms-revoked preset restores the post-revocation replay snapshot.
+      return createCommsRevokedDemoScenario();
   }
 }
 
 function repairStoredState(reason: string): ResolvedDemoState {
-  const nextState = createDefaultStoredState();
+  const nextState = createMainPresetStoredState();
   writeStoredState(nextState);
 
   return {
@@ -204,7 +206,7 @@ function resolveDemoState(): ResolvedDemoState {
   const storedState = readStoredState();
 
   if (storedState.status === "missing") {
-    const nextState = createDefaultStoredState();
+    const nextState = createMainPresetStoredState();
     writeStoredState(nextState);
 
     return {
@@ -290,7 +292,7 @@ export function replaceDemoState(nextState: DemoScenario): DemoScenario {
   writeStoredState(
     createStoredState({
       kind: "custom",
-      preset: DEFAULT_PRESET,
+      preset: DEFAULT_REHEARSAL_PRESET,
       scenario: nextState,
     }),
   );
@@ -311,7 +313,7 @@ export function restoreDemoStatePreset(preset: DemoScenarioPreset): DemoScenario
 }
 
 export function resetDemoState(): DemoScenario {
-  return restoreDemoStatePreset(DEFAULT_PRESET);
+  return restoreDemoStatePreset(DEFAULT_REHEARSAL_PRESET);
 }
 
 export function loadDelegationGraphView(): DelegationGraphDTO {

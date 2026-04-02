@@ -19,7 +19,7 @@ import type {
 } from "@/contracts";
 import {
   createActionAttemptDisplayRecords,
-  createDefaultDemoScenario,
+  createCommsRevokedDemoScenario,
   createDelegationGraphView,
   createTimelineEventDisplayRecords,
   getDisplayScenarioExamples,
@@ -321,9 +321,9 @@ export function DemoSurface({
   const [scenario, setScenario] = useState(initialScenario);
 
   const graphView = useMemo(() => createDelegationGraphView(scenario), [scenario]);
-  const revokedScenario = useMemo(() => createDefaultDemoScenario(), []);
+  const revokedScenario = useMemo(() => createCommsRevokedDemoScenario(), []);
   const expiredScenario = useMemo(() => {
-    const nextScenario = createDefaultDemoScenario();
+    const nextScenario = createCommsRevokedDemoScenario();
     const calendarWarrant = nextScenario.warrants.find(
       (warrant) => warrant.id === "warrant-calendar-child-001",
     );

@@ -127,13 +127,15 @@ Still requires external Auth0 dashboard configuration:
 
 ## Canonical demo fixtures
 
-The default deterministic scenario lives in `src/demo-fixtures` and is centered on:
+Deterministic scenarios live in `src/demo-fixtures` and are centered on:
 
 `"Prepare my investor update for tomorrow and coordinate follow-ups."`
 
 Shared consumers should prefer these exports:
 
-- `createDefaultDemoScenario()` for a fresh canonical snapshot
+- `createMainDemoScenario()` for the `main` preset (pre-revoke, approval-pending state)
+- `createCommsRevokedDemoScenario()` for the `comms-revoked` preset (post-revoke replay state)
+- `createDefaultDemoScenario()` only as a legacy compatibility alias to `createCommsRevokedDemoScenario()`
 - `loadDemoState()` and `resetDemoState()` from `src/demo-fixtures/state` for server-side rehearsal state
 - `createDelegationGraphView()` or `loadDelegationGraphView()` for graph-ready display data
 - `createTimelineEventDisplayRecords()` or `loadTimelineEvents()` for timeline-ready display data
@@ -141,12 +143,18 @@ Shared consumers should prefer these exports:
 
 This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
 
-The seeded scenario now includes:
+The `main` scenario (pre-revoke) includes:
 
 - a successful Comms draft action
 - a blocked Comms send overreach to an unapproved external recipient, denied by warrant policy before any provider send can execute
 - a locally eligible Comms send attempt that stops in `approval-required`
 - a pending Auth0 approval request with exact preview, recipients, and blast-radius copy
+
+The `comms-revoked` scenario (post-revoke) extends that path with:
+
+- an approved send record
+- a user-triggered Comms branch revocation
+- a later Comms send attempt blocked by revoked delegated authority
 
 ## Demo rehearsal tools
 

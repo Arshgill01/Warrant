@@ -20,16 +20,16 @@ const COMMS_REVOCATION_ID = "revocation-comms-001";
 const COMMS_REVOKED_AT = "2026-04-17T09:12:00.000Z";
 const COMMS_POST_REVOKE_ATTEMPT_AT = "2026-04-17T09:13:00.000Z";
 
-export function createDefaultDemoScenario(): DemoScenario {
+export function createCommsRevokedDemoScenario(): DemoScenario {
   return cloneScenario(runMainScenarioPlannerFlow().scenario);
 }
 
 export function createMainDemoScenario(): DemoScenario {
-  const canonicalScenario = createDefaultDemoScenario();
+  const postRevokeScenario = createCommsRevokedDemoScenario();
 
   return {
-    ...canonicalScenario,
-    agents: canonicalScenario.agents.map((agent) =>
+    ...postRevokeScenario,
+    agents: postRevokeScenario.agents.map((agent) =>
       agent.id === COMMS_AGENT_ID
         ? {
             ...agent,
@@ -37,7 +37,7 @@ export function createMainDemoScenario(): DemoScenario {
           }
         : agent,
     ),
-    warrants: canonicalScenario.warrants.map((warrant) =>
+    warrants: postRevokeScenario.warrants.map((warrant) =>
       warrant.id === COMMS_WARRANT_ID
         ? {
             ...warrant,
@@ -49,12 +49,12 @@ export function createMainDemoScenario(): DemoScenario {
           }
         : warrant,
     ),
-    actionAttempts: canonicalScenario.actionAttempts.filter(
+    actionAttempts: postRevokeScenario.actionAttempts.filter(
       (attempt) =>
         attempt.id !== COMMS_APPROVED_SEND_ACTION_ID &&
         attempt.id !== COMMS_POST_REVOKE_ACTION_ID,
     ),
-    approvals: canonicalScenario.approvals.map((approval) =>
+    approvals: postRevokeScenario.approvals.map((approval) =>
       approval.id === COMMS_SEND_APPROVAL_ID
         ? {
             ...approval,
@@ -64,7 +64,7 @@ export function createMainDemoScenario(): DemoScenario {
         : approval,
     ),
     revocations: [],
-    timeline: canonicalScenario.timeline.filter((event) => {
+    timeline: postRevokeScenario.timeline.filter((event) => {
       if (
         event.kind === "approval.approved" &&
         event.approvalId === COMMS_SEND_APPROVAL_ID
@@ -87,6 +87,15 @@ export function createMainDemoScenario(): DemoScenario {
       return true;
     }),
   };
+}
+
+/**
+ * @deprecated Prefer explicit helpers:
+ * - createMainDemoScenario() for the pre-revoke approval-gate state
+ * - createCommsRevokedDemoScenario() for the post-revoke replay state
+ */
+export function createDefaultDemoScenario(): DemoScenario {
+  return createCommsRevokedDemoScenario();
 }
 
 function createRevocationTimelineEvents(input: {
