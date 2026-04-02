@@ -147,7 +147,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
               href="/demo"
               className="inline-flex rounded-full border border-[var(--panel-border)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
-              Open Wave 1 demo
+              Open demo scenario
             </Link>
           </div>
         </div>
@@ -218,8 +218,8 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             <p>{googleSetup.headline}</p>
             <p>{googleSetup.detail}</p>
             <p className="text-sm leading-6 text-[var(--muted)]">
-              This branch keeps the base session, provider connection, and future Gmail or Calendar delegated-access
-              inputs visible. Real provider actions land later.
+              This shell keeps the session and provider connection boundary visible. The provider action cards below
+              use deterministic fixtures to show the current Calendar and Gmail access path.
             </p>
           </div>
 

@@ -84,7 +84,7 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
           providerHeadline:
             "Calendar Agent reached the delegated Google Calendar path successfully.",
           providerDetail:
-            "The deterministic Wave 2 adapter simulates a successful Auth0-backed calendar read for the bounded scheduling window.",
+            "The deterministic demo adapter simulates a successful Auth0-backed calendar read for the bounded scheduling window.",
           summary:
             "Reviewed tomorrow's availability before drafting the investor update.",
           resource: `Calendar window for ${input.targetDate}`,
@@ -105,7 +105,7 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
           providerHeadline:
             "Comms Agent reached the delegated Gmail draft path successfully.",
           providerDetail:
-            "The deterministic Wave 2 adapter simulates a successful Auth0-backed Gmail draft creation for the approved recipients.",
+            "The deterministic demo adapter simulates a successful Auth0-backed Gmail draft creation for the approved recipients.",
           summary:
             "Drafted investor follow-up emails for the approved internal recipients.",
           resource: `Drafts for ${input.recipients.join(" and ")}`,
@@ -127,7 +127,7 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
           providerHeadline:
             "Comms Agent reached the delegated Gmail send path successfully.",
           providerDetail:
-            "The deterministic Wave 2 adapter simulates an Auth0-approved Gmail send for the exact recipients that Maya reviewed.",
+            "The deterministic demo adapter simulates an Auth0-approved Gmail send for the exact recipients that Maya reviewed.",
           summary:
             "Sent the approved investor follow-up to the bounded Northstar recipients.",
           resource: `Live send to ${input.recipients.join(" and ")}`,

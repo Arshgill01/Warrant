@@ -47,7 +47,7 @@ describe("route rendering", () => {
     const html = renderToStaticMarkup(React.createElement(DemoPage));
 
     expect(demoDynamic).toBe("force-dynamic");
-    expect(demoMetadata.title).toBe("Warrant | Wave 1 Demo");
+    expect(demoMetadata.title).toBe("Warrant | Delegated Authority Demo");
     expect(html).toContain("Delegated Authority Demo");
     expect(html).toContain("Investor update for April 18");
     expect(html).toContain("Prepare my investor update for tomorrow and coordinate follow-ups.");
@@ -92,6 +92,6 @@ describe("route rendering", () => {
     expect(html).toContain("Auth0 Access Shell");
     expect(html).toContain("Auth0 setup is incomplete.");
     expect(html).toContain("Google connection is unavailable.");
-    expect(html).toContain("Open Wave 1 demo");
+    expect(html).toContain("Open demo scenario");
   });
 });

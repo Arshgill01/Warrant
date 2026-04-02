@@ -2209,3 +2209,66 @@ Out of scope:
 
 - Some approval variants (notably `approval_denied`) may require scenario mutation in tests because the default seeded path is pending/approved-focused.
 - UI route rendering is server-side static in tests; graph-canvas internals are not mounted there, so UI assertions should target rendered labels/badges and detail panels rather than ReactFlow runtime behavior.
+
+## ExecPlan — Wave Label and Presentation Copy Coherence Cleanup (2026-04-02)
+
+### Objective
+
+Remove stale Wave-era labels and tighten demo-facing metadata/copy so the current deterministic Warrant demo is presented coherently without changing product behavior.
+
+### Demo relevance
+
+This is a presentation-cleanup slice for the Wave 3 to Wave 4 gate. Judges should not see outdated Wave labels or contradictory stage language while evaluating the core proof path (delegation, overreach denial, approval gate, and branch revocation).
+
+### Scope
+
+In scope:
+
+- replace stale Wave labels in demo-facing page metadata, navigation labels, and visible explanatory copy
+- align auth-shell and demo-surface wording with the current implementation state (deterministic scenario plus Auth0 boundary visibility)
+- update README wording where stale Wave references would misrepresent current stage
+- update tests that assert stale copy literals
+
+Out of scope:
+
+- any change to warrant, approval, provider, graph, or scenario behavior
+- structural UI redesign or broad copy rewrite beyond confusion-prone labels
+- new features, new integrations, or new demo steps
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/demo/page.tsx`
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/actions/provider-adapters.ts`
+- `README.md`
+- `tests/routes.test.tsx`
+
+### Invariants to preserve
+
+- Demo flows and enforcement behavior stay unchanged.
+- Two-layer separation remains explicit: local Warrant policy vs Auth0-backed external path.
+- Delegation graph and approval/revocation semantics remain legible and consistent.
+- Copy stays serious, concise, and thesis-aligned.
+
+### Implementation steps
+
+1. Audit all demo-facing `Wave` references and classify which are stale versus historical planning context.
+2. Replace stale Wave labels in runtime UI metadata/copy with stage-accurate wording.
+3. Update deterministic adapter copy to remove outdated Wave naming while preserving the same semantics.
+4. Align README demo-status wording with current implementation state without adding marketing language.
+5. Update affected tests for changed text assertions only.
+6. Run lint, typecheck, tests, and build; verify no stale Wave labels remain in demo-facing surfaces.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `rg -n "Wave 1|Wave 2|Open Wave" src README.md tests`
+
+### Risks
+
+- Some historical Wave references should remain in planning history; removing too broadly could erase useful archival context.
+- Copy tightening can accidentally drift from fixture-backed truth if edits overstate live Auth0/provider execution.
