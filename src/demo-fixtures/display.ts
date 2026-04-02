@@ -139,7 +139,9 @@ function isPolicyDeniedAction(record: ActionAttemptDisplayRecord): boolean {
   return record.controlState === "denied_policy";
 }
 
-function getLatestRecordsByWarrantId<Record extends { warrantId: string; requestedAt?: string; expiresAt?: string }>(
+function getLatestRecordsByWarrantId<
+  Record extends { id: string; warrantId: string; requestedAt?: string; expiresAt?: string },
+>(
   records: Record[],
   getAt: (record: Record) => string,
 ): Map<string, Record> {
@@ -148,7 +150,14 @@ function getLatestRecordsByWarrantId<Record extends { warrantId: string; request
   records.forEach((record) => {
     const existing = latestByWarrantId.get(record.warrantId);
 
-    if (!existing || getAt(record).localeCompare(getAt(existing)) > 0) {
+    if (!existing) {
+      latestByWarrantId.set(record.warrantId, record);
+      return;
+    }
+
+    const atComparison = getAt(record).localeCompare(getAt(existing));
+
+    if (atComparison > 0 || (atComparison === 0 && record.id.localeCompare(existing.id) > 0)) {
       latestByWarrantId.set(record.warrantId, record);
     }
   });
@@ -448,7 +457,15 @@ export function createTimelineEventDisplayRecords(
   );
 
   return [...scenario.timeline]
-    .sort((left, right) => left.at.localeCompare(right.at))
+    .sort((left, right) => {
+      const atComparison = left.at.localeCompare(right.at);
+
+      if (atComparison !== 0) {
+        return atComparison;
+      }
+
+      return left.id.localeCompare(right.id);
+    })
     .map((event) => {
       const meta = timelineEventMeta[event.kind];
       const controlState = resolveTimelineControlState({
