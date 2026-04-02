@@ -18,6 +18,7 @@ import {
   createCommsRevokedDemoScenario,
   createMainDemoScenario,
 } from "@/demo-fixtures/scenario";
+import { validateDemoScenarioContract } from "@/demo-fixtures/scenario-contract";
 
 const DEMO_STATE_VERSION = 1;
 const DEFAULT_REHEARSAL_PRESET = "main";
@@ -140,6 +141,12 @@ function isUsableDemoScenario(value: unknown): value is DemoScenario {
 
   try {
     const scenario = cloneScenario(value as DemoScenario);
+    const validation = validateDemoScenarioContract(scenario, "generic");
+
+    if (!validation.ok) {
+      return false;
+    }
+
     createDelegationGraphView(scenario);
     createTimelineEventDisplayRecords(scenario);
     getDisplayScenarioExamples(scenario);
