@@ -7,86 +7,33 @@ import type {
   RevocationRecord,
 } from "@/contracts";
 import { runMainScenarioPlannerFlow } from "@/agents";
+import { assertDemoScenarioContract } from "@/demo-fixtures/scenario-contract";
 import { revokeWarrantBranch } from "@/warrants";
 
 const cloneScenario = <Value>(value: Value): Value => structuredClone(value);
 
 const COMMS_WARRANT_ID = "warrant-comms-child-001";
-const COMMS_AGENT_ID = "agent-comms-001";
-const COMMS_SEND_APPROVAL_ID = "approval-comms-send-001";
-const COMMS_APPROVED_SEND_ACTION_ID = "action-comms-send-approved-001";
 const COMMS_POST_REVOKE_ACTION_ID = "action-comms-send-post-revoke-001";
 const COMMS_REVOCATION_ID = "revocation-comms-001";
 const COMMS_REVOKED_AT = "2026-04-17T09:12:00.000Z";
 const COMMS_POST_REVOKE_ATTEMPT_AT = "2026-04-17T09:13:00.000Z";
 
 export function createCommsRevokedDemoScenario(): DemoScenario {
-  return cloneScenario(runMainScenarioPlannerFlow().scenario);
+  return cloneScenario(
+    assertDemoScenarioContract(
+      runMainScenarioPlannerFlow(undefined, { stage: "comms-revoked" }).scenario,
+      "comms-revoked",
+    ),
+  );
 }
 
 export function createMainDemoScenario(): DemoScenario {
-  const postRevokeScenario = createCommsRevokedDemoScenario();
-
-  return {
-    ...postRevokeScenario,
-    agents: postRevokeScenario.agents.map((agent) =>
-      agent.id === COMMS_AGENT_ID
-        ? {
-            ...agent,
-            status: "active",
-          }
-        : agent,
+  return cloneScenario(
+    assertDemoScenarioContract(
+      runMainScenarioPlannerFlow(undefined, { stage: "main" }).scenario,
+      "main",
     ),
-    warrants: postRevokeScenario.warrants.map((warrant) =>
-      warrant.id === COMMS_WARRANT_ID
-        ? {
-            ...warrant,
-            status: "active",
-            revokedAt: null,
-            revocationReason: null,
-            revocationSourceId: null,
-            revokedBy: null,
-          }
-        : warrant,
-    ),
-    actionAttempts: postRevokeScenario.actionAttempts.filter(
-      (attempt) =>
-        attempt.id !== COMMS_APPROVED_SEND_ACTION_ID &&
-        attempt.id !== COMMS_POST_REVOKE_ACTION_ID,
-    ),
-    approvals: postRevokeScenario.approvals.map((approval) =>
-      approval.id === COMMS_SEND_APPROVAL_ID
-        ? {
-            ...approval,
-            status: "pending",
-            decidedAt: null,
-          }
-        : approval,
-    ),
-    revocations: [],
-    timeline: postRevokeScenario.timeline.filter((event) => {
-      if (
-        event.kind === "approval.approved" &&
-        event.approvalId === COMMS_SEND_APPROVAL_ID
-      ) {
-        return false;
-      }
-
-      if (event.actionId === COMMS_APPROVED_SEND_ACTION_ID) {
-        return false;
-      }
-
-      if (event.revocationId === COMMS_REVOCATION_ID) {
-        return false;
-      }
-
-      if (event.actionId === COMMS_POST_REVOKE_ACTION_ID) {
-        return false;
-      }
-
-      return true;
-    }),
-  };
+  );
 }
 
 /**
@@ -234,5 +181,5 @@ export function revokeCommsBranchScenario(
     postRevokeSendAttempt.timelineEvent,
   ];
 
-  return updatedScenario;
+  return assertDemoScenarioContract(updatedScenario);
 }

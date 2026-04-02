@@ -1,6 +1,7 @@
 import type { ActionKind, AgentRole, DemoScenario } from "@/contracts";
 
 export type PlannerTaskStatus = "delegated" | "completed";
+export type MainScenarioStage = "main" | "comms-revoked";
 
 export interface PlannerTaskRecord {
   id: string;
