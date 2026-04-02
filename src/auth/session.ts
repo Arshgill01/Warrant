@@ -14,10 +14,19 @@ export async function getAuthSessionSnapshot(): Promise<AuthSessionSnapshot> {
   const authEnv = getAuth0Environment();
 
   if (!authEnv.isConfigured) {
+    const missingDetail = authEnv.missingValues.length
+      ? `Missing: ${joinMissingValues(authEnv.missingValues)}.`
+      : null;
+    const invalidDetail = authEnv.invalidValues.length
+      ? `Invalid: ${joinMissingValues(authEnv.invalidValues)}.`
+      : null;
+
     return {
       state: "unavailable",
       headline: "Auth0 setup is incomplete.",
-      detail: `Add ${joinMissingValues(authEnv.missingValues)} to enable sign-in and Auth0-backed Google access.`,
+      detail: [missingDetail, invalidDetail, "Fix these values before enabling Auth0-backed Google access."]
+        .filter(Boolean)
+        .join(" "),
       loginHref: null,
       logoutHref: null,
       user: null,
