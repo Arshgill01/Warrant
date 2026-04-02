@@ -79,10 +79,10 @@ export function NodeDetailPanel({
           </div>
           <div className="space-y-0.5">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
-              Report Status
+              Authority Detail
             </p>
             <h2 className="text-xl font-bold tracking-tight text-[var(--foreground)]">
-              Warrant Analysis
+              Warrant detail
             </h2>
           </div>
         </div>
@@ -122,8 +122,8 @@ export function NodeDetailPanel({
 
           <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
-                Current status source
+                <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Why this status is shown
               </span>
               <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]">
                 {formatStatusSource(warrant.statusSource)}
@@ -139,7 +139,7 @@ export function NodeDetailPanel({
           <div className="flex items-center gap-2">
             <Target className="size-4 text-[var(--accent)]" />
             <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
-              Authorized Capabilities
+              This branch can do
             </h4>
           </div>
           <div className="grid gap-2">
@@ -152,13 +152,13 @@ export function NodeDetailPanel({
                   {capability}
                 </span>
                 <div className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-600">
-                  Bound
+                  Allowed
                 </div>
               </div>
             ))}
             {warrant.capabilities.length === 0 && (
               <p className="text-xs italic text-[var(--muted)]">
-                No capabilities assigned to this warrant.
+                This warrant cannot perform any actions.
               </p>
             )}
           </div>
@@ -169,7 +169,7 @@ export function NodeDetailPanel({
             <div className="flex items-center gap-2">
               <Activity className="size-4 text-[var(--accent)]" />
               <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
-                Latest execution
+                Latest action
               </h4>
             </div>
             <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-5">
@@ -270,7 +270,7 @@ export function NodeDetailPanel({
             <div className="flex items-center gap-2">
               <Activity className="size-4 text-[var(--accent)]" />
               <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
-                Resource Constraints
+                Limits
               </h4>
             </div>
             <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
@@ -296,7 +296,7 @@ export function NodeDetailPanel({
           <div className="flex items-center gap-2">
             <Clock className="size-4 text-[var(--accent)]" />
             <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
-              Temporal Integrity
+              Time limits
             </h4>
           </div>
           <div className="grid gap-4 rounded-2xl border border-slate-100 bg-slate-50/30 p-5">
@@ -343,7 +343,7 @@ export function NodeDetailPanel({
           <div className="flex items-center gap-2">
             <UserCheck className="size-4 text-[var(--accent)]" />
             <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
-              Warrant Lineage
+              Authority chain
             </h4>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 p-4">
@@ -371,7 +371,7 @@ export function NodeDetailPanel({
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-[var(--status-blocked-text)]" />
-              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Latest Policy Denial</h4>
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">Latest denied action</h4>
             </div>
             <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 space-y-4">
               <div className="flex items-center justify-between gap-4">
@@ -411,7 +411,7 @@ export function NodeDetailPanel({
               <AlertTriangle className="size-5 shrink-0" />
               <p>
                 {warrant.revocationReason ??
-                  "This warrant branch has been decommissioned and cannot be reactivated."}
+                  "This branch was revoked. This agent and its descendants can no longer act."}
               </p>
             </div>
           ) : (
@@ -419,8 +419,7 @@ export function NodeDetailPanel({
               <div className="flex items-start gap-3 rounded-xl border border-amber-100/50 bg-amber-50/50 p-4 text-[10px] leading-relaxed text-amber-800">
                 <AlertTriangle className="size-4 shrink-0 text-amber-600" />
                 <p>
-                  <strong>Revocation Protocol:</strong> Triggering a revocation
-                  immediately cascades through all descendants in this branch.
+                  <strong>Revocation effect:</strong> Revoking this branch immediately removes authority from this warrant and every descendant below it.
                 </p>
               </div>
               <button

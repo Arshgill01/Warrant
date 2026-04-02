@@ -18,6 +18,7 @@ import type {
   SendApprovalState,
 } from "@/contracts";
 import {
+  createDefaultDemoScenario,
   createDelegationGraphView,
   createTimelineEventDisplayRecords,
   getDisplayScenarioExamples,
@@ -70,6 +71,56 @@ function formatDateTime(value: string, timeZone: string): string {
     timeStyle: "short",
     timeZone,
   }).format(new Date(value));
+}
+
+function formatStatusLabel(value: string): string {
+  switch (value) {
+    case "approval-required":
+      return "needs approval";
+    case "pending-approval":
+      return "awaiting approval";
+    case "warrant.issued":
+      return "warrant granted";
+    case "approval.requested":
+      return "approval requested";
+    case "approval.approved":
+      return "approval granted";
+    case "warrant.revoked":
+      return "branch revoked";
+    default:
+      return value.replaceAll("-", " ").replaceAll(".", " ");
+  }
+}
+
+function formatApprovalBadge(status: string, provider: string): string {
+  if (status === "pending") {
+    return `pending in ${provider}`;
+  }
+
+  return `${formatStatusLabel(status)} in ${provider}`;
+}
+
+function formatGateLabel(value: string): string {
+  switch (value) {
+    case "policy":
+      return "local warrant";
+    case "approval":
+      return "human approval";
+    case "auth0":
+      return "provider release";
+    default:
+      return value;
+  }
+}
+
+function requireSummary<
+  Summary extends ReturnType<typeof createDelegationGraphView>["warrantSummaries"][number],
+>(summary: Summary | undefined, message: string): Summary {
+  if (!summary) {
+    throw new Error(message);
+  }
+
+  return summary;
 }
 
 function ExampleCard({
@@ -147,7 +198,7 @@ function BoundaryCard({
         {detail}
       </p>
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-        Gate: {gate}
+        Checked by: {formatGateLabel(gate)}
       </p>
       {nextStep ? (
         <p className="mt-3 text-sm font-medium text-[var(--foreground)]">
@@ -227,31 +278,31 @@ function buildRevokedApprovalBoundarySummary(): {
   return {
     localEligibility: {
       kind: "gmail.send",
-      label: "Local Warrant eligibility",
+      label: "Local warrant check",
       state: "blocked",
       gate: "policy",
-      headline: "The Comms branch has been revoked.",
+      headline: "This branch has been revoked.",
       detail:
-        "Revocation beats prior local eligibility. This branch can no longer draft or send because its warrant authority is dead.",
+        "Revocation overrides any earlier eligibility. This branch can no longer draft or send because its warrant authority is gone.",
       nextStep:
         "Issue a new child warrant if the planner should regain a bounded Comms branch.",
     },
     approvalRequirement: {
       kind: "gmail.send",
-      label: "Auth0 approval requirement",
+      label: "Human approval check",
       state: "blocked",
       gate: "approval",
-      headline: "The approval request is now historical only.",
+      headline: "The approval record is now historical only.",
       detail:
-        "An Auth0 approval result cannot restore authority to a revoked branch. The request stays visible for audit, not execution.",
+        "An Auth0 approval result cannot restore authority to a revoked branch. The request remains visible for audit, not execution.",
       nextStep: null,
     },
     executionReadiness: {
       kind: "gmail.send",
-      label: "Final execution readiness",
+      label: "Real send release",
       state: "blocked",
       gate: "policy",
-      headline: "Live execution is blocked by revocation.",
+      headline: "The real Gmail send is blocked by revocation.",
       detail:
         "Warrant stops the branch before any approval release or provider execution can proceed.",
       nextStep: null,
@@ -271,11 +322,50 @@ export function DemoSurface({
   const [scenario, setScenario] = useState(initialScenario);
 
   const graphView = useMemo(() => createDelegationGraphView(scenario), [scenario]);
+  const revokedScenario = useMemo(() => createDefaultDemoScenario(), []);
+  const expiredScenario = useMemo(() => {
+    const nextScenario = createDefaultDemoScenario();
+    const calendarWarrant = nextScenario.warrants.find(
+      (warrant) => warrant.id === "warrant-calendar-child-001",
+    );
+
+    if (!calendarWarrant) {
+      throw new Error("Missing calendar warrant for expired example.");
+    }
+
+    calendarWarrant.status = "expired";
+    calendarWarrant.revokedAt = null;
+    calendarWarrant.revocationReason = null;
+    calendarWarrant.revocationSourceId = null;
+    calendarWarrant.revokedBy = null;
+
+    return nextScenario;
+  }, []);
   const timeline = useMemo(
     () => createTimelineEventDisplayRecords(scenario),
     [scenario],
   );
   const examples = useMemo(() => getDisplayScenarioExamples(scenario), [scenario]);
+  const revokedExample = useMemo(
+    () =>
+      requireSummary(
+        createDelegationGraphView(revokedScenario).warrantSummaries.find(
+          (summary) => summary.id === "warrant-comms-child-001",
+        ),
+        "Missing revoked comms summary.",
+      ),
+    [revokedScenario],
+  );
+  const expiredExample = useMemo(
+    () =>
+      requireSummary(
+        createDelegationGraphView(expiredScenario).warrantSummaries.find(
+          (summary) => summary.id === "warrant-calendar-child-001",
+        ),
+        "Missing expired calendar summary.",
+      ),
+    [expiredScenario],
+  );
   const postRevokeAction = useMemo(
     () =>
       scenario.actionAttempts.find(
@@ -311,8 +401,8 @@ export function DemoSurface({
   }, []);
 
   const currentApprovalBadge = commsBranchRevoked
-    ? "current: pending + branch revoked"
-    : `current: ${currentApprovalState}`;
+    ? "current: branch revoked"
+    : `current: ${formatStatusLabel(currentApprovalState)}`;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col gap-8 px-6 py-10 sm:px-10 lg:px-16">
@@ -320,7 +410,7 @@ export function DemoSurface({
         <div className="flex flex-col justify-center space-y-6">
           <div className="space-y-2">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
-              Wave 1 Demo Surface
+              Delegated Authority Demo
             </p>
             <h1
               className="text-4xl font-medium tracking-tight sm:text-6xl"
@@ -330,9 +420,7 @@ export function DemoSurface({
             </h1>
           </div>
           <p className="max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-            This surface demonstrates lineage-aware delegation for multi-agent
-            systems. Root agents spawn descendants with narrower, revocable
-            authority.
+            Maya approves one parent warrant for Planner Agent. Planner can delegate only narrower child warrants, and each branch can be denied, approved, revoked, or expired independently.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <StatusPill
@@ -353,7 +441,7 @@ export function DemoSurface({
         <div className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-8 shadow-sm backdrop-blur-sm">
           <div className="mb-6 space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
-              Current Scenario
+              Root Warrant Approval
             </p>
             <h2 className="text-2xl font-semibold tracking-tight">
               {scenario.title}
@@ -361,6 +449,9 @@ export function DemoSurface({
           </div>
           <p className="text-sm leading-relaxed text-[var(--muted)]">
             {scenario.taskPrompt}
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--foreground)]">
+            Maya authorizes Planner Agent to handle this request and delegate only narrower child warrants for calendar and email work.
           </p>
 
           <div className="mt-8 space-y-4">
@@ -374,7 +465,7 @@ export function DemoSurface({
             </div>
             <div className="flex items-center justify-between border-b border-[var(--panel-border)] pb-3">
               <span className="text-xs font-medium text-[var(--muted)]">
-                Root Actor
+                Approved By
               </span>
               <span className="text-sm font-semibold">
                 {scenario.user.label}
@@ -382,7 +473,7 @@ export function DemoSurface({
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-[var(--muted)]">
-                Root Warrant
+                Parent Warrant
               </span>
               <span className="font-mono text-[10px] font-bold text-[var(--accent)]">
                 {scenario.rootWarrantId}
@@ -417,7 +508,7 @@ export function DemoSurface({
           onRevoke={handleRevokeBranch}
           eyebrow="Visual Hierarchy"
           title="Delegation Tree"
-          description="A real-time map of issued warrants and branch status. Select the Comms node to revoke that branch without affecting Calendar."
+          description="A map of who received authority, what each branch can do, and which branches are denied, approved, revoked, or expired."
         />
       </section>
 
@@ -443,19 +534,19 @@ export function DemoSurface({
             eyebrow="Calendar Warrant"
             title={examples.calendarChildWarrant.purpose}
             statusKey={examples.calendarChildWarrant.status}
-            statusLabel={examples.calendarChildWarrant.status}
-            detail="Planner Agent delegates a narrower calendar-read warrant with a bounded April 18 time window."
+            statusLabel={formatStatusLabel(examples.calendarChildWarrant.status)}
+            detail="Planner gives Calendar Agent one narrower calendar read for the April 18 window. It cannot draft or send email."
             meta={`Capabilities: ${examples.calendarChildWarrant.capabilities.join(", ")}`}
           />
           <ExampleCard
             eyebrow="Comms Warrant"
             title={examples.commsChildWarrant.purpose}
             statusKey={examples.commsChildWarrant.status}
-            statusLabel={examples.commsChildWarrant.status}
+            statusLabel={formatStatusLabel(examples.commsChildWarrant.status)}
             detail={
               commsBranchRevoked
-                ? "Maya revoked the Comms branch. Its prior send approval remains visible in history, but the branch can no longer execute."
-                : "Planner Agent delegates bounded draft-plus-send authority, but the live send path is still paused behind Auth0 approval."
+                ? "Maya revoked the Comms branch. Its earlier approval remains in history, but the branch can no longer act."
+                : "Planner lets Comms Agent draft for approved recipients and request one send. It still cannot send a real email without approval."
             }
             meta={`Capabilities: ${examples.commsChildWarrant.capabilities.join(", ")}`}
           />
@@ -479,7 +570,7 @@ export function DemoSurface({
             eyebrow="Blocked Overreach"
             title={examples.commsOverreachAction.summary}
             statusKey={examples.commsOverreachAction.outcome}
-            statusLabel={examples.commsOverreachAction.outcome.replace("-", " ")}
+            statusLabel="denied"
             detail={examples.commsOverreachAction.outcomeReason}
             meta={`Policy code: ${examples.commsOverreachAction.authorization.code}`}
           />
@@ -487,7 +578,7 @@ export function DemoSurface({
             eyebrow={postRevokeAction ? "Post-Revoke Failure" : "Sensitive Send"}
             title={postRevokeAction ? postRevokeAction.summary : examples.commsSendAction.summary}
             statusKey={postRevokeAction ? postRevokeAction.outcome : examples.commsSendAction.outcome}
-            statusLabel={(postRevokeAction ? postRevokeAction.outcome : examples.commsSendAction.outcome).replace("-", " ")}
+            statusLabel={formatStatusLabel(postRevokeAction ? postRevokeAction.outcome : examples.commsSendAction.outcome)}
             detail={postRevokeAction ? postRevokeAction.outcomeReason : examples.commsSendAction.outcomeReason}
             meta={
               postRevokeAction
@@ -507,9 +598,9 @@ export function DemoSurface({
             Draft authority is not send authority.
           </h2>
           <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
-            The Comms branch can draft the follow-up immediately. Sending the
-            exact email below still requires an Auth0-backed approval result
-            before Warrant can release the live Gmail execution path.
+            The Comms branch can draft immediately. Sending a real email still
+            requires Maya to approve the exact message before Warrant can
+            release the Gmail send.
           </p>
         </div>
 
@@ -526,14 +617,17 @@ export function DemoSurface({
             <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
-                  Current approval request
+                  Latest approval record
                 </p>
                 <h3 className="text-2xl font-semibold tracking-tight">
                   {examples.commsSendApproval.title}
                 </h3>
               </div>
               <StatusPill
-                label={`${examples.commsSendApproval.status} through ${examples.commsSendApproval.provider}`}
+                label={formatApprovalBadge(
+                  examples.commsSendApproval.status,
+                  examples.commsSendApproval.provider,
+                )}
                 tone={statusTone[examples.commsSendApproval.status]}
               />
             </div>
@@ -549,7 +643,7 @@ export function DemoSurface({
               </div>
               <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-                  Blast radius
+                  Approved effect
                 </p>
                 <p className="text-sm leading-relaxed text-[var(--foreground)]">
                   {examples.commsSendApproval.blastRadius}
@@ -637,6 +731,39 @@ export function DemoSurface({
         </div>
       </section>
 
+      <section className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-white p-8 shadow-sm lg:p-12">
+        <div className="space-y-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
+            End States
+          </p>
+          <h2 className="text-3xl font-semibold tracking-tight">
+            When authority ends
+          </h2>
+          <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+            Revocation and expiry do different jobs. Revocation is an explicit stop. Expiry is a time limit that shuts a warrant off once its window closes.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <ExampleCard
+            eyebrow="Revoked Branch"
+            title={`${revokedExample.agentLabel} branch`}
+            statusKey={revokedExample.status}
+            statusLabel={formatStatusLabel(revokedExample.status)}
+            detail={revokedExample.statusReason}
+            meta="What changes: this branch loses authority immediately, and later actions are blocked."
+          />
+          <ExampleCard
+            eyebrow="Expired Warrant"
+            title={`${expiredExample.agentLabel} time limit`}
+            statusKey={expiredExample.status}
+            statusLabel={formatStatusLabel(expiredExample.status)}
+            detail={expiredExample.statusReason}
+            meta="What changes: new actions stop once the warrant's allowed time window ends."
+          />
+        </div>
+      </section>
+
       <section
         id="timeline"
         className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-slate-50/50 p-8 lg:p-12"
@@ -646,11 +773,10 @@ export function DemoSurface({
             Audit
           </p>
           <h2 className="text-3xl font-semibold tracking-tight">
-            Lineage-Aware Timeline
+            Authorization Timeline
           </h2>
           <p className="text-sm text-[var(--muted)]">
-            A cryptographic trail of issued warrants, approvals, revocations,
-            and later action attempts.
+            A step-by-step record of who received authority, what they tried, and why the system allowed, approved, revoked, or denied it.
           </p>
         </div>
 
@@ -663,7 +789,7 @@ export function DemoSurface({
               <div className="flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <StatusPill
-                    label={event.kind.replace(".", " ")}
+                    label={formatStatusLabel(event.kind)}
                     tone={
                       statusTone[event.kind.split(".")[1]] ||
                       statusTone[event.kind] ||

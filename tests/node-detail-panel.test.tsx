@@ -27,14 +27,14 @@ describe("node detail panel", () => {
       }),
     );
 
-    expect(html).toContain("Latest execution");
-    expect(html).toContain("Latest Policy Denial");
+    expect(html).toContain("Latest action");
+    expect(html).toContain("Latest denied action");
     expect(html).toContain("Latest approval");
     expect(html).toContain(
       "Comms Agent tried to send again after Maya revoked the branch.",
     );
     expect(html).toContain(
-      "Attempted to send the drafted investor follow-ups to an out-of-policy recipient.",
+      "Tried to send the investor follow-up to a recipient outside this branch.",
     );
     expect(html).toContain("recipient_not_allowed");
     expect(html).toContain("Approve investor follow-up send");

@@ -84,7 +84,7 @@ export const AgentNodeComponent = memo(({ data, selected }: NodeProps<AgentNode>
       {/* Node Body */}
       <div className="p-4 space-y-3">
         <div className="space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Capabilities</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Can do</p>
           <div className="flex flex-wrap gap-1">
             {data.capabilities.length > 0 ? (
               data.capabilities.map((cap) => (
@@ -93,7 +93,7 @@ export const AgentNodeComponent = memo(({ data, selected }: NodeProps<AgentNode>
                 </span>
               ))
             ) : (
-              <span className="text-[10px] italic text-slate-400">No active capabilities</span>
+              <span className="text-[10px] italic text-slate-400">No allowed actions</span>
             )}
           </div>
         </div>

@@ -204,7 +204,7 @@ function resolveDisplayStatus(input: {
       status: "revoked",
       reason:
         input.revocationReason ??
-        "This branch was revoked and all descendants lose authority immediately.",
+        "This branch was revoked. This agent and any descendants can no longer act.",
       source: "warrant",
     };
   }
@@ -212,7 +212,7 @@ function resolveDisplayStatus(input: {
   if (input.warrantStatus === "expired") {
     return {
       status: "expired",
-      reason: `This warrant expired at ${formatDateTime(input.expiresAt)}.`,
+      reason: `This warrant expired at ${formatDateTime(input.expiresAt)}. New actions are no longer allowed.`,
       source: "warrant",
     };
   }
@@ -226,7 +226,7 @@ function resolveDisplayStatus(input: {
       reason:
         input.pendingApproval?.reason ??
         input.latestAction?.outcomeReason ??
-        "This branch is waiting for explicit approval before it can continue.",
+        "This branch is waiting for human approval before it can continue.",
       source: "approval",
     };
   }
@@ -266,7 +266,7 @@ function resolveDisplayStatus(input: {
   if (input.agentStatus === "idle") {
     return {
       status: "idle",
-      reason: "This branch has not executed work yet.",
+      reason: "This branch has not acted yet.",
       source: "agent",
     };
   }
@@ -276,7 +276,7 @@ function resolveDisplayStatus(input: {
     reason:
       input.latestAction?.providerDetail ??
       input.latestAction?.outcomeReason ??
-      "This branch is active and operating within its warrant bounds.",
+      "This branch is active and staying within its warrant.",
     source:
       input.latestAction?.providerState === "success" ? "provider" : "warrant",
   };

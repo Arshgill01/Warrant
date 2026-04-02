@@ -14,10 +14,12 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
 export default function DemoPage() {
   const authEnv = getAuth0Environment();
   const rehearsal = loadDemoRehearsalSnapshot();
   const scenario = loadDemoState();
+
   return (
     <DemoSurface
       initialScenario={scenario}

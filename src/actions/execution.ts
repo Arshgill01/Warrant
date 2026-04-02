@@ -291,11 +291,11 @@ export function executeGmailSendOverreachAction(input: ExecuteActionBaseInput & 
   return executeBlockedGmailSendAction({
     ...input,
     fallbackSummary:
-      "Attempted to send the drafted investor follow-ups to an out-of-policy recipient.",
+      "Tried to send the investor follow-up to a recipient outside this branch.",
     fallbackResource: `Send email to ${input.recipients.join(" and ")}`,
-    blockedTitle: "Comms send attempt denied",
+    blockedTitle: "Comms send denied by warrant",
     blockedDescription:
-      "Comms Agent tried to send the prepared follow-ups to a recipient outside its approved recipient and domain bounds, so the warrant engine blocked the branch before approval or provider execution.",
+      "Comms Agent tried to send the prepared follow-up to a recipient outside its approved recipient and domain bounds, so Warrant blocked the action before approval or Gmail execution.",
   });
 }
 

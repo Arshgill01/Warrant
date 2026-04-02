@@ -48,25 +48,28 @@ describe("route rendering", () => {
 
     expect(demoDynamic).toBe("force-dynamic");
     expect(demoMetadata.title).toBe("Warrant | Wave 1 Demo");
-    expect(html).toContain("Wave 1 Demo Surface");
+    expect(html).toContain("Delegated Authority Demo");
     expect(html).toContain("Investor update for April 18");
     expect(html).toContain("Prepare my investor update for tomorrow and coordinate follow-ups.");
+    expect(html).toContain("Root Warrant Approval");
+    expect(html).toContain("Maya authorizes Planner Agent to handle this request and delegate only narrower child warrants for calendar and email work.");
     expect(html).toContain("Canonical Proof Points");
     expect(html).toContain("Sensitive Action Approval");
     expect(html).toContain("Draft authority is not send authority.");
     expect(html).toContain("Approve investor follow-up send");
-    expect(html).toContain("Current approval request");
-    expect(html).toContain("pending through auth0");
+    expect(html).toContain("Latest approval record");
+    expect(html).toContain("pending in auth0");
     expect(html).toContain("current: pending");
     expect(html).toContain("What changes when approval changes");
-    expect(html).toContain("Lineage-Aware Timeline");
-    expect(html).toContain("Comms send paused for approval");
-    expect(html).toContain("Comms child warrant issued");
-    expect(html).toContain("Draft and send internal investor follow-up emails for approved recipients, but only after explicit approval.");
-    expect(html).toContain("Attempted to send the drafted investor follow-ups to an out-of-policy recipient.");
+    expect(html).toContain("When authority ends");
+    expect(html).toContain("Revocation and expiry do different jobs.");
+    expect(html).toContain("Maya revoked the Comms branch after the approved send to prove that delegated authority can be withdrawn immediately.");
+    expect(html).toContain("Authorization Timeline");
+    expect(html).toContain("Comms child warrant delegated");
+    expect(html).toContain("Draft investor follow-ups for approved recipients and request one send after approval.");
+    expect(html).toContain("Tried to send the investor follow-up to a recipient outside this branch.");
     expect(html).toContain("Policy code: recipient_not_allowed");
-    expect(html).not.toContain("Comms branch revoked");
-    expect(html).not.toContain("Post-revoke send blocked");
+    expect(html).not.toContain("Post-Revoke Failure");
   });
 
   it("renders the gated rehearsal controls when demo tools are enabled", async () => {

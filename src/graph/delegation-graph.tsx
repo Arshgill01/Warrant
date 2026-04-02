@@ -42,7 +42,7 @@ export function DelegationGraph({
   onRevoke,
   eyebrow = "Authority Graph",
   title = "Delegation Tree",
-  description = "Nodes represent warrants. Revoking a node invalidates its entire branch.",
+  description = "Each node is a warrant. Revoking one node immediately removes authority from that entire branch.",
 }: DelegationGraphProps) {
   const nodes = useMemo(
     () => buildDelegationGraphNodes({ graphNodes }),
