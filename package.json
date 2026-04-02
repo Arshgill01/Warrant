@@ -13,7 +13,9 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "validate": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "validate:quick": "npm run lint && npm run typecheck && npm run test",
+    "validate:core": "npm run validate:quick && npm run build",
+    "validate": "npm run validate:core"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.16.0",

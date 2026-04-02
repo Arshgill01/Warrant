@@ -1122,3 +1122,74 @@ Out of scope:
 
 - The graph surface may have additional latent issues that only appear after the current lint/type blockers are removed.
 - Next.js build still surfaces Auth0 Edge-runtime warnings, so a fully clean build log may require a separate auth-focused slice later.
+
+## ExecPlan — Wave 4 Quality Hardening Gates (2026-04-03)
+
+### Objective
+
+Strengthen the repo validation gates so integration breakage from parallel branches is detected earlier with clearer failure boundaries and at least one scenario-aware smoke path tied to the main demo flow.
+
+### Demo relevance
+
+This directly protects the 3-minute demo path by making it harder to merge code that passes narrow unit checks but breaks composed app behavior. Stronger shared gates reduce “works on my branch” drift across parallel worktrees.
+
+### Scope
+
+In scope:
+
+- inspect and tighten existing lint, typecheck, test, and build script composition
+- add one lightweight scenario-aware smoke validation path that exercises the real app routes used in the demo
+- improve failure visibility in local and CI validation flows without broad tooling churn
+- update validation documentation to match actual commands
+
+Out of scope:
+
+- sweeping tooling migration (new test runner, formatter, or large CI matrix)
+- broad refactors unrelated to validation reliability
+- heavy end-to-end infrastructure
+- product-feature redesign
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `package.json`
+- `.github/workflows/validate.yml`
+- `README.md`
+- `scripts/*` (new lightweight validation utility script)
+
+### Invariants to preserve
+
+- Keep the existing npm/Next.js/TypeScript/ESLint/Vitest toolchain.
+- Avoid broad churn and keep changes merge-friendly.
+- Preserve existing app behavior and seeded demo semantics.
+- Keep validation commands deterministic and easy to run locally.
+- Ensure CI and local gate definitions stay aligned.
+
+### Preflight findings reviewed
+
+- No dedicated in-repo “Wave 4 preflight findings” artifact was found.
+- Current baseline gates (`lint`, `typecheck`, `test`, `build`) pass on this branch; improvements should therefore focus on gate coherence, visibility, and scenario coverage rather than fixing red baseline failures.
+
+### Implementation steps
+
+1. Normalize validation scripts into clear reusable stages so local and CI flows can call the same command set with explicit boundaries.
+2. Add a lightweight smoke validation script that boots the built app and asserts canonical `/` and `/demo` signals relevant to the demo scenario.
+3. Update CI workflow steps to call each gate explicitly for better failure visibility while preserving lightweight execution.
+4. Update README validation instructions to match the revised script surface.
+5. Run the full improved validation set and record exact outcomes.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run smoke:demo`
+- `npm run validate:quick`
+- `npm run validate`
+
+### Risks
+
+- Smoke checks that assert UI strings can become brittle if copy changes frequently; keep assertions tied to stable, thesis-critical text.
+- Starting a local server during smoke validation can fail if ports are busy; the script should choose a non-default port and cleanly terminate.
+- Adding more validation stages can increase runtime; keep checks lightweight to remain merge-friendly.
