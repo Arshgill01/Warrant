@@ -53,7 +53,47 @@ describe("send approval flow", () => {
     expect(pending.executionReadiness.state).toBe("pending");
     expect(approved.approvalRequirement.state).toBe("ready");
     expect(approved.executionReadiness.state).toBe("ready");
+    expect(approved.providerExecution).toBeNull();
     expect(denied.executionReadiness.state).toBe("blocked");
+  });
+
+  it("keeps final readiness blocked when provider execution is unavailable after approval", () => {
+    const approvedWithUnavailableProvider = buildSendApprovalBoundarySummary("approved", {
+      kind: "gmail.send",
+      state: "unavailable",
+      provider: "google",
+      connection: {
+        provider: "google",
+        state: "expired",
+        headline: "Google delegated access has expired.",
+        detail: "Auth0 needs to refresh delegated access.",
+        actionLabel: "Refresh Auth0 session",
+        actionHref: "/auth/logout",
+        accountLabel: "demo@example.com",
+        tokenExpiresAt: null,
+        via: "auth0-token-vault",
+      },
+      request: {
+        to: ["founders@northstar.vc"],
+        subject: "Investor follow-up",
+        bodyText: "Please review.",
+      },
+      headline: "Send email is blocked until Auth0 refreshes delegated Google access.",
+      detail: "Auth0 needs to refresh delegated access.",
+      data: null,
+      failure: {
+        code: "provider-expired",
+        message: "Delegated access expired.",
+        detail: "Auth0 needs to refresh delegated access.",
+        retryable: true,
+      },
+      nextStep: "Refresh Auth0 session.",
+    });
+
+    expect(approvedWithUnavailableProvider.approvalRequirement.state).toBe("ready");
+    expect(approvedWithUnavailableProvider.providerExecution?.state).toBe("blocked");
+    expect(approvedWithUnavailableProvider.executionReadiness.state).toBe("blocked");
+    expect(approvedWithUnavailableProvider.executionReadiness.gate).toBe("auth0");
   });
 
   it("covers the full deterministic send approval state ladder", () => {
