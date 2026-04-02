@@ -2148,3 +2148,64 @@ Focused checks:
 - Provider-readiness states do not map 1:1 to authority-control states, so adapter decisions must stay explicit to avoid implying policy denial where there is only external readiness delay.
 - Existing tests and UI copy assert legacy labels, so normalization may require broad but mechanical expectation updates.
 - If status precedence is implemented inconsistently between node summaries and proof cards, the same branch could appear in conflicting states.
+
+## ExecPlan — Wave 4 State-Surface Proof Tests (2026-04-02)
+
+### Objective
+
+Close the Wave 3 -> Wave 4 gate gap by adding explicit, proof-oriented tests that verify required authorization states appear on the real state surfaces and remain behaviorally distinct.
+
+### Demo relevance
+
+This directly strengthens the judge-facing thesis by proving that policy denial, approval gating, and revocation are not collapsed into one generic "blocked" outcome across graph, action/timeline, and UI surfaces.
+
+### Scope
+
+In scope:
+
+- explicit assertions for required states on graph-facing warrant summaries
+- explicit assertions for required states on action and timeline display records
+- explicit assertions for rendered UI labels/badges (or equivalent rendered text surfaces)
+- distinction checks for `denied_policy`, approval-family states, and `blocked_revoked`
+
+Out of scope:
+
+- changing canonical taxonomy names or introducing a new taxonomy model
+- broad UI refactors or visual redesign
+- snapshot-heavy tests that do not prove behavior
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `tests/delegation-graph.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/routes.test.tsx`
+- `tests/node-detail-panel.test.tsx`
+- optional new focused test file under `tests/` for cross-surface state proofs
+
+### Invariants to preserve
+
+- Keep Wave 3.5 canonical mappings as implemented in display adapters and UI formatters; tests must validate those mappings, not redefine them.
+- Preserve seeded scenario determinism (fixed ids, timestamps, and event ordering).
+- Keep distinction between policy denial, approval requirement/pending/decision, and revoked-branch blocking visible and testable.
+- Prefer truthful assertions through real scenario and adapter outputs over isolated implementation-detail checks.
+
+### Implementation steps
+
+1. Review the current canonical mappings in `src/demo-fixtures/display.ts`, timeline metadata, and rendered label formatters used by graph/detail/demo surfaces.
+2. Add/extend graph-summary tests to assert presence and distinction for `active`, `revoked`, `expired`, and policy/approval-driven graph states where relevant.
+3. Add/extend action/timeline tests to assert explicit records for `denied_policy`, `approval_required`, `approval_pending`, `approval_approved`, `approval_denied`, and `blocked_revoked`.
+4. Add/extend UI-render tests to assert user-visible labels/badges distinguish denied-policy vs approval-family vs revoked-blocked outcomes.
+5. Keep assertions targeted and semantic (no bulk snapshots), and ensure failures clearly indicate conflated states.
+
+### Validation plan
+
+- `npm run test -- tests/delegation-graph.test.ts tests/demo-fixtures.test.ts tests/node-detail-panel.test.tsx tests/routes.test.tsx`
+- `npm run test`
+- `npm run typecheck`
+- `npm run build`
+
+### Risks
+
+- Some approval variants (notably `approval_denied`) may require scenario mutation in tests because the default seeded path is pending/approved-focused.
+- UI route rendering is server-side static in tests; graph-canvas internals are not mounted there, so UI assertions should target rendered labels/badges and detail panels rather than ReactFlow runtime behavior.
