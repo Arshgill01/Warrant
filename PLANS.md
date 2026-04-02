@@ -1961,3 +1961,86 @@ Out of scope:
 
 - The latest merged branch may still rely on deterministic fixtures for parts of the agent or approval story.
 - Real provider-backed Calendar and Gmail execution may still require a browser-completed connected-account session that cannot be fabricated from the terminal alone.
+
+## ExecPlan — Auth0 Provider Path Hardening (2026-04-03)
+
+### Objective
+
+Harden the Auth0 and Token Vault provider boundary so the Google access path is robust, honest under failure, and visibly load-bearing for external action execution.
+
+### Demo relevance
+
+This strengthens the first half of the three-minute story and makes the control boundaries inspectable:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+3. provider-backed calendar/draft/send paths report truthful execution readiness
+4. approval and provider execution remain separate gates
+
+### Scope
+
+In scope:
+
+- audit and tighten Auth0 env prerequisites and startup guard behavior
+- make provider connection state and provider pathway availability explicit in shell UX
+- harden provider action result envelopes for connected/disconnected/pending/unavailable/error paths
+- preserve and clarify local policy vs approval vs provider execution boundaries
+- strengthen approval and provider send interplay for unavailable/disconnected/provider-failed outcomes
+- add or update focused tests and docs for these behaviors
+
+Out of scope:
+
+- replacing deterministic approval storage/callback handling with a production backend
+- broad auth architecture redesign beyond targeted hardening
+- non-auth feature work unrelated to provider-backed execution boundaries
+
+### Files/modules likely affected
+
+- `src/auth/env.ts`
+- `src/auth/session.ts`
+- `src/auth/auth0.ts`
+- `src/connections/google.ts`
+- `src/actions/google.ts`
+- `src/contracts/action.ts`
+- `src/contracts/connection.ts`
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/app/page.tsx`
+- `tests/auth-shell.test.ts`
+- `tests/routes.test.tsx`
+- `README.md`
+
+### Invariants to preserve
+
+- Local Warrant policy authorization remains separate from Auth0-backed provider availability.
+- Approval requirement remains separate from provider execution availability.
+- Draft and send remain distinct paths; send never implies draft and draft never implies send.
+- Auth0/Token Vault remains visibly central for external Google actions.
+- Failure paths must stay honest and user-legible; no fake success when env or provider path is unavailable.
+
+### Implementation steps
+
+1. Tighten env parsing and startup assumptions so required Auth0 + app base URL prerequisites are explicit and reflected in startup snapshots.
+2. Add explicit provider connection metadata and UI rendering for why the current provider state is blocked/pending/unavailable.
+3. Harden provider action envelope generation so each action reports consistent structured failures, provider capability state, and next-step guidance.
+4. Align Gmail send boundary behavior with approval-release requirements while preserving honest provider failures after release.
+5. Update shell copy and state presentation to make Auth0 load-bearing and boundary separation obvious.
+6. Expand targeted auth/provider tests for startup, connection states, and provider envelope behavior; update docs for operator clarity.
+
+### Validation steps
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Manual/local checks (if env is available):
+
+- load `/` with missing Auth0 env and verify explicit unavailable state
+- load `/` signed-in but disconnected/pending provider path and verify action envelopes remain blocked/pending honestly
+- load `/` with provider connected and verify calendar/draft/send envelopes reflect release and provider outcomes distinctly
+
+### Risks
+
+- Auth0 SDK behavior for connected-account token exchange can differ by tenant config; tests must avoid overfitting mocked assumptions.
+- Tightening env prerequisites may surface previously hidden local setup gaps; docs must stay aligned to avoid false regressions.
+- Additional provider-state explicitness may require updating existing UI and route snapshots that assumed coarser states.
