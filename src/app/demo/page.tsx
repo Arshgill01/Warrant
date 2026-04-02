@@ -8,9 +8,9 @@ import {
 } from "@/demo-fixtures/state";
 
 export const metadata: Metadata = {
-  title: "Warrant | Wave 1 Demo",
+  title: "Warrant | Delegated Authority Demo",
   description:
-    "Unified Wave 1 demo surface with the seeded scenario, delegation graph, and lineage-aware timeline.",
+    "Seeded Warrant demo surface with the delegation graph, approval boundary, and lineage-aware timeline.",
 };
 
 export const dynamic = "force-dynamic";

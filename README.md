@@ -4,7 +4,7 @@ Warrant is a demo-first Auth0 for AI Agents hackathon project built around one t
 
 **OAuth was designed for apps. AI agents need warrants.**
 
-This worktree now includes the Auth0-facing shell, the warrant engine, deterministic demo fixtures, the delegation graph, and the approval-gated Gmail send path used in the Wave 2 demo.
+This worktree now includes the Auth0-facing shell, the warrant engine, deterministic demo fixtures, the delegation graph, and the approval-gated Gmail send path used in the current demo scenario.
 
 ## Stack
 
@@ -170,7 +170,7 @@ Graph consumers should prefer `GraphNodeDTO`, `GraphEdgeDTO`, and `DelegationGra
 
 ## Provider action contracts
 
-Wave 2 provider-backed actions use explicit result envelopes from `src/contracts/action.ts`.
+Provider-backed actions use explicit result envelopes from `src/contracts/action.ts`.
 
 These envelopes answer:
 
