@@ -249,7 +249,7 @@ export function buildSendApprovalBoundarySummary(
     state !== "approved"
       ? approvalExecutionReadiness
       : providerExecution
-        ? {
+        ? ({
             kind: "gmail.send",
             label: "Final execution readiness",
             state: providerExecution.state,
@@ -263,7 +263,7 @@ export function buildSendApprovalBoundarySummary(
                 ? "The explicit Auth0 approval release was provided and the delegated provider path executed the send."
                 : `Approval released execution, but the delegated provider path returned: ${providerExecution.detail}`,
             nextStep: providerExecution.nextStep,
-          }
+          } satisfies ActionPathSnapshot)
         : approvalExecutionReadiness;
 
   return {
