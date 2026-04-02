@@ -107,11 +107,11 @@ npm ci
 npm run validate
 ```
 
-`npm run validate` runs the repo quality gates in this order:
+Validation commands:
 
-- `npm run lint`
-- `npm run typecheck`
-- `npm run test`
-- `npm run build`
+- `npm run validate:quick` runs lint, typecheck, and tests.
+- `npm run validate:core` runs `validate:quick` plus a production build.
+- `npm run smoke:demo` starts the built app on a non-default port and checks `/` and `/demo` for canonical demo markers.
+- `npm run validate` runs `validate:core` plus `smoke:demo`.
 
-The GitHub Actions workflow at `.github/workflows/validate.yml` runs the same command so worktrees merge against one shared gate definition.
+The GitHub Actions workflow at `.github/workflows/validate.yml` runs the same gate stages (`lint`, `typecheck`, `test`, `build`, `smoke:demo`) with explicit step boundaries so failures are easier to pinpoint during integration.
