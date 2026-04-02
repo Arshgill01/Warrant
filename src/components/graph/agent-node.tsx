@@ -34,21 +34,26 @@ const roleIcons: Record<AgentRole, React.ReactNode> = {
 
 const statusColors: Record<AgentNodeData["status"], string> = {
   active: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)] border-[var(--status-allowed-text)]/20",
-  idle: "bg-slate-50 text-slate-500 border-slate-200",
-  blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)] border-[var(--status-blocked-text)]/20",
-  denied: "bg-rose-50 text-rose-700 border-rose-200",
+  denied_policy: "bg-rose-50 text-rose-700 border-rose-200",
+  approval_required: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-[var(--status-pending-text)]/20",
+  approval_pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-[var(--status-pending-text)]/20",
+  approval_approved: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)] border-[var(--status-allowed-text)]/20",
+  approval_denied: "bg-rose-50 text-rose-700 border-rose-200",
+  blocked_revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-[var(--status-revoked-text)]/20",
   revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-[var(--status-revoked-text)]/20",
-  "pending-approval": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-[var(--status-pending-text)]/20",
   expired: "bg-slate-100 text-slate-400 border-slate-200",
 };
 
 function formatDisplayStatus(value: DisplayStatus): string {
-  return value.replace("-", " ");
+  return value.replaceAll("_", " ");
 }
 
 export const AgentNodeComponent = memo(({ data, selected }: NodeProps<AgentNode>) => {
   const isRoot = data.label === "Root User";
-  const isRevoked = data.status === "revoked" || data.isRevoked;
+  const isRevoked =
+    data.status === "revoked" ||
+    data.status === "blocked_revoked" ||
+    data.isRevoked;
 
   return (
     <div className={`

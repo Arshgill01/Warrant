@@ -105,7 +105,7 @@ describe("demo fixtures", () => {
     const graphView = loadDelegationGraphView();
     const timeline = loadTimelineEvents();
 
-    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("pending-approval");
+    expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.status).toBe("approval_pending");
     expect(graphView.nodes.find((node) => node.id === "warrant-comms-child-001")?.parentId).toBe(
       "warrant-planner-root-001",
     );

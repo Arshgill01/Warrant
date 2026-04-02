@@ -2061,3 +2061,90 @@ Out of scope:
 - If the gated controls are too hidden they will not reduce setup friction; if they are too visible they risk becoming a public admin surface, so the gating needs to stay explicit.
 - The current timeline and display contracts are optimized for the canonical scenario, so alternate replay presets must stay narrow to avoid misleading UI states or accidental semantic drift.
 - The branch must not claim live Gmail or Calendar execution without direct evidence.
+
+## ExecPlan — Wave 3 To Wave 4 Control-State Taxonomy Normalization (2026-04-02)
+
+### Objective
+
+Normalize control-state semantics across graph status, action records, timeline records, and UI badges/copy so one canonical control-state vocabulary is used consistently, with explicit thin adapters where domain models still need legacy shapes.
+
+### Demo relevance
+
+This is a gate-quality pass between Milestone 4 and Milestone 6 proof moments. Judges must be able to distinguish policy denial, approval gating, approval outcomes, branch revocation, and expiry instantly. Mixed labels like `pending-approval`, `approval-required`, `denied`, and `blocked` weaken legibility and make Wave 3 -> Wave 4 behavior feel contradictory.
+
+### Scope
+
+In scope:
+
+- define one canonical control-state set in one clear shared location:
+  - `denied_policy`
+  - `approval_required`
+  - `approval_pending`
+  - `approval_approved`
+  - `approval_denied`
+  - `blocked_revoked`
+  - `active`
+  - `revoked`
+  - `expired`
+- add thin adapter helpers that map existing action outcomes, approval statuses, and warrant/revocation outcomes into canonical control states
+- normalize graph node status, action display records, timeline display records, and status badges/copy to canonical states or documented adapters
+- keep action-level and node-level semantics separate but aligned (for example, action `approval_required` vs node `approval_pending`)
+- update focused tests to assert canonical states and non-contradictory mappings
+
+Out of scope:
+
+- new product features or new scenario beats
+- broad contract rewrites that are unrelated to control-state normalization
+- redesign of major demo or graph surfaces
+- changing core warrant/approval/provider execution behavior
+- persistence or backend changes
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/*` (control-state definitions and display contracts)
+- `src/demo-fixtures/display.ts`
+- `src/components/demo/demo-surface.tsx`
+- `src/components/graph/*`
+- `src/graph/*`
+- `tests/*` (graph, demo fixtures, routes, node detail, orchestration)
+
+### Invariants to preserve
+
+- Blocked overreach remains policy-first and visibly distinct from approval gating.
+- Sensitive send remains approval-gated and Auth0-visible.
+- Branch revoke remains immediate, branch-specific, and lineage-aware.
+- Timeline, graph, and proof cards keep describing the same scenario facts.
+- Child warrant narrowing and two-layer enforcement behavior remain unchanged.
+- This pass stays surgical and avoids feature churn.
+
+### Implementation steps
+
+1. Add a canonical control-state contract module and export a single vocabulary plus explicit adapter maps.
+2. Update display-layer DTOs to carry canonical control states for graph nodes, action records, approval records, and timeline entries.
+3. Refactor display adapters to compute canonical control states from existing scenario/action/approval/warrant inputs with deterministic precedence.
+4. Update graph and demo UI status rendering helpers so badges and copy consume canonical states (or adapter outputs) instead of mixed legacy labels.
+5. Keep any necessary legacy/domain shapes in place, but route them through one documented mapping layer rather than ad-hoc string checks.
+6. Update targeted tests for overreach-proof, approval-flow, branch-revoke, control-surface sync points, and audit timeline alignment.
+7. Run lint, typecheck, test, and build; then inspect the seeded main scenario outputs for consistent state meaning.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Focused checks:
+
+- graph summaries use canonical control states and keep revoke/expiry/denial/approval states distinct
+- action display records distinguish `denied_policy`, `approval_required`, and `blocked_revoked`
+- approval records and UI badges map cleanly to `approval_pending`, `approval_approved`, and `approval_denied`
+- timeline records expose consistent canonical control-state meaning for blocked, approval, revoked, and active transitions
+- `/demo` proof points remain intact and legible without contradictory status labels
+
+### Risks
+
+- Provider-readiness states do not map 1:1 to authority-control states, so adapter decisions must stay explicit to avoid implying policy denial where there is only external readiness delay.
+- Existing tests and UI copy assert legacy labels, so normalization may require broad but mechanical expectation updates.
+- If status precedence is implemented inconsistently between node summaries and proof cards, the same branch could appear in conflicting states.

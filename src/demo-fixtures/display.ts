@@ -1,7 +1,13 @@
+import {
+  approvalStatusControlStateMap,
+  mapActionOutcomeToControlState,
+  timelineKindControlStateMap,
+} from "@/contracts";
 import type {
   ActionAttemptDisplayRecord,
   ActionKind,
   ApprovalStateDisplayRecord,
+  CanonicalControlState,
   DelegationGraphDTO,
   DemoScenario,
   DisplayField,
@@ -10,7 +16,6 @@ import type {
   GraphEdgeDTO,
   GraphNodeDTO,
   TimelineEventDisplayRecord,
-  TimelineEventTone,
   WarrantDisplaySummary,
 } from "@/contracts";
 import type { LedgerEventKind } from "@/contracts";
@@ -30,48 +35,39 @@ const timelineEventMeta: Record<
   {
     kindLabel: string;
     resultLabel: string;
-    resultTone: TimelineEventTone;
   }
 > = {
   "scenario.loaded": {
     kindLabel: "Scenario",
     resultLabel: "Loaded",
-    resultTone: "info",
   },
   "warrant.issued": {
     kindLabel: "Warrant",
     resultLabel: "Issued",
-    resultTone: "info",
   },
   "action.allowed": {
     kindLabel: "Action",
     resultLabel: "Completed",
-    resultTone: "allowed",
   },
   "action.blocked": {
     kindLabel: "Action",
     resultLabel: "Blocked",
-    resultTone: "blocked",
   },
   "approval.requested": {
     kindLabel: "Approval",
     resultLabel: "Requested",
-    resultTone: "pending",
   },
   "approval.approved": {
     kindLabel: "Approval",
     resultLabel: "Approved",
-    resultTone: "approved",
   },
   "approval.denied": {
     kindLabel: "Approval",
     resultLabel: "Denied",
-    resultTone: "blocked",
   },
   "warrant.revoked": {
     kindLabel: "Branch",
     resultLabel: "Revoked",
-    resultTone: "revoked",
   },
 };
 
@@ -140,12 +136,7 @@ function formatConstraintFields(
 }
 
 function isPolicyDeniedAction(record: ActionAttemptDisplayRecord): boolean {
-  return (
-    record.outcome === "blocked" &&
-    record.providerState === null &&
-    record.authorization.code !== "warrant_revoked" &&
-    record.authorization.code !== "ancestor_revoked"
-  );
+  return record.controlState === "denied_policy";
 }
 
 function getLatestRecordsByWarrantId<Record extends { warrantId: string; requestedAt?: string; expiresAt?: string }>(
@@ -193,6 +184,7 @@ function resolveDisplayStatus(input: {
   expiresAt: string;
   revocationReason: string | null;
   pendingApproval: ApprovalStateDisplayRecord | null;
+  latestApproval: ApprovalStateDisplayRecord | null;
   latestAction: ActionAttemptDisplayRecord | null;
 }): {
   status: DisplayStatus;
@@ -219,10 +211,10 @@ function resolveDisplayStatus(input: {
 
   if (
     input.pendingApproval ||
-    input.latestAction?.outcome === "approval-required"
+    input.latestAction?.controlState === "approval_required"
   ) {
     return {
-      status: "pending-approval",
+      status: input.pendingApproval ? "approval_pending" : "approval_required",
       reason:
         input.pendingApproval?.reason ??
         input.latestAction?.outcomeReason ??
@@ -231,14 +223,30 @@ function resolveDisplayStatus(input: {
     };
   }
 
+  if (input.latestAction?.controlState === "blocked_revoked") {
+    return {
+      status: "blocked_revoked",
+      reason: input.latestAction.outcomeReason,
+      source: "action",
+    };
+  }
+
   if (
-    input.latestAction?.outcome === "blocked" &&
+    input.latestAction?.controlState === "denied_policy" &&
     input.latestAction.providerState === null
   ) {
     return {
-      status: "denied",
+      status: "denied_policy",
       reason: input.latestAction.outcomeReason,
       source: "action",
+    };
+  }
+
+  if (input.latestApproval?.controlState === "approval_denied") {
+    return {
+      status: "approval_denied",
+      reason: input.latestApproval.reason,
+      source: "approval",
     };
   }
 
@@ -249,12 +257,12 @@ function resolveDisplayStatus(input: {
       input.latestAction.providerState !== "success")
   ) {
     return {
-      status: "blocked",
+      status: "active",
       reason:
         input.latestAction?.providerDetail ??
         input.latestAction?.providerHeadline ??
         input.latestAction?.outcomeReason ??
-        "This branch is currently blocked from continuing.",
+        "This branch is active but waiting on external execution readiness.",
       source:
         input.latestAction?.providerState &&
         input.latestAction.providerState !== "success"
@@ -265,7 +273,7 @@ function resolveDisplayStatus(input: {
 
   if (input.agentStatus === "idle") {
     return {
-      status: "idle",
+      status: "active",
       reason: "This branch has not acted yet.",
       source: "agent",
     };
@@ -300,7 +308,9 @@ export function createWarrantDisplaySummaries(
     (record) => record.requestedAt,
   );
   const pendingApprovalByWarrantId = getLatestRecordsByWarrantId(
-    approvalRecords.filter((approval) => approval.status === "pending"),
+    approvalRecords.filter(
+      (approval) => approval.controlState === "approval_pending",
+    ),
     (record) => record.requestedAt,
   );
   const latestApprovalByWarrantId = getLatestRecordsByWarrantId(
@@ -323,12 +333,14 @@ export function createWarrantDisplaySummaries(
     const latestPolicyDenial =
       latestPolicyDenialByWarrantId.get(warrant.id) ?? null;
     const pendingApproval = pendingApprovalByWarrantId.get(warrant.id) ?? null;
+    const latestApproval = latestApprovalByWarrantId.get(warrant.id) ?? null;
     const status = resolveDisplayStatus({
       agentStatus: agent.status,
       warrantStatus: warrant.status,
       expiresAt: warrant.expiresAt,
       revocationReason: warrant.revocationReason,
       pendingApproval,
+      latestApproval,
       latestAction,
     });
 
@@ -356,7 +368,7 @@ export function createWarrantDisplaySummaries(
       revocationReason: warrant.revocationReason,
       latestAction,
       latestPolicyDenial,
-      latestApproval: latestApprovalByWarrantId.get(warrant.id) ?? null,
+      latestApproval,
       pendingApproval,
     };
   });
@@ -382,6 +394,10 @@ export function createActionAttemptDisplayRecords(
     summary: action.summary,
     resource: action.resource,
     outcome: action.outcome,
+    controlState: mapActionOutcomeToControlState({
+      outcome: action.outcome,
+      authorizationCode: action.authorization.code,
+    }),
     outcomeReason: action.outcomeReason,
     authorization: action.authorization,
     approvalRequestId: action.approvalRequestId ?? null,
@@ -406,6 +422,7 @@ export function createApprovalStateDisplayRecords(
       `Missing agent for approval ${approval.id}`,
     ).label,
     status: approval.status,
+    controlState: approvalStatusControlStateMap[approval.status],
     title: approval.title,
     reason: approval.reason,
     preview: approval.preview,
@@ -423,11 +440,28 @@ export function createTimelineEventDisplayRecords(
 ): TimelineEventDisplayRecord[] {
   const agentLabelsById = new Map(scenario.agents.map((agent) => [agent.id, agent.label]));
   const warrantsById = new Map(scenario.warrants.map((warrant) => [warrant.id, warrant]));
+  const actionsById = new Map(
+    createActionAttemptDisplayRecords(scenario).map((action) => [action.id, action]),
+  );
+  const approvalsById = new Map(
+    createApprovalStateDisplayRecords(scenario).map((approval) => [approval.id, approval]),
+  );
 
   return [...scenario.timeline]
     .sort((left, right) => left.at.localeCompare(right.at))
     .map((event) => {
       const meta = timelineEventMeta[event.kind];
+      const controlState = resolveTimelineControlState({
+        eventKind: event.kind,
+        actionState:
+          event.actionId
+            ? actionsById.get(event.actionId)?.controlState ?? null
+            : null,
+        approvalState:
+          event.approvalId
+            ? approvalsById.get(event.approvalId)?.controlState ?? null
+            : null,
+      });
       const lineagePath = event.warrantId
         ? getWarrantLineagePath(event.warrantId, warrantsById, agentLabelsById)
         : [scenario.user.label];
@@ -442,9 +476,13 @@ export function createTimelineEventDisplayRecords(
         id: event.id,
         at: event.at,
         kind: event.kind,
+        controlState,
         kindLabel: meta.kindLabel,
         resultLabel: meta.resultLabel,
-        resultTone: meta.resultTone,
+        resultTone:
+          event.kind === "scenario.loaded" || event.kind === "warrant.issued"
+            ? "info"
+            : controlState,
         actorKind: event.actorKind,
         actorId: event.actorId,
         actorLabel:
@@ -466,6 +504,27 @@ export function createTimelineEventDisplayRecords(
         description: event.description,
       };
     });
+}
+
+function resolveTimelineControlState(input: {
+  eventKind: LedgerEventKind;
+  actionState: CanonicalControlState | null;
+  approvalState: CanonicalControlState | null;
+}): CanonicalControlState {
+  if (input.eventKind === "action.blocked" && input.actionState) {
+    return input.actionState;
+  }
+
+  if (
+    (input.eventKind === "approval.requested" ||
+      input.eventKind === "approval.approved" ||
+      input.eventKind === "approval.denied") &&
+    input.approvalState
+  ) {
+    return input.approvalState;
+  }
+
+  return timelineKindControlStateMap[input.eventKind];
 }
 
 export function createDelegationGraphView(

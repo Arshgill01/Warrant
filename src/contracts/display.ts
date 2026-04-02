@@ -10,15 +10,7 @@ import type {
   ApprovalStatus,
 } from "@/contracts/approval";
 import type { LedgerActorKind, LedgerEventKind } from "@/contracts/audit";
-
-export type DisplayStatus =
-  | "idle"
-  | "active"
-  | "blocked"
-  | "pending-approval"
-  | "revoked"
-  | "expired"
-  | "denied";
+import type { CanonicalControlState, DisplayStatus } from "@/contracts/control-state";
 
 export type DisplayStatusSource =
   | "agent"
@@ -68,6 +60,7 @@ export interface ActionAttemptDisplayRecord {
   summary: string;
   resource: string;
   outcome: ActionAttemptOutcome;
+  controlState: CanonicalControlState;
   outcomeReason: string;
   authorization: ActionAuthorizationSnapshot;
   approvalRequestId: string | null;
@@ -83,6 +76,7 @@ export interface ApprovalStateDisplayRecord {
   requestedByAgentId: string;
   requestedByLabel: string;
   status: ApprovalStatus;
+  controlState: CanonicalControlState;
   title: string;
   reason: string;
   preview: ApprovalRequestPreview;
@@ -122,16 +116,13 @@ export interface WarrantDisplaySummary {
 
 export type TimelineEventTone =
   | "info"
-  | "allowed"
-  | "blocked"
-  | "pending"
-  | "approved"
-  | "revoked";
+  | CanonicalControlState;
 
 export interface TimelineEventDisplayRecord {
   id: string;
   at: string;
   kind: LedgerEventKind;
+  controlState: CanonicalControlState;
   kindLabel: string;
   resultLabel: string;
   resultTone: TimelineEventTone;

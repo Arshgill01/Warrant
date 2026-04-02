@@ -131,7 +131,8 @@ export function buildDelegationGraphNodes({
         purpose: node.purpose,
         canDelegate: node.canDelegate,
         expiresAt: node.expiresAt,
-        isRevoked: node.status === "revoked",
+        isRevoked:
+          node.status === "revoked" || node.status === "blocked_revoked",
       },
       position: positions[node.id] ?? { x: GRAPH_CENTER_X, y: ROOT_Y },
     }));
@@ -144,15 +145,24 @@ export function buildDelegationGraphEdges(
     id: edge.id,
     source: edge.sourceId,
     target: edge.targetId,
-    animated: edge.status !== "revoked",
+    animated: edge.status !== "revoked" && edge.status !== "blocked_revoked",
     style: {
-      stroke: edge.status === "revoked" ? "#cbd5e1" : "var(--accent)",
+      stroke:
+        edge.status === "revoked" || edge.status === "blocked_revoked"
+          ? "#cbd5e1"
+          : "var(--accent)",
       strokeWidth: 2,
-      opacity: edge.status === "revoked" ? 0.5 : 1,
+      opacity:
+        edge.status === "revoked" || edge.status === "blocked_revoked"
+          ? 0.5
+          : 1,
     },
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: edge.status === "revoked" ? "#cbd5e1" : "var(--accent)",
+      color:
+        edge.status === "revoked" || edge.status === "blocked_revoked"
+          ? "#cbd5e1"
+          : "var(--accent)",
     },
   }));
 }

@@ -59,7 +59,7 @@ describe("route rendering", () => {
     expect(html).toContain("Approve investor follow-up send");
     expect(html).toContain("Latest approval record");
     expect(html).toContain("pending in auth0");
-    expect(html).toContain("current: pending");
+    expect(html).toContain("current: approval pending");
     expect(html).toContain("What changes when approval changes");
     expect(html).toContain("When authority ends");
     expect(html).toContain("Revocation and expiry do different jobs.");

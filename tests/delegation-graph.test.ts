@@ -122,13 +122,13 @@ describe("delegation graph view model", () => {
       (summary) => summary.id === "warrant-comms-child-001",
     );
 
-    expect(deniedComms?.status).toBe("denied");
+    expect(deniedComms?.status).toBe("denied_policy");
     expect(deniedComms?.latestAction?.id).toBe("action-comms-send-overreach-001");
     expect(deniedComms?.latestPolicyDenial?.id).toBe("action-comms-send-overreach-001");
     expect(deniedComms?.statusReason).toBe("This warrant does not allow gmail.send.");
   });
 
-  it("distinguishes provider-blocked, revoked, and expired states while keeping detail data aligned", () => {
+  it("distinguishes provider-delayed, revoked, and expired states while keeping detail data aligned", () => {
     const providerBlockedScenario = createDefaultDemoScenario();
 
     providerBlockedScenario.actionAttempts.push({
@@ -164,7 +164,7 @@ describe("delegation graph view model", () => {
       (summary) => summary.id === "warrant-calendar-child-001",
     );
 
-    expect(calendarSummary?.status).toBe("blocked");
+    expect(calendarSummary?.status).toBe("active");
     expect(calendarSummary?.statusSource).toBe("provider");
     expect(calendarSummary?.latestAction?.providerState).toBe("pending");
 

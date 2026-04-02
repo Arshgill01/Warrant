@@ -18,6 +18,7 @@ import type {
   SendApprovalState,
 } from "@/contracts";
 import {
+  createActionAttemptDisplayRecords,
   createDefaultDemoScenario,
   createDelegationGraphView,
   createTimelineEventDisplayRecords,
@@ -28,18 +29,16 @@ import { DelegationGraph } from "@/graph";
 
 const statusTone: Record<string, string> = {
   active: "bg-[var(--accent-soft)] text-[var(--accent)]",
-  allowed: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
+  denied_policy: "bg-rose-50 text-rose-700",
+  approval_required: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+  approval_pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+  approval_approved: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
+  approval_denied: "bg-rose-50 text-rose-700",
+  blocked_revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)]",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
-  denied: "bg-rose-50 text-rose-700",
-  "approval-required": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
-  "pending-approval": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
-  pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
-  approved: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
   expired: "bg-slate-100 text-slate-600",
   revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)]",
-  "warrant.issued": "bg-[var(--accent-soft)] text-[var(--accent)]",
-  "scenario.loaded": "bg-slate-100 text-slate-700",
-  "approval.requested": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+  info: "bg-slate-100 text-slate-700",
 };
 
 const pathStateTone: Record<"ready" | "blocked" | "pending", string> = {
@@ -75,25 +74,25 @@ function formatDateTime(value: string, timeZone: string): string {
 
 function formatStatusLabel(value: string): string {
   switch (value) {
-    case "approval-required":
-      return "needs approval";
-    case "pending-approval":
-      return "awaiting approval";
-    case "warrant.issued":
-      return "warrant granted";
-    case "approval.requested":
-      return "approval requested";
-    case "approval.approved":
-      return "approval granted";
-    case "warrant.revoked":
-      return "branch revoked";
+    case "denied_policy":
+      return "policy denied";
+    case "approval_required":
+      return "approval required";
+    case "approval_pending":
+      return "approval pending";
+    case "approval_approved":
+      return "approval approved";
+    case "approval_denied":
+      return "approval denied";
+    case "blocked_revoked":
+      return "blocked by revocation";
     default:
-      return value.replaceAll("-", " ").replaceAll(".", " ");
+      return value.replaceAll("_", " ").replaceAll("-", " ").replaceAll(".", " ");
   }
 }
 
 function formatApprovalBadge(status: string, provider: string): string {
-  if (status === "pending") {
+  if (status === "approval_pending") {
     return `pending in ${provider}`;
   }
 
@@ -236,7 +235,7 @@ function ApprovalStateCard({
         <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
         <StatusPill
           label={executionReady ? "execution ready" : "still blocked"}
-          tone={executionReady ? statusTone.approved : statusTone.blocked}
+          tone={executionReady ? statusTone.approval_approved : statusTone.blocked}
         />
       </div>
       <p className="mb-2 text-sm font-medium text-[var(--foreground)]">
@@ -345,6 +344,10 @@ export function DemoSurface({
     () => createTimelineEventDisplayRecords(scenario),
     [scenario],
   );
+  const actionRecords = useMemo(
+    () => createActionAttemptDisplayRecords(scenario),
+    [scenario],
+  );
   const examples = useMemo(() => getDisplayScenarioExamples(scenario), [scenario]);
   const revokedExample = useMemo(
     () =>
@@ -368,26 +371,27 @@ export function DemoSurface({
   );
   const postRevokeAction = useMemo(
     () =>
-      scenario.actionAttempts.find(
+      actionRecords.find(
         (action) => action.authorization.code === "warrant_revoked",
       ) ?? null,
-    [scenario],
+    [actionRecords],
   );
   const currentApprovalState = toSendApprovalState(
     examples.commsSendApproval.status,
   );
+  const currentApprovalControlState = examples.commsSendApproval.controlState;
   const commsBranchRevoked = examples.commsChildWarrant.status === "revoked";
   const approvalBoundaries = commsBranchRevoked
     ? buildRevokedApprovalBoundarySummary()
     : buildSendApprovalBoundarySummary(currentApprovalState);
   const approvalStateMatrix = buildSendApprovalStateMatrix();
-  const agentCounts = useMemo(
+  const controlStateCounts = useMemo(
     () =>
-      scenario.agents.reduce<Record<string, number>>((counts, agent) => {
-        counts[agent.status] = (counts[agent.status] ?? 0) + 1;
+      graphView.warrantSummaries.reduce<Record<string, number>>((counts, summary) => {
+        counts[summary.status] = (counts[summary.status] ?? 0) + 1;
         return counts;
       }, {}),
-    [scenario.agents],
+    [graphView.warrantSummaries],
   );
 
   const handleRevokeBranch = useCallback((warrantId: string) => {
@@ -402,7 +406,7 @@ export function DemoSurface({
 
   const currentApprovalBadge = commsBranchRevoked
     ? "current: branch revoked"
-    : `current: ${formatStatusLabel(currentApprovalState)}`;
+    : `current: ${formatStatusLabel(currentApprovalControlState)}`;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col gap-8 px-6 py-10 sm:px-10 lg:px-16">
@@ -523,9 +527,9 @@ export function DemoSurface({
             </h2>
           </div>
           <div className="flex gap-4 text-xs font-medium text-[var(--muted)]">
-            <span>{agentCounts.active ?? 0} Active</span>
-            <span>{agentCounts.revoked ?? 0} Revoked</span>
-            <span>{agentCounts.blocked ?? 0} Blocked</span>
+            <span>{controlStateCounts.active ?? 0} Active</span>
+            <span>{controlStateCounts.approval_pending ?? 0} Approval pending</span>
+            <span>{controlStateCounts.revoked ?? 0} Revoked</span>
           </div>
         </div>
 
@@ -553,32 +557,32 @@ export function DemoSurface({
           <ExampleCard
             eyebrow="Allowed Action"
             title={examples.calendarAction.summary}
-            statusKey={examples.calendarAction.outcome}
-            statusLabel={examples.calendarAction.outcome.replace("-", " ")}
+            statusKey={examples.calendarAction.controlState}
+            statusLabel={formatStatusLabel(examples.calendarAction.controlState)}
             detail={examples.calendarAction.outcomeReason}
             meta={examples.calendarAction.resource}
           />
           <ExampleCard
             eyebrow="Allowed Action"
             title={examples.commsDraftAction.summary}
-            statusKey={examples.commsDraftAction.outcome}
-            statusLabel={examples.commsDraftAction.outcome.replace("-", " ")}
+            statusKey={examples.commsDraftAction.controlState}
+            statusLabel={formatStatusLabel(examples.commsDraftAction.controlState)}
             detail={examples.commsDraftAction.outcomeReason}
             meta={examples.commsDraftAction.resource}
           />
           <ExampleCard
             eyebrow="Blocked Overreach"
             title={examples.commsOverreachAction.summary}
-            statusKey={examples.commsOverreachAction.outcome}
-            statusLabel="denied"
+            statusKey={examples.commsOverreachAction.controlState}
+            statusLabel={formatStatusLabel(examples.commsOverreachAction.controlState)}
             detail={examples.commsOverreachAction.outcomeReason}
             meta={`Policy code: ${examples.commsOverreachAction.authorization.code}`}
           />
           <ExampleCard
             eyebrow={postRevokeAction ? "Post-Revoke Failure" : "Sensitive Send"}
             title={postRevokeAction ? postRevokeAction.summary : examples.commsSendAction.summary}
-            statusKey={postRevokeAction ? postRevokeAction.outcome : examples.commsSendAction.outcome}
-            statusLabel={formatStatusLabel(postRevokeAction ? postRevokeAction.outcome : examples.commsSendAction.outcome)}
+            statusKey={postRevokeAction ? postRevokeAction.controlState : examples.commsSendAction.controlState}
+            statusLabel={formatStatusLabel(postRevokeAction ? postRevokeAction.controlState : examples.commsSendAction.controlState)}
             detail={postRevokeAction ? postRevokeAction.outcomeReason : examples.commsSendAction.outcomeReason}
             meta={
               postRevokeAction
@@ -625,10 +629,10 @@ export function DemoSurface({
               </div>
               <StatusPill
                 label={formatApprovalBadge(
-                  examples.commsSendApproval.status,
+                  examples.commsSendApproval.controlState,
                   examples.commsSendApproval.provider,
                 )}
-                tone={statusTone[examples.commsSendApproval.status]}
+                tone={statusTone[examples.commsSendApproval.controlState]}
               />
             </div>
 
@@ -712,7 +716,7 @@ export function DemoSurface({
             </div>
             <StatusPill
               label={currentApprovalBadge}
-              tone={commsBranchRevoked ? statusTone.revoked : statusTone[currentApprovalState]}
+              tone={commsBranchRevoked ? statusTone.revoked : statusTone[currentApprovalControlState]}
             />
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -789,12 +793,8 @@ export function DemoSurface({
               <div className="flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <StatusPill
-                    label={formatStatusLabel(event.kind)}
-                    tone={
-                      statusTone[event.kind.split(".")[1]] ||
-                      statusTone[event.kind] ||
-                      statusTone.revoked
-                    }
+                    label={formatStatusLabel(event.controlState)}
+                    tone={statusTone[event.resultTone] || statusTone.active}
                   />
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
                     {formatDateTime(event.at, scenario.timezone)}

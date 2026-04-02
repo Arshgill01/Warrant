@@ -162,6 +162,7 @@ If the stored demo state is stale, invalid, or half-written, Warrant automatical
 ## Shared display contracts
 
 UI-facing graph, timeline, warrant-summary, action, and approval DTOs now live in `src/contracts/display.ts`.
+Canonical control-state vocabulary and adapter maps live in `src/contracts/control-state.ts`.
 
 Use adapters from `src/demo-fixtures/display.ts` to map canonical demo/domain data into those DTOs. Graph and demo surfaces should consume that adapter layer instead of raw warrant or fixture internals directly.
 

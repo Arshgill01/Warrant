@@ -21,16 +21,18 @@ type NodeDetailPanelProps = {
 
 const statusTone: Record<WarrantDisplaySummary["status"], string> = {
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  idle: "bg-slate-50 text-slate-600 border-slate-200",
-  blocked: "bg-amber-50 text-amber-700 border-amber-200",
-  denied: "bg-rose-50 text-rose-700 border-rose-200",
-  "pending-approval": "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-amber-200",
+  denied_policy: "bg-rose-50 text-rose-700 border-rose-200",
+  approval_required: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-amber-200",
+  approval_pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)] border-amber-200",
+  approval_approved: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  approval_denied: "bg-rose-50 text-rose-700 border-rose-200",
+  blocked_revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-rose-200",
   revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)] border-rose-200",
   expired: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
 function formatDisplayStatus(value: WarrantDisplaySummary["status"]): string {
-  return value.replace("-", " ");
+  return value.replaceAll("_", " ");
 }
 
 function formatDateTime(value: string): string {
@@ -42,7 +44,7 @@ function formatDateTime(value: string): string {
 }
 
 function formatStatusSource(value: WarrantDisplaySummary["statusSource"]): string {
-  return value.replace("-", " ");
+  return value.replaceAll("-", " ");
 }
 
 export function NodeDetailPanel({
@@ -54,11 +56,14 @@ export function NodeDetailPanel({
     return null;
   }
 
-  const isRevoked = warrant.status === "revoked";
+  const isRevoked =
+    warrant.status === "revoked" || warrant.status === "blocked_revoked";
   const isAttentionState =
-    warrant.status === "blocked" ||
-    warrant.status === "denied" ||
-    warrant.status === "pending-approval";
+    warrant.status === "denied_policy" ||
+    warrant.status === "approval_required" ||
+    warrant.status === "approval_pending" ||
+    warrant.status === "approval_denied" ||
+    warrant.status === "blocked_revoked";
   const isRoot = warrant.agentLabel === "Root User";
   const canRevokeBranch = warrant.agentRole === "comms" && !isRoot;
   const latestPolicyDenial = warrant.latestPolicyDenial;
@@ -184,7 +189,7 @@ export function NodeDetailPanel({
                   </p>
                 </div>
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-700">
-                  {warrant.latestAction.outcome.replace("-", " ")}
+                  {warrant.latestAction.controlState.replaceAll("_", " ")}
                 </span>
               </div>
               <p className="text-sm leading-relaxed text-[var(--foreground)]">
