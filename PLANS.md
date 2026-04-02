@@ -2272,3 +2272,73 @@ Out of scope:
 
 - Some historical Wave references should remain in planning history; removing too broadly could erase useful archival context.
 - Copy tightening can accidentally drift from fixture-backed truth if edits overstate live Auth0/provider execution.
+
+## ExecPlan — Wave 3.5 Scenario Semantic Clarity Cleanup (2026-04-02)
+
+### Objective
+
+Close the final Wave 3.5 blocker by removing ambiguous scenario naming across demo fixtures, rehearsal preset mapping, and developer-facing docs.
+
+### Demo relevance
+
+This is a gate-readiness cleanup for the deterministic 3-minute demo path. Rehearsal operators and future maintainers need to immediately understand which snapshot is pre-revoke (`main`) and which is post-revoke (`comms-revoked`), without reading implementation internals.
+
+### Scope
+
+In scope:
+
+- make scenario helper names reflect real semantics (`main` pre-revoke vs `comms-revoked` post-revoke)
+- keep behavior stable by using thin compatibility wrappers where needed
+- align preset-to-scenario mapping in code with explicit semantic cues
+- update README/developer-facing text so helper names and preset ids map unambiguously
+- update tests/imports to follow clearer naming while preserving assertions
+
+Out of scope:
+
+- redesigning demo mode or control surfaces
+- changing warrant, approval, provider, or graph behavior
+- broad UI/copy rewrites beyond scenario-semantic clarity
+- adding new rehearsal presets
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/demo-fixtures/scenario.ts`
+- `src/demo-fixtures/state.ts`
+- `README.md`
+- `src/components/demo/demo-surface.tsx`
+- `src/components/foundation/foundation-shell.tsx`
+- `tests/demo-fixtures.test.ts`
+- `tests/delegation-graph.test.ts`
+- `tests/state-surface-proof.test.tsx`
+- `tests/node-detail-panel.test.tsx`
+
+### Invariants to preserve
+
+- Main scenario remains the pre-revoke approval-gate state.
+- Comms-revoked scenario remains the post-revocation state.
+- Preset ids stay stable (`main`, `comms-revoked`).
+- No product-behavior change in warrants, approvals, revocation, or provider execution.
+- Deterministic fixture outputs remain stable.
+
+### Implementation steps
+
+1. Introduce explicit scenario helper naming for post-revocation fixture state and retain a compatibility alias for existing consumers.
+2. Keep `createMainDemoScenario()` as the pre-revoke fixture and make the post-revoke derivation naming explicit in code.
+3. Update rehearsal state preset mapping and labels so `main` and `comms-revoked` map clearly in code and UI metadata.
+4. Update README fixture guidance with explicit helper-to-preset and pre/post-revocation mapping.
+5. Update affected imports/usages in components and tests for clarity, preserving behavioral assertions.
+6. Run lint, typecheck, test, and build, then verify preset-switch semantics in tests and docs.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run test -- tests/demo-fixtures.test.ts tests/delegation-graph.test.ts tests/state-surface-proof.test.tsx tests/routes.test.tsx`
+
+### Risks
+
+- Retaining a deprecated alias for compatibility can still invite accidental usage; docs and internal imports should bias strongly to explicit names.
+- Test fixtures that previously used ambiguous helper names may still pass while hiding intent unless import-level clarity is enforced consistently.
