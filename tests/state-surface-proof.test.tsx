@@ -6,7 +6,7 @@ import { DemoSurface } from "@/components/demo/demo-surface";
 import {
   createActionAttemptDisplayRecords,
   createApprovalStateDisplayRecords,
-  createDefaultDemoScenario,
+  createCommsRevokedDemoScenario,
   createDelegationGraphView,
   createMainDemoScenario,
   createTimelineEventDisplayRecords,
@@ -119,7 +119,7 @@ describe("state surface proof coverage", () => {
   it("proves graph-facing summaries expose required states and keep them distinct", () => {
     const pendingGraph = createDelegationGraphView(createMainDemoScenario());
     const deniedGraph = createDelegationGraphView(createPolicyDeniedScenario());
-    const revokedGraph = createDelegationGraphView(createDefaultDemoScenario());
+    const revokedGraph = createDelegationGraphView(createCommsRevokedDemoScenario());
     const deniedApprovalGraph = createDelegationGraphView(createApprovalDeniedScenario());
     const expiredGraph = createDelegationGraphView(createExpiredCalendarScenario());
 
@@ -172,7 +172,7 @@ describe("state surface proof coverage", () => {
 
   it("proves action and timeline records keep denied policy, approval states, and revoked blocking separate", () => {
     const pendingScenario = createMainDemoScenario();
-    const revokedScenario = createDefaultDemoScenario();
+    const revokedScenario = createCommsRevokedDemoScenario();
     const deniedApprovalScenario = createApprovalDeniedScenario();
 
     const pendingActions = createActionAttemptDisplayRecords(pendingScenario);
@@ -272,7 +272,7 @@ describe("state surface proof coverage", () => {
   it("proves rendered labels and badges keep policy denial, approval, and revoked-blocked states distinct", () => {
     const pendingHtml = renderSurface(createMainDemoScenario());
     const deniedApprovalHtml = renderSurface(createApprovalDeniedScenario());
-    const revokedHtml = renderSurface(createDefaultDemoScenario());
+    const revokedHtml = renderSurface(createCommsRevokedDemoScenario());
 
     expect(pendingHtml).toContain("current: approval pending");
     expect(pendingHtml).toContain("pending in auth0");

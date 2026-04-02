@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
-  createDefaultDemoScenario,
+  createCommsRevokedDemoScenario,
+  createMainDemoScenario,
   getDisplayScenarioExamples,
   revokeCommsBranchScenario,
 } from "../src/demo-fixtures";
@@ -39,8 +40,8 @@ describe("demo fixtures", () => {
   });
 
   it("creates a deterministic canonical scenario with isolated copies", () => {
-    const first = createDefaultDemoScenario();
-    const second = createDefaultDemoScenario();
+    const first = createCommsRevokedDemoScenario();
+    const second = createCommsRevokedDemoScenario();
 
     expect(first).toEqual(second);
     expect(first.taskPrompt).toBe("Prepare my investor update for tomorrow and coordinate follow-ups.");
@@ -65,7 +66,7 @@ describe("demo fixtures", () => {
   });
 
   it("covers the required core planner-to-child flow with concrete seeded examples", () => {
-    const scenario = createDefaultDemoScenario();
+    const scenario = createCommsRevokedDemoScenario();
     const examples = getDisplayScenarioExamples(scenario);
 
     expect(examples.calendarChildWarrant.status).toBe("active");
@@ -152,7 +153,7 @@ describe("demo fixtures", () => {
   });
 
   it("applies a branch-specific Comms revocation without collapsing Calendar", () => {
-    const revokedScenario = revokeCommsBranchScenario(createDefaultDemoScenario());
+    const revokedScenario = revokeCommsBranchScenario(createMainDemoScenario());
     const commsWarrant = revokedScenario.warrants.find(
       (warrant) => warrant.id === "warrant-comms-child-001",
     );

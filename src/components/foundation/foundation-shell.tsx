@@ -4,14 +4,14 @@ import dynamic from "next/dynamic";
 import type { WorktreeBoundary } from "@/contracts";
 import { SectionCard } from "@/components/foundation/section-card";
 import { WorktreeGrid } from "@/components/foundation/worktree-grid";
-import { createDefaultDemoScenario, createDelegationGraphView } from "@/demo-fixtures";
+import { createCommsRevokedDemoScenario, createDelegationGraphView } from "@/demo-fixtures";
 
 const DelegationGraph = dynamic(() => import("@/graph").then((mod) => mod.DelegationGraph), {
   ssr: false,
   loading: () => <div className="h-[600px] w-full animate-pulse rounded-[2rem] bg-slate-100/50" />,
 });
 
-const foundationScenario = createDefaultDemoScenario();
+const foundationScenario = createCommsRevokedDemoScenario();
 const foundationGraphView = createDelegationGraphView(foundationScenario);
 
 type FoundationShellProps = {

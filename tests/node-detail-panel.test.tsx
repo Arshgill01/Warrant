@@ -2,7 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { NodeDetailPanel } from "@/components/graph/node-detail-panel";
-import { createDefaultDemoScenario, createDelegationGraphView } from "@/demo-fixtures";
+import { createCommsRevokedDemoScenario, createDelegationGraphView } from "@/demo-fixtures";
 
 describe("node detail panel", () => {
   it("renders the latest policy denial separately from approval history and post-revoke execution state", () => {
@@ -10,7 +10,7 @@ describe("node detail panel", () => {
       React,
     });
 
-    const graphView = createDelegationGraphView(createDefaultDemoScenario());
+    const graphView = createDelegationGraphView(createCommsRevokedDemoScenario());
     const commsWarrant = graphView.warrantSummaries.find(
       (summary) => summary.id === "warrant-comms-child-001",
     );

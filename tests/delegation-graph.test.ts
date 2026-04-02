@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  createDefaultDemoScenario,
+  createCommsRevokedDemoScenario,
   createDelegationGraphView,
+  createMainDemoScenario,
   revokeCommsBranchScenario,
 } from "@/demo-fixtures";
 import {
@@ -12,7 +13,7 @@ import {
 
 describe("delegation graph view model", () => {
   it("builds graph nodes from the canonical seeded scenario with a stable shallow layout", () => {
-    const scenario = createDefaultDemoScenario();
+    const scenario = createCommsRevokedDemoScenario();
     const graphView = createDelegationGraphView(scenario);
     const nodes = buildDelegationGraphNodes({
       graphNodes: graphView.nodes,
@@ -32,7 +33,7 @@ describe("delegation graph view model", () => {
   });
 
   it("creates edges and descendant sets that preserve branch lineage", () => {
-    const scenario = createDefaultDemoScenario();
+    const scenario = createCommsRevokedDemoScenario();
     const graphView = createDelegationGraphView(scenario);
     const edges = buildDelegationGraphEdges(graphView.edges);
     const commsBranch = collectDescendantNodeIds(graphView.nodes, "warrant-comms-child-001");
@@ -48,7 +49,7 @@ describe("delegation graph view model", () => {
   });
 
   it("maps approval history and policy denial from shared scenario state", () => {
-    const revokedView = createDelegationGraphView(createDefaultDemoScenario());
+    const revokedView = createDelegationGraphView(createCommsRevokedDemoScenario());
     const revokedComms = revokedView.warrantSummaries.find(
       (summary) => summary.id === "warrant-comms-child-001",
     );
@@ -62,7 +63,7 @@ describe("delegation graph view model", () => {
       "recipient_not_allowed",
     );
 
-    const deniedScenario = createDefaultDemoScenario();
+    const deniedScenario = createCommsRevokedDemoScenario();
     const deniedCommsWarrant = deniedScenario.warrants.find(
       (warrant) => warrant.id === "warrant-comms-child-001",
     );
@@ -129,7 +130,7 @@ describe("delegation graph view model", () => {
   });
 
   it("distinguishes provider-delayed, revoked, and expired states while keeping detail data aligned", () => {
-    const providerBlockedScenario = createDefaultDemoScenario();
+    const providerBlockedScenario = createCommsRevokedDemoScenario();
 
     providerBlockedScenario.actionAttempts.push({
       id: "action-calendar-read-provider-blocked-001",
@@ -168,7 +169,7 @@ describe("delegation graph view model", () => {
     expect(calendarSummary?.statusSource).toBe("provider");
     expect(calendarSummary?.latestAction?.providerState).toBe("pending");
 
-    const revokedScenario = createDefaultDemoScenario();
+    const revokedScenario = createCommsRevokedDemoScenario();
     const commsWarrant = revokedScenario.warrants.find(
       (warrant) => warrant.id === "warrant-comms-child-001",
     );
@@ -187,7 +188,7 @@ describe("delegation graph view model", () => {
       revokedView.warrantSummaries.find((summary) => summary.id === "warrant-comms-child-001")?.status,
     ).toBe("revoked");
 
-    const expiredScenario = createDefaultDemoScenario();
+    const expiredScenario = createCommsRevokedDemoScenario();
     const calendarWarrant = expiredScenario.warrants.find(
       (warrant) => warrant.id === "warrant-calendar-child-001",
     );
@@ -206,7 +207,7 @@ describe("delegation graph view model", () => {
   });
 
   it("renders revoked Comms state from the canonical branch-revoke scenario while Calendar stays active", () => {
-    const revokedScenario = revokeCommsBranchScenario(createDefaultDemoScenario());
+    const revokedScenario = revokeCommsBranchScenario(createMainDemoScenario());
     const revokedView = createDelegationGraphView(revokedScenario);
     const revokedComms = revokedView.warrantSummaries.find(
       (summary) => summary.id === "warrant-comms-child-001",
@@ -220,7 +221,7 @@ describe("delegation graph view model", () => {
     expect(revokedComms?.statusReason).toMatch(/delegated authority/i);
     expect(revokedComms?.latestAction?.id).toBe("action-comms-send-post-revoke-001");
     expect(revokedComms?.latestAction?.authorization.code).toBe("warrant_revoked");
-    expect(revokedComms?.latestApproval?.status).toBe("approved");
+    expect(revokedComms?.latestApproval?.status).toBe("pending");
     expect(activeCalendar?.status).toBe("active");
   });
 });

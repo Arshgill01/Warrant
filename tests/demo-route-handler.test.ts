@@ -55,7 +55,7 @@ describe("demo rehearsal route", () => {
 
     expect(response.status).toBe(200);
     expect(payload.preset).toBe("comms-revoked");
-    expect(payload.label).toBe("Comms revoked");
+    expect(payload.label).toBe("Comms revoked (post-revoke)");
   });
 
   it("supports the form-based reset path used by the demo page", async () => {
