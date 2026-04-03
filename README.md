@@ -54,47 +54,66 @@ Together, Auth0 and Warrant form two-layer enforcement: local policy must allow 
 - ESLint
 - Vitest
 
-## Quick start
+## Setup, Environment, And Local Run
+
+### Prerequisites
+
+- Node.js `>=22`
+- npm `>=10`
+
+### Install
 
 ```bash
-npm install
-npm run dev
+npm ci
 ```
 
-Open `http://localhost:3000`.
+### Environment
 
-## Environment
+Create `.env.local` from `.env.example`.
 
-Copy `.env.example` to a local env file and replace the placeholder values before wiring Auth0, OpenAI, or database integrations.
+Required for Auth0-backed flow:
 
-Required for the auth shell:
-
+- `APP_BASE_URL` (or `NEXT_PUBLIC_APP_URL`)
 - `AUTH0_DOMAIN`
 - `AUTH0_CLIENT_ID`
 - `AUTH0_CLIENT_SECRET`
-- `AUTH0_SECRET`
-- `APP_BASE_URL`
+- `AUTH0_SECRET` (at least 32 chars; 64 hex chars recommended)
 
-Recommended for Google delegated access:
+Recommended for Google through Auth0:
 
-- `AUTH0_GOOGLE_CONNECTION_NAME`
+- `AUTH0_GOOGLE_CONNECTION_NAME` (defaults to `google-oauth2`)
 - `AUTH0_TOKEN_VAULT_CONNECTION_ID`
 
-Optional shell-only overrides:
+Optional debug overrides:
 
 - `WARRANT_GOOGLE_CONNECTION_STATE`
 - `WARRANT_GOOGLE_CONNECTION_EMAIL`
 
-Use the shell overrides only to rehearse UI states while the real Auth0 connected-account callback is still being wired. The real path should use Auth0 sign-in plus `/auth/connect`.
+Use overrides only for UI rehearsal. Real provider delegation should use Auth0 sign-in plus `/auth/connect`.
 
-## Auth0 shell behavior
+### Run Locally
 
-- `/auth/login` and `/auth/logout` come from the Auth0 Next.js SDK middleware.
-- The home page shows three layers separately: app session, Google provider connection, and external action readiness.
-- Calendar read and Gmail draft use thin wrappers that only become ready when Auth0 can supply delegated Google access.
-- Gmail send stays pending behind an approval placeholder even when Auth0 and local policy are both ready.
+```bash
+npm run dev
+```
 
-To connect Google through Auth0, the shell uses the SDK connect-account route at `/auth/connect` with the Google Calendar read and Gmail compose or send scopes.
+Open:
+
+- `http://localhost:3000` for Auth0/session and provider readiness surfaces
+- `http://localhost:3000/demo` for the canonical multi-agent delegation demo
+
+### Validate
+
+```bash
+npm run validate
+```
+
+Validation scripts:
+
+- `npm run validate:quick` -> lint + typecheck + tests
+- `npm run validate:core` -> `validate:quick` + production build
+- `npm run smoke:demo` -> starts the built app and checks `/` and `/demo` markers
+- `npm run validate` -> `validate:core` + `smoke:demo`
 
 ## Directory guide
 
