@@ -2572,3 +2572,88 @@ Manual/local checks (if env is available):
 - Auth0 SDK behavior for connected-account token exchange can differ by tenant config; tests must avoid overfitting mocked assumptions.
 - Tightening env prerequisites may surface previously hidden local setup gaps; docs must stay aligned to avoid false regressions.
 - Additional provider-state explicitness may require updating existing UI and route snapshots that assumed coarser states.
+
+## ExecPlan — Main Scenario Deterministic Coherence Hardening (2026-04-03)
+
+### Objective
+
+Harden the canonical main scenario so planner sequencing, warrant/action lineage, and graph/timeline surfaces stay deterministic and coherent across repeated runs, restored presets, and partially interrupted local state.
+
+### Demo relevance
+
+This directly strengthens the 3-minute core proof path for:
+
+1. planner -> narrower child warrants
+2. useful allowed child actions
+3. overreach denied by policy
+4. sensitive action approval gate
+5. branch revoke with immediate authority loss
+
+If these states drift or reorder between runs, the thesis becomes harder to defend live.
+
+### Scope
+
+In scope:
+
+- tighten deterministic scenario construction and transition ordering for main vs comms-revoked states
+- add scenario-level integrity checks used by fixture loading and custom-state recovery
+- remove fragile implicit assumptions in scenario derivation and display ordering
+- keep graph/timeline/action surfaces sourced from coherent canonical state
+- add focused tests for repeated-run stability and interrupted-state recovery behavior
+
+Out of scope:
+
+- new product features, agents, or integrations
+- workflow-engine abstraction work
+- bypassing warrant issuance, approval, or revocation controls
+- changing core business semantics for deny vs approval vs revoke
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/main-scenario.ts`
+- `src/demo-fixtures/scenario.ts`
+- `src/demo-fixtures/state.ts`
+- `src/demo-fixtures/display.ts`
+- `src/contracts/demo.ts` (only if needed for state-contract typing)
+- `tests/agents-orchestration.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/state-surface-proof.test.tsx`
+- `tests/delegation-graph.test.ts`
+
+### Invariants to preserve
+
+- Child warrants can only narrow parent authority and are issued through the warrant engine.
+- Denied-by-policy, approval-required/pending/resolved, and blocked-by-revoke remain distinct and inspectable.
+- Branch revocation remains branch-specific and invalidates descendants.
+- Auth0 approval and provider path stay visibly separate from local warrant authorization.
+- Canonical scenario ids/timestamps/event ordering remain deterministic.
+
+### Implementation steps
+
+1. Refactor seeded scenario derivation so `main` and `comms-revoked` come from explicit deterministic transitions rather than brittle ad hoc filtering.
+2. Add a reusable scenario integrity guard that validates lineage references, required records, and canonical sequencing for stored/preset scenarios.
+3. Apply the guard in demo-state load/replace/repair paths so stale or half-progress custom states self-heal to canonical state when invariants are broken.
+4. Harden display-layer ordering tie-breakers and summary derivation paths to avoid unstable output when timestamps match.
+5. Add targeted tests covering deterministic repeatability, transition coherence, and interrupted-flow recovery.
+6. Run lint, typecheck, focused tests, full tests, and build.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/delegation-graph.test.ts tests/state-surface-proof.test.tsx tests/routes.test.tsx`
+- `npm run test`
+- `npm run build`
+
+Manual checks (if local browser run is available):
+
+- load `/demo` repeatedly on `main` preset and confirm stable proof-point ordering
+- trigger in-page Comms revoke and confirm graph/timeline remain coherent
+- restore `main` then `comms-revoked` presets and confirm deterministic state reset
+
+### Risks
+
+- Tightening scenario-integrity checks could reject currently tolerated custom demo states, increasing repair frequency (acceptable for deterministic rehearsal goals).
+- Refactoring scenario derivation must avoid subtle semantic drift between pre-revoke and post-revoke snapshots.
+- If display ordering is changed without consistent tie-breakers across surfaces, graph and timeline could still diverge under equal timestamps.

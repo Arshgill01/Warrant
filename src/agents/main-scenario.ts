@@ -25,7 +25,11 @@ import {
   issueRootWarrant,
   revokeWarrantBranch,
 } from "@/warrants";
-import type { MainScenarioRunResult, PlannerTaskRecord } from "@/agents/types";
+import type {
+  MainScenarioRunResult,
+  MainScenarioStage,
+  PlannerTaskRecord,
+} from "@/agents/types";
 
 const SCENARIO_ID = "demo-scenario-investor-update";
 const ROOT_REQUEST_ID = "request-investor-update-001";
@@ -202,9 +206,15 @@ function requireIssuedWarrant(result: ReturnType<typeof issueChildWarrant>): War
   return result.warrant;
 }
 
+interface MainScenarioRunOptions {
+  stage?: MainScenarioStage;
+}
+
 export function runMainScenarioPlannerFlow(
   adapters: ScenarioActionAdapters = createDeterministicScenarioActionAdapters(),
+  options: MainScenarioRunOptions = {},
 ): MainScenarioRunResult {
+  const stage = options.stage ?? "comms-revoked";
   const plannerAgent = buildPlannerAgent();
   const calendarAgent = buildCalendarAgent();
   const commsAgent = buildCommsAgent();
@@ -439,6 +449,107 @@ export function runMainScenarioPlannerFlow(
       "This branch is allowed to request one bounded send, but it still cannot send a real email until Maya approves this exact message.",
     approvalRequestId: commsSendApproval.id,
   };
+
+  if (stage === "main") {
+    const scenario: DemoScenario = {
+      id: SCENARIO_ID,
+      title: "Investor update for April 18",
+      taskPrompt:
+        "Prepare my investor update for tomorrow and coordinate follow-ups.",
+      referenceTime: REFERENCE_TIME,
+      targetDate: TARGET_DATE,
+      timezone: TIMEZONE,
+      rootWarrantId: rootWarrant.id,
+      user: scenarioUser,
+      agents: [
+        {
+          ...plannerAgent,
+          warrantId: rootWarrant.id,
+        },
+        {
+          ...calendarAgent,
+          warrantId: calendarWarrant.id,
+        },
+        {
+          ...commsAgent,
+          warrantId: commsWarrant.id,
+        },
+      ],
+      warrants,
+      actionAttempts: [
+        calendarAction.attempt,
+        commsAction.attempt,
+        commsOverreach.attempt,
+        commsSendAttempt,
+      ],
+      approvals: [commsSendApproval],
+      revocations: [],
+      timeline: [
+        createScenarioLoadedEvent(),
+        createWarrantIssuedEvent({
+          id: "event-root-warrant-issued-001",
+          at: rootWarrant.createdAt,
+          actorKind: "user",
+          actorId: scenarioUser.id,
+          warrant: rootWarrant,
+          title: "Root planner warrant activated",
+          description:
+            "Maya approves the parent warrant for Planner Agent. It may prepare the investor update and delegate only narrower child warrants.",
+        }),
+        createWarrantIssuedEvent({
+          id: "event-calendar-warrant-issued-001",
+          at: "2026-04-17T09:02:00.000Z",
+          actorKind: "agent",
+          actorId: plannerAgent.id,
+          warrant: calendarWarrant,
+          title: "Calendar child warrant delegated",
+          description:
+            "Planner Agent delegates one narrower calendar warrant. Calendar Agent may read the April 18 window, but it cannot draft or send email.",
+        }),
+        createWarrantIssuedEvent({
+          id: "event-comms-warrant-issued-001",
+          at: "2026-04-17T09:03:00.000Z",
+          actorKind: "agent",
+          actorId: plannerAgent.id,
+          warrant: commsWarrant,
+          title: "Comms child warrant delegated",
+          description:
+            "Planner Agent delegates a narrower comms warrant. Comms Agent may draft immediately and request one send, but it cannot send without approval.",
+        }),
+        calendarAction.timelineEvent,
+        commsAction.timelineEvent,
+        commsOverreach.timelineEvent,
+        createApprovalEvent({
+          id: "event-comms-send-approval-requested-001",
+          at: commsSendRequestedAt,
+          kind: "approval.requested",
+          actorKind: "agent",
+          actorId: commsAgent.id,
+          warrant: commsWarrant,
+          actionId: commsSendAction.id,
+          approvalId: commsSendApproval.id,
+          title: "Comms send waiting for approval",
+          description:
+            "Comms Agent stayed inside its warrant, but the real Gmail send is paused until Maya approves this exact email through Auth0.",
+        }),
+      ],
+      examples: {
+        calendarChildWarrantId: calendarWarrant.id,
+        commsChildWarrantId: commsWarrant.id,
+        calendarActionId: calendarAction.attempt.id,
+        commsDraftActionId: commsAction.attempt.id,
+        commsOverreachActionId: commsOverreach.attempt.id,
+        commsSendActionId: commsSendAttempt.id,
+        commsSendApprovalId: commsSendApproval.id,
+      },
+    };
+
+    return {
+      scenario,
+      taskPlan,
+    };
+  }
+
   const commsApprovedSend = executeGmailSendAction({
     actionId: "action-comms-send-approved-001",
     requestedAt: "2026-04-17T09:12:00.000Z",

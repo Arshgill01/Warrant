@@ -129,6 +129,48 @@ describe("delegation graph view model", () => {
     expect(deniedComms?.statusReason).toBe("This warrant does not allow gmail.send.");
   });
 
+  it("uses deterministic tie-breakers when latest action timestamps are equal", () => {
+    const scenario = createMainDemoScenario();
+
+    scenario.actionAttempts.push({
+      id: "action-comms-send-overreach-002",
+      kind: "gmail.send",
+      agentId: "agent-comms-001",
+      warrantId: "warrant-comms-child-001",
+      requestedAt: "2026-04-17T09:08:00.000Z",
+      rootRequestId: "request-investor-update-001",
+      parentWarrantId: "warrant-planner-root-001",
+      createdAt: "2026-04-17T09:08:00.000Z",
+      target: {
+        recipients: ["ceo@external-partner.com"],
+      },
+      usage: {
+        sendsUsed: 0,
+      },
+      summary: "Comms retried the same overreach path.",
+      resource: "Send email to ceo@external-partner.com",
+      outcome: "blocked",
+      outcomeReason: "This recipient is outside the allowed list.",
+      authorization: {
+        allowed: false,
+        code: "recipient_not_allowed",
+        message: "Recipient ceo@external-partner.com is not allowed by this warrant.",
+        effectiveStatus: "active",
+        blockedByWarrantId: "warrant-comms-child-001",
+      },
+      providerState: null,
+      providerHeadline: null,
+      providerDetail: null,
+    });
+
+    const graphView = createDelegationGraphView(scenario);
+    const commsSummary = graphView.warrantSummaries.find(
+      (summary) => summary.id === "warrant-comms-child-001",
+    );
+
+    expect(commsSummary?.latestPolicyDenial?.id).toBe("action-comms-send-overreach-002");
+  });
+
   it("distinguishes provider-delayed, revoked, and expired states while keeping detail data aligned", () => {
     const providerBlockedScenario = createCommsRevokedDemoScenario();
 
