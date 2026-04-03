@@ -576,7 +576,9 @@ export function runMainScenarioPlannerFlow(
     revokedAt: commsRevocation.events[0]?.metadata.occurredAt ?? "2026-04-17T09:13:00.000Z",
     reason: commsRevocation.events[0]?.metadata.reason ??
       "Maya revoked the Comms branch after the approved send to prove that delegated authority can be withdrawn immediately.",
-    cascadedWarrantIds: commsRevocation.revokedWarrantIds,
+    cascadedWarrantIds: commsRevocation.revokedWarrantIds.filter(
+      (warrantId) => warrantId !== commsWarrant.id,
+    ),
   });
   const revokedWarrants = commsRevocation.warrants;
   const revokedCommsWarrant = revokedWarrants.find(
