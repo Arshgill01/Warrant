@@ -240,6 +240,14 @@ function resolveDisplayStatus(input: {
     };
   }
 
+  if (input.latestAction?.controlState === "blocked_expired") {
+    return {
+      status: "blocked_expired",
+      reason: input.latestAction.outcomeReason,
+      source: "action",
+    };
+  }
+
   if (
     input.latestAction?.controlState === "denied_policy" &&
     input.latestAction.providerState === null
@@ -261,12 +269,16 @@ function resolveDisplayStatus(input: {
 
   if (
     input.agentStatus === "blocked" ||
+    input.latestAction?.controlState === "provider_unavailable" ||
     (input.latestAction?.providerState !== null &&
       input.latestAction?.providerState !== undefined &&
       input.latestAction.providerState !== "success")
   ) {
     return {
-      status: "active",
+      status:
+        input.latestAction?.controlState === "provider_unavailable"
+          ? "provider_unavailable"
+          : "active",
       reason:
         input.latestAction?.providerDetail ??
         input.latestAction?.providerHeadline ??
@@ -406,6 +418,7 @@ export function createActionAttemptDisplayRecords(
     controlState: mapActionOutcomeToControlState({
       outcome: action.outcome,
       authorizationCode: action.authorization.code,
+      providerState: action.providerState ?? null,
     }),
     outcomeReason: action.outcomeReason,
     authorization: action.authorization,
