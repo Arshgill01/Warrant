@@ -35,6 +35,7 @@ This note captures where the upcoming runtime-real agent layer should attach, an
 - `runMainScenarioPlannerFlow` is deterministic fixture orchestration; it should not be treated as production agent runtime.
 - `src/actions/execution.ts` is scenario-level deterministic execution (for fixture proof points), separate from real provider execution in `src/actions/google.ts`.
 - Revocation record semantics are now consistent: `revocations[].cascadedWarrantIds` means descendants only (excludes the root revoked warrant).
+- Runtime-first contracts now live in `src/contracts/agent.ts`, `src/contracts/action.ts`, and `src/contracts/runtime.ts` to keep actor identity, proposal/control transitions, planner validation, and runtime event vocabulary stable across branches.
 
 ## Guardrails for next branches
 
