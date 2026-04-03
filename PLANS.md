@@ -608,6 +608,82 @@ Manual shell checks during local run:
 - Without real Auth0 and Google credentials in local env, end-to-end sign-in and provider connection cannot be fully exercised in this worktree.
 - Approval state is shell-only here; later approval-track work must replace placeholder approval handling with the real flow.
 
+## ExecPlan — Child Runtime Actors (2026-04-03)
+
+### Objective
+
+Implement real Calendar Agent and Comms Agent runtime actors with distinct identities, role-specific prompts/context/input/output contracts, structured output validation, one-retry repair logic, and explicit runtime events for invalid/degraded behavior.
+
+### Demo relevance
+
+This strengthens Milestone 3 (Useful agent flow) and supports Milestones 4-5 by making child-agent reasoning inspectable, constrained, and non-magical while preserving the rule that privileged actions are still controlled outside runtime/model calls.
+
+### Scope
+
+In scope:
+
+- runtime contracts for Calendar and Comms child actors
+- shared model-adapter invocation path for both runtimes
+- role-specific structured outputs and validation
+- one repair retry on invalid model output
+- structured runtime failure result after retry exhaustion
+- explicit runtime events for invalid-output and degraded paths
+- deterministic tests for valid and invalid/retry/failure scenarios
+
+Out of scope:
+
+- full control bridge wiring
+- direct privileged API execution inside runtime/model invocation
+- planner orchestration redesign
+- non-calendar/non-comms child runtimes
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/*`
+- `src/contracts/*` (runtime-facing types if needed)
+- `tests/*` (runtime coverage)
+
+### Invariants to preserve
+
+- Calendar and Comms roles remain distinct in input, context, output, and allowable proposals.
+- Comms draft generation and send proposal generation are distinct concepts.
+- Child runtimes cannot silently expand authority beyond their role/warrant intent.
+- Structured output validation is mandatory; freeform parsing cannot be system truth.
+- Runtime/model calls do not directly execute privileged actions.
+
+### Implementation steps
+
+1. Define runtime contracts and a shared model adapter interface with explicit runtime identity and event types.
+2. Implement Calendar runtime with schedule-focused prompt, role-specific input/output schema, and validated proposal/summary output.
+3. Implement Comms runtime with draft-focused prompt, distinct optional send-proposal output, and explicit non-execution semantics.
+4. Add shared invalid-output handling with one repair retry max and structured failure fallback.
+5. Emit runtime events for success, invalid output, retry, and failure/degraded paths.
+6. Add deterministic tests covering valid output and invalid/retry/failure paths for each runtime.
+7. Run lint, typecheck, tests, and build before final report.
+
+### Validation steps
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Targeted deterministic runtime checks via unit tests:
+
+- Calendar valid path
+- Calendar invalid->repair path
+- Calendar invalid->retry-exhausted failure path
+- Comms valid draft path
+- Comms valid draft+send-proposal path
+- Comms invalid->repair/failure paths
+
+### Known risks
+
+- No existing schema library is installed, so initial validation may require explicit TypeScript guards; this is reliable but verbose.
+- Prompt text quality impacts runtime realism; tests should validate contract shape and role separation rather than natural-language quality.
+- Integration into broader planner flow may require a follow-up slice once control-bridge interfaces are finalized.
+
 ### Implementation steps
 
 1. Add the ExecPlan and inspect the empty repo baseline.
@@ -2734,6 +2810,7 @@ Manual checks:
 - Over-compressing README can remove nuance about approval and provider boundaries; keep wording concise but precise.
 - Validation may pass in fixture mode while real external provider execution still depends on Auth0 dashboard setup.
 
+
 ## ExecPlan — Real-Agent Integration Preflight Seams (2026-04-03)
 
 ### Objective
@@ -2811,6 +2888,94 @@ Manual checks:
 - Some seam findings may be architectural and intentionally deferred; this pass should avoid over-fixing beyond blockers.
 - Contract tightening can break assumptions in tests or fixture mutation helpers if those assumptions were implicit.
 - Preflight notes can drift if follow-on branches do not keep the checklist updated.
+
+## ExecPlan — Planner Runtime Actor With Safe Structured Delegation (2026-04-03)
+
+### Objective
+
+Implement a real Planner runtime actor for the main scenario that calls a shared model adapter, emits structured delegation output, validates model output defensively (schema + semantics), retries one repair pass on invalid output, and degrades to a deterministic bounded fallback plan when needed.
+
+### Demo relevance
+
+This strengthens the core 3-minute thesis path by making planner delegation feel real without sacrificing reliability:
+
+1. planner is a runtime actor, not hardcoded task text
+2. child delegation is explicitly structured and narrow
+3. malformed model output is safely contained
+4. fallback remains truthful to bounded delegation
+
+### Scope
+
+In scope:
+
+- add planner runtime entrypoint with role identity and role-specific input/output contracts
+- add shared model adapter contract used by planner runtime
+- add planner-specific prompt and explicit structured output schema contract
+- add schema validation and semantic validation for planner output
+- add one repair retry path for malformed/invalid planner output
+- add deterministic fallback plan for the canonical investor-update scenario
+- emit planner lifecycle and outcome runtime events
+- wire planner runtime into scenario orchestration without bypassing warrant issuance/authorization boundaries
+- add focused tests for valid, invalid-repair, fallback, and event behavior
+
+Out of scope:
+
+- generic multi-role planning framework
+- direct privileged execution by planner runtime
+- bypasses around warrant issuance, policy checks, approvals, or provider boundaries
+- broad architecture refactors unrelated to planner runtime hardening
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/*` (runtime/model/planner contract additions as needed)
+- `src/agents/types.ts`
+- `src/agents/main-scenario.ts`
+- `src/agents/index.ts`
+- `src/agents/*` (new planner runtime + validation modules)
+- `tests/agents-orchestration.test.ts`
+- `tests/*` (new planner runtime tests)
+
+### Invariants to preserve
+
+- Planner never executes privileged provider actions directly; it only proposes delegation.
+- Planner output is never treated as truth before schema + semantic validation passes.
+- Child capability requests remain narrower than parent warrant authority.
+- Fallback plan for the main scenario grants `calendar.read` and `gmail.draft` only (no direct send authority).
+- Warrant engine remains the authority gate for issuing/enforcing warrants.
+- Deterministic behavior remains stable for demo rehearsals and repeated test runs.
+
+### Implementation steps
+
+1. Add shared runtime/model adapter contracts and planner runtime types (identity, input shape, structured plan contract, runtime events).
+2. Implement planner runtime entrypoint with role-specific prompt/schema contract and model-adapter invocation.
+3. Implement planner schema validation and semantic validation against parent authority + bounded role expectations.
+4. Add one repair retry path that re-prompts with validation failures and re-validates.
+5. Implement deterministic fallback plan for the main scenario when output remains invalid or generation fails.
+6. Emit runtime events for started, valid-plan, invalid-output, fallback-used, and failed outcomes.
+7. Integrate planner runtime into main scenario orchestration while keeping warrant issuance and action execution boundaries unchanged.
+8. Add/update tests for valid path, invalid->repair path, invalid->fallback path, and event traces; then run lint/typecheck/tests/build.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts`
+- `npm run test`
+- `npm run build`
+
+Scenario checks:
+
+- run planner for main scenario with valid model output and inspect structured delegation plan
+- run planner with malformed/semantically-invalid output to confirm repair retry path
+- force persistent invalid output to confirm deterministic fallback and emitted events
+
+### Risks
+
+- If semantic rules are too strict, valid model outputs may degrade too often to fallback and reduce realism.
+- If semantic rules are too loose, planner could request authority that is technically narrow but behaviorally over-broad.
+- Integrating planner runtime into deterministic scenario may unintentionally change existing timeline/task ordering; tests must lock expected ordering.
+- New event kinds/typing could require downstream updates where timeline/display assumes a fixed event taxonomy.
 
 ## ExecPlan — Runtime Actor Contracts And Stable Event Vocabulary (2026-04-03)
 

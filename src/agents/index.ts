@@ -12,4 +12,8 @@ export const agentsBoundary: WorktreeBoundary = {
 
 export * from "@/agents/main-scenario";
 export * from "@/agents/runtime";
+export * from "@/agents/model-adapter";
+export * from "@/agents/planner-schema";
+export * from "@/agents/planner-semantics";
+export * from "@/agents/planner-runtime";
 export * from "@/agents/types";
