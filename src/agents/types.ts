@@ -74,4 +74,7 @@ export interface PlannerRuntimeResult {
   source: PlannerPlanSource;
   plan: PlannerStructuredPlan;
   events: PlannerRuntimeEvent[];
+  attemptCount: number;
+  usedRepair: boolean;
+  failureReason: string | null;
 }
