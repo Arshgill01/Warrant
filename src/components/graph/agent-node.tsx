@@ -5,7 +5,6 @@ import {
   Brain, 
   Calendar, 
   Mail, 
-  FileText, 
   ChevronRight
 } from "lucide-react";
 import type { DisplayStatus } from "@/contracts";
@@ -29,7 +28,6 @@ const roleIcons: Record<AgentRole, React.ReactNode> = {
   planner: <Brain className="size-4" />,
   calendar: <Calendar className="size-4" />,
   comms: <Mail className="size-4" />,
-  docs: <FileText className="size-4" />,
 };
 
 const statusColors: Record<AgentNodeData["status"], string> = {

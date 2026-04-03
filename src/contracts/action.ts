@@ -48,6 +48,72 @@ export type ActionPathState = "ready" | "blocked" | "pending";
 
 export type ActionAttemptOutcome = "allowed" | "blocked" | "approval-required";
 
+export const ACTION_PROPOSAL_STATE_SET = [
+  "proposed",
+  "policy_denied",
+  "approval_required",
+  "approval_pending",
+  "approval_denied",
+  "execution_ready",
+  "executing",
+  "execution_completed",
+  "execution_failed",
+  "revoked",
+] as const;
+
+export type ActionProposalState = (typeof ACTION_PROPOSAL_STATE_SET)[number];
+
+export interface ActionProposal {
+  id: string;
+  rootRequestId: string;
+  runtimeId: string;
+  agentId: string;
+  warrantId: string;
+  parentWarrantId: string | null;
+  kind: ActionKind;
+  target?: ActionTarget;
+  usage?: ActionUsageSnapshot;
+  summary: string;
+  rationale: string;
+  createdAt: string;
+  state: ActionProposalState;
+  stateReason: string;
+}
+
+export const PROPOSAL_CONTROL_DECISION_SET = [
+  "approved",
+  "denied",
+  "approval_required",
+  "revoked",
+] as const;
+
+export type ProposalControlDecisionType = (typeof PROPOSAL_CONTROL_DECISION_SET)[number];
+
+export type ProposalControlDecisionCode =
+  | WarrantDecisionCode
+  | "approval_required"
+  | "approval_denied"
+  | "approval_expired"
+  | "execution_release_required"
+  | "runtime_failed"
+  | "branch_revoked";
+
+export interface ProposalControlDecision {
+  id: string;
+  proposalId: string;
+  rootRequestId: string;
+  runtimeId: string;
+  agentId: string;
+  warrantId: string;
+  parentWarrantId: string | null;
+  decidedAt: string;
+  decidedByKind: "policy" | "approval" | "user" | "system";
+  decidedById: string;
+  decision: ProposalControlDecisionType;
+  code: ProposalControlDecisionCode;
+  message: string;
+}
+
 export interface ActionAttempt {
   id: string;
   kind: ActionKind;

@@ -9,5 +9,6 @@ export * from "@/contracts/demo";
 export * from "@/contracts/display";
 export * from "@/contracts/graph";
 export * from "@/contracts/policy";
+export * from "@/contracts/runtime";
 export * from "@/contracts/warrant";
 export * from "@/contracts/worktree";
