@@ -1,18 +1,20 @@
+import { invokeWithValidationAndRepair } from "@/agents/runtime/invoke-with-validation";
 import type { RuntimeModelAdapter } from "@/agents/runtime/model-adapter";
 import type {
   CalendarReasoningInput,
   CalendarRuntimeOutput,
   CalendarRuntimeProposal,
   RuntimeExecutionResult,
-  RuntimeEvent,
   RuntimeIdentity,
 } from "@/agents/runtime/types";
 
-const calendarRuntimeIdentity: RuntimeIdentity = {
+export const calendarRuntimeIdentity: RuntimeIdentity = {
   id: "runtime-calendar-001",
   role: "calendar",
   label: "Calendar Runtime",
 };
+
+const CALENDAR_ALLOWED_CAPABILITIES = new Set(["calendar.read", "calendar.schedule"]);
 
 function isRiskLevel(value: unknown): value is "low" | "medium" | "high" {
   return value === "low" || value === "medium" || value === "high";
@@ -74,12 +76,25 @@ function isCalendarRuntimeOutput(value: unknown): value is CalendarRuntimeOutput
   return Array.isArray(candidate.proposals) && candidate.proposals.every(isCalendarProposal);
 }
 
+function outputRespectsCalendarRole(output: CalendarRuntimeOutput, input: CalendarReasoningInput): boolean {
+  if (input.allowedCapabilities.some((capability) => !CALENDAR_ALLOWED_CAPABILITIES.has(capability))) {
+    return false;
+  }
+
+  return output.proposals.every((proposal) => input.allowedCapabilities.includes(proposal.kind));
+}
+
+function validateCalendarOutput(value: unknown, input: CalendarReasoningInput): value is CalendarRuntimeOutput {
+  return isCalendarRuntimeOutput(value) && outputRespectsCalendarRole(value, input);
+}
+
 function buildCalendarPrompt(input: CalendarReasoningInput): string {
   return [
     "You are the Calendar Agent runtime for Warrant.",
     "Only reason about scheduling context.",
     "Never propose email actions.",
     "If you propose actions, use only calendar.read or calendar.schedule.",
+    "Do not execute provider actions. Proposals only.",
     `Objective: ${input.objective}`,
     `Window: ${input.window.startsAt} -> ${input.window.endsAt}`,
     `Timezone: ${input.timezone}`,
@@ -92,64 +107,17 @@ export async function runCalendarRuntime(input: {
   modelAdapter: RuntimeModelAdapter;
   runtimeInput: CalendarReasoningInput;
 }): Promise<RuntimeExecutionResult<CalendarRuntimeOutput>> {
-  const startedAt = input.runtimeInput.now;
-  const events: RuntimeEvent[] = [
-    {
-      kind: "runtime.started" as const,
-      runtimeId: calendarRuntimeIdentity.id,
-      role: calendarRuntimeIdentity.role,
-      at: startedAt,
-      detail: "Calendar runtime invocation started.",
-    },
-  ];
-
-  const response = await input.modelAdapter.invoke({
+  return invokeWithValidationAndRepair({
     runtime: calendarRuntimeIdentity,
-    role: "calendar",
     schemaName: "calendar_runtime_output",
     prompt: buildCalendarPrompt(input.runtimeInput),
-    input: input.runtimeInput,
-    repairHint: null,
+    runtimeInput: input.runtimeInput,
+    now: input.runtimeInput.now,
+    modelAdapter: input.modelAdapter,
+    repairHint:
+      "Return strictly valid Calendar runtime JSON with only calendar proposals allowed by the provided capabilities.",
+    invalidOutputMessage:
+      "Calendar runtime output was invalid after one repair retry and was returned as structured runtime failure.",
+    validate: validateCalendarOutput,
   });
-
-  if (!isCalendarRuntimeOutput(response.rawOutput)) {
-    events.push({
-      kind: "runtime.output.invalid",
-      runtimeId: calendarRuntimeIdentity.id,
-      role: calendarRuntimeIdentity.role,
-      at: startedAt,
-      detail: "Calendar runtime returned output that failed schema validation.",
-    });
-
-    return {
-      ok: false,
-      runtime: calendarRuntimeIdentity,
-      attempts: 1,
-      failure: {
-        code: "invalid_output",
-        message:
-          "Calendar runtime output did not match the structured output contract.",
-        attempts: 1,
-        lastRawOutput: response.rawOutput,
-      },
-      events,
-    };
-  }
-
-  events.push({
-    kind: "runtime.output.valid",
-    runtimeId: calendarRuntimeIdentity.id,
-    role: calendarRuntimeIdentity.role,
-    at: startedAt,
-    detail: "Calendar runtime returned a valid structured response.",
-  });
-
-  return {
-    ok: true,
-    runtime: calendarRuntimeIdentity,
-    attempts: 1,
-    output: response.rawOutput,
-    degraded: false,
-    events,
-  };
 }

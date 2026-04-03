@@ -1,17 +1,19 @@
+import { invokeWithValidationAndRepair } from "@/agents/runtime/invoke-with-validation";
 import type { RuntimeModelAdapter } from "@/agents/runtime/model-adapter";
 import type {
   CommsReasoningInput,
   CommsRuntimeOutput,
-  RuntimeEvent,
   RuntimeExecutionResult,
   RuntimeIdentity,
 } from "@/agents/runtime/types";
 
-const commsRuntimeIdentity: RuntimeIdentity = {
+export const commsRuntimeIdentity: RuntimeIdentity = {
   id: "runtime-comms-001",
   role: "comms",
   label: "Comms Runtime",
 };
+
+const COMMS_ALLOWED_CAPABILITIES = new Set(["gmail.draft", "gmail.send"]);
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
@@ -61,12 +63,46 @@ function isCommsRuntimeOutput(value: unknown): value is CommsRuntimeOutput {
   );
 }
 
+function isSubset(values: string[], allowed: string[]): boolean {
+  const allowedSet = new Set(allowed);
+  return values.every((value) => allowedSet.has(value));
+}
+
+function outputRespectsCommsRole(output: CommsRuntimeOutput, input: CommsReasoningInput): boolean {
+  if (input.allowedCapabilities.some((capability) => !COMMS_ALLOWED_CAPABILITIES.has(capability))) {
+    return false;
+  }
+
+  if (!input.allowedCapabilities.includes("gmail.draft")) {
+    return false;
+  }
+
+  if (!isSubset(output.draft.to, input.context.recipients)) {
+    return false;
+  }
+
+  if (output.sendProposal === null) {
+    return true;
+  }
+
+  if (!input.allowedCapabilities.includes("gmail.send")) {
+    return false;
+  }
+
+  return isSubset(output.sendProposal.recipients, input.context.recipients);
+}
+
+function validateCommsOutput(value: unknown, input: CommsReasoningInput): value is CommsRuntimeOutput {
+  return isCommsRuntimeOutput(value) && outputRespectsCommsRole(value, input);
+}
+
 function buildCommsPrompt(input: CommsReasoningInput): string {
   return [
     "You are the Comms Agent runtime for Warrant.",
-    "Your main role is drafting communication content.",
-    "Never execute sends or claim execution.",
-    "If suggesting a send, produce proposal-only output with requiresApproval=true.",
+    "Your role is drafting communication content.",
+    "Do not execute sends or claim sends happened.",
+    "If suggesting a send, return proposal-only output with requiresApproval=true.",
+    "Keep draft and send proposal as separate concepts.",
     `Objective: ${input.objective}`,
     `Recipients: ${input.context.recipients.join(", ")}`,
     `Sender: ${input.context.sender}`,
@@ -80,63 +116,17 @@ export async function runCommsRuntime(input: {
   modelAdapter: RuntimeModelAdapter;
   runtimeInput: CommsReasoningInput;
 }): Promise<RuntimeExecutionResult<CommsRuntimeOutput>> {
-  const startedAt = input.runtimeInput.now;
-  const events: RuntimeEvent[] = [
-    {
-      kind: "runtime.started",
-      runtimeId: commsRuntimeIdentity.id,
-      role: commsRuntimeIdentity.role,
-      at: startedAt,
-      detail: "Comms runtime invocation started.",
-    },
-  ];
-
-  const response = await input.modelAdapter.invoke({
+  return invokeWithValidationAndRepair({
     runtime: commsRuntimeIdentity,
-    role: "comms",
     schemaName: "comms_runtime_output",
     prompt: buildCommsPrompt(input.runtimeInput),
-    input: input.runtimeInput,
-    repairHint: null,
+    runtimeInput: input.runtimeInput,
+    now: input.runtimeInput.now,
+    modelAdapter: input.modelAdapter,
+    repairHint:
+      "Return strictly valid Comms runtime JSON. Always include a draft. Include sendProposal only when gmail.send is allowed.",
+    invalidOutputMessage:
+      "Comms runtime output was invalid after one repair retry and was returned as structured runtime failure.",
+    validate: validateCommsOutput,
   });
-
-  if (!isCommsRuntimeOutput(response.rawOutput)) {
-    events.push({
-      kind: "runtime.output.invalid",
-      runtimeId: commsRuntimeIdentity.id,
-      role: commsRuntimeIdentity.role,
-      at: startedAt,
-      detail: "Comms runtime returned output that failed schema validation.",
-    });
-
-    return {
-      ok: false,
-      runtime: commsRuntimeIdentity,
-      attempts: 1,
-      failure: {
-        code: "invalid_output",
-        message: "Comms runtime output did not match the structured output contract.",
-        attempts: 1,
-        lastRawOutput: response.rawOutput,
-      },
-      events,
-    };
-  }
-
-  events.push({
-    kind: "runtime.output.valid",
-    runtimeId: commsRuntimeIdentity.id,
-    role: commsRuntimeIdentity.role,
-    at: startedAt,
-    detail: "Comms runtime returned a valid structured response.",
-  });
-
-  return {
-    ok: true,
-    runtime: commsRuntimeIdentity,
-    attempts: 1,
-    output: response.rawOutput,
-    degraded: false,
-    events,
-  };
 }
