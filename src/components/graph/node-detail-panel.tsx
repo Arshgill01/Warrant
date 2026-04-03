@@ -146,6 +146,42 @@ export function NodeDetailPanel({
               {warrant.statusReason}
             </p>
           </div>
+
+          <div className="space-y-3 rounded-2xl border border-slate-100 bg-white p-5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+                Runtime actor
+              </span>
+              <span className="font-mono text-[11px] font-semibold text-[var(--foreground)]">
+                {warrant.runtimeActorId}
+              </span>
+            </div>
+            {warrant.latestRuntimeControlState ? (
+              <div className="space-y-2 text-xs text-[var(--muted)]">
+                <p>
+                  Latest runtime state:{" "}
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {formatControlState(warrant.latestRuntimeControlState)}
+                  </span>
+                </p>
+                {warrant.latestRuntimeProposalId ? (
+                  <p>
+                    Proposal:{" "}
+                    <span className="font-mono text-[11px] font-semibold text-[var(--foreground)]">
+                      {warrant.latestRuntimeProposalId}
+                    </span>
+                  </p>
+                ) : null}
+                {warrant.latestRuntimeControlReason ? (
+                  <p>{warrant.latestRuntimeControlReason}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--muted)]">
+                No runtime control transition recorded for this branch yet.
+              </p>
+            )}
+          </div>
         </section>
 
         <section className="space-y-4">

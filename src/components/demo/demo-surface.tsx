@@ -898,6 +898,24 @@ export function DemoSurface({
                 </div>
                 <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
                   <span className="font-bold uppercase tracking-tighter opacity-50">
+                    Proposal
+                  </span>
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {event.proposalId ?? "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
+                  <span className="font-bold uppercase tracking-tighter opacity-50">
+                    Runtime
+                  </span>
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {event.runtimeControlState
+                      ? formatStatusLabel(event.runtimeControlState)
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
+                  <span className="font-bold uppercase tracking-tighter opacity-50">
                     Warrant
                   </span>
                   <span className="font-semibold text-[var(--accent)]">
@@ -912,6 +930,11 @@ export function DemoSurface({
                     {event.parentWarrantId ?? "root"}
                   </span>
                 </div>
+                {event.runtimeDetail ? (
+                  <p className="rounded-lg bg-white p-2 text-[10px] leading-relaxed text-[var(--foreground)]">
+                    {event.runtimeDetail}
+                  </p>
+                ) : null}
               </div>
             </article>
           ))}
