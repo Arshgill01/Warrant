@@ -54,4 +54,5 @@ export interface SendApprovalBoundarySummary {
   localEligibility: ActionPathSnapshot;
   approvalRequirement: ActionPathSnapshot;
   executionReadiness: ActionPathSnapshot;
+  providerExecution: ActionPathSnapshot | null;
 }

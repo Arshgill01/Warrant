@@ -2420,3 +2420,155 @@ Out of scope:
 
 - Because rehearsal metadata is loaded server-side, a client-side local mutation signal must be explicit to prevent stale labels without overhauling data flow.
 - Overly generic mutation detection could mark legitimate preset restores as custom; keep mutation state transitions narrow and deterministic.
+
+## ExecPlan — Auth0 Full-Workflow Sync Branch (2026-03-23)
+
+### Objective
+
+Create a clean up-to-date testing branch from current `master`, carry forward any missing auth-shell validation notes, and run a deeper practical validation pass against the latest merged Gmail, Calendar, approval, and delegation surfaces.
+
+### Demo relevance
+
+This closes the gap between the older foundation-only auth shell and the current merged demo path. It validates whether the full story now works as a product, not just as isolated branch slices:
+
+1. user signs in
+2. user connects Google through Auth0
+3. provider-backed actions become visibly usable
+4. delegation, approval, and overreach proof remain legible
+
+### Scope
+
+In scope:
+
+- move the new validation-plan commit onto `master`
+- create a fresh testing branch from the latest `master`
+- inspect the merged app structure in that branch
+- run repo-native validation and local boot checks there
+- verify which Gmail, Calendar, approval, and delegation paths are actually implemented versus still simulated
+- document exact blockers for any missing true end-to-end external execution
+
+Out of scope:
+
+- broad product refactors unrelated to testing findings
+- claiming live Gmail or Calendar execution without direct evidence from the merged branch
+- changing tenant or Google dashboard configuration outside what local app testing reveals
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- optional docs or small fixes only if the merged testing branch exposes concrete defects
+
+### Invariants to preserve
+
+- Auth0-backed provider access must remain visibly separate from local warrant and approval logic.
+- The merged branch should be validated against its real implemented behavior, not the older auth-shell assumptions.
+- Report route-level, UI-level, and external-provider-level verification separately.
+
+### Implementation steps
+
+1. Cherry-pick the validation-plan commit onto `master`.
+2. Create a new testing branch from updated `master`.
+3. Compare the merged branch’s auth, provider-action, approval, and delegation modules against the older foundation shell.
+4. Run validation commands and live local route/UI checks.
+5. If practical defects are found in the merged branch, fix them in the testing branch with targeted validation.
+6. Report exactly what is now truly working end to end and what still depends on manual Auth0 or Google interaction.
+
+### Validation steps
+
+- `git cherry-pick 193e60e`
+- `git worktree add /tmp/wt-auth-full-validation -b feat/auth-full-validation master`
+- `npm install`
+- `npm run lint`
+- `npm run test`
+- `npm run typecheck`
+- `npm run build`
+- `npm run dev -- --port 3000`
+- local HTTP checks for `/`, `/auth/login`, `/auth/logout`, and provider-specific surfaces
+
+### Risks
+
+- The latest merged branch may still rely on deterministic fixtures for parts of the agent or approval story.
+- Real provider-backed Calendar and Gmail execution may still require a browser-completed connected-account session that cannot be fabricated from the terminal alone.
+
+## ExecPlan — Auth0 Provider Path Hardening (2026-04-03)
+
+### Objective
+
+Harden the Auth0 and Token Vault provider boundary so the Google access path is robust, honest under failure, and visibly load-bearing for external action execution.
+
+### Demo relevance
+
+This strengthens the first half of the three-minute story and makes the control boundaries inspectable:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+3. provider-backed calendar/draft/send paths report truthful execution readiness
+4. approval and provider execution remain separate gates
+
+### Scope
+
+In scope:
+
+- audit and tighten Auth0 env prerequisites and startup guard behavior
+- make provider connection state and provider pathway availability explicit in shell UX
+- harden provider action result envelopes for connected/disconnected/pending/unavailable/error paths
+- preserve and clarify local policy vs approval vs provider execution boundaries
+- strengthen approval and provider send interplay for unavailable/disconnected/provider-failed outcomes
+- add or update focused tests and docs for these behaviors
+
+Out of scope:
+
+- replacing deterministic approval storage/callback handling with a production backend
+- broad auth architecture redesign beyond targeted hardening
+- non-auth feature work unrelated to provider-backed execution boundaries
+
+### Files/modules likely affected
+
+- `src/auth/env.ts`
+- `src/auth/session.ts`
+- `src/auth/auth0.ts`
+- `src/connections/google.ts`
+- `src/actions/google.ts`
+- `src/contracts/action.ts`
+- `src/contracts/connection.ts`
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/app/page.tsx`
+- `tests/auth-shell.test.ts`
+- `tests/routes.test.tsx`
+- `README.md`
+
+### Invariants to preserve
+
+- Local Warrant policy authorization remains separate from Auth0-backed provider availability.
+- Approval requirement remains separate from provider execution availability.
+- Draft and send remain distinct paths; send never implies draft and draft never implies send.
+- Auth0/Token Vault remains visibly central for external Google actions.
+- Failure paths must stay honest and user-legible; no fake success when env or provider path is unavailable.
+
+### Implementation steps
+
+1. Tighten env parsing and startup assumptions so required Auth0 + app base URL prerequisites are explicit and reflected in startup snapshots.
+2. Add explicit provider connection metadata and UI rendering for why the current provider state is blocked/pending/unavailable.
+3. Harden provider action envelope generation so each action reports consistent structured failures, provider capability state, and next-step guidance.
+4. Align Gmail send boundary behavior with approval-release requirements while preserving honest provider failures after release.
+5. Update shell copy and state presentation to make Auth0 load-bearing and boundary separation obvious.
+6. Expand targeted auth/provider tests for startup, connection states, and provider envelope behavior; update docs for operator clarity.
+
+### Validation steps
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Manual/local checks (if env is available):
+
+- load `/` with missing Auth0 env and verify explicit unavailable state
+- load `/` signed-in but disconnected/pending provider path and verify action envelopes remain blocked/pending honestly
+- load `/` with provider connected and verify calendar/draft/send envelopes reflect release and provider outcomes distinctly
+
+### Risks
+
+- Auth0 SDK behavior for connected-account token exchange can differ by tenant config; tests must avoid overfitting mocked assumptions.
+- Tightening env prerequisites may surface previously hidden local setup gaps; docs must stay aligned to avoid false regressions.
+- Additional provider-state explicitness may require updating existing UI and route snapshots that assumed coarser states.

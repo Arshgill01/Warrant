@@ -25,6 +25,7 @@ const connectionTone: Record<ProviderConnectionSnapshot["state"], string> = {
   connected: "bg-[var(--accent)] text-white",
   "not-connected": "bg-[var(--foreground)] text-white",
   pending: "bg-[#8a5b1f] text-white",
+  expired: "bg-[#7b3a3a] text-white",
   unavailable: "bg-[#7d2e2c] text-white",
 };
 
@@ -78,7 +79,7 @@ function AuthAction({ href, label }: { href: string | null; label: string | null
 }
 
 function formatProviderStateLabel(value: ProviderActionResult["state"]): string {
-  return value.replace("-", " ");
+  return value.replaceAll("-", " ");
 }
 
 function renderProviderRequestSummary(result: ProviderActionResult): string {
@@ -104,6 +105,18 @@ function renderProviderSuccessSummary(result: ProviderActionResult): string | nu
     case "gmail.send":
       return `Endpoint ${result.data.endpoint} executed for ${result.data.to.join(", ")}`;
   }
+}
+
+function renderBlockerLabel(result: ProviderActionResult): string | null {
+  if (result.state === "success") {
+    return null;
+  }
+
+  if (result.state === "execution-blocked") {
+    return "Blocked by explicit execution-release requirement.";
+  }
+
+  return "Blocked by Auth0-backed provider availability.";
 }
 
 function SetupRow({ label, value }: { label: string; value: string }) {
@@ -218,8 +231,8 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             <p>{googleSetup.headline}</p>
             <p>{googleSetup.detail}</p>
             <p className="text-sm leading-6 text-[var(--muted)]">
-              This shell keeps the session and provider connection boundary visible. The provider action cards below
-              use deterministic fixtures to show the current Calendar and Gmail access path.
+              This branch keeps the base session and provider connection inputs visible while the homepage exercises the
+              live Calendar availability, Gmail draft, and send-email boundaries through Auth0-backed Google access.
             </p>
           </div>
 
@@ -259,7 +272,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             <p className="mb-3 text-sm leading-6 text-[var(--muted)]">{result.detail}</p>
             <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Request: {renderProviderRequestSummary(result)}</p>
             <p className="mb-2 text-sm leading-6 text-[var(--muted)]">
-              Provider state: {result.connection.state.replace("-", " ")}
+              Provider state: {result.connection.state.replaceAll("-", " ")}
             </p>
             {renderProviderSuccessSummary(result) ? (
               <p className="mb-2 text-sm font-medium text-[var(--foreground)]">{renderProviderSuccessSummary(result)}</p>
@@ -268,6 +281,12 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
               <p className="mb-2 text-sm leading-6 text-[var(--muted)]">
                 {result.failure.message} {result.failure.detail}
               </p>
+            ) : null}
+            {renderBlockerLabel(result) ? (
+              <p className="mb-2 text-sm font-medium text-[var(--foreground)]">{renderBlockerLabel(result)}</p>
+            ) : null}
+            {result.failure ? (
+              <p className="mb-2 text-sm leading-6 text-[var(--muted)]">Failure code: {result.failure.code}</p>
             ) : null}
             {result.nextStep ? <p className="text-sm font-medium text-[var(--foreground)]">Next: {result.nextStep}</p> : null}
           </article>

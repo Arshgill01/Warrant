@@ -13,6 +13,8 @@ export interface Auth0Environment {
   googleConnectionEmailOverride: string | null;
   isConfigured: boolean;
   missingValues: string[];
+  invalidValues: string[];
+  configurationIssues: string[];
 }
 
 export const auth0RequiredEnvKeys = ["AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_CLIENT_SECRET", "AUTH0_SECRET"] as const;
@@ -23,7 +25,7 @@ export const auth0OptionalEnvKeysLater = ["AUTH0_AUDIENCE", "AUTH0_TOKEN_VAULT_C
 
 export const auth0ShellOnlyOverrideKeys = ["WARRANT_GOOGLE_CONNECTION_STATE", "WARRANT_GOOGLE_CONNECTION_EMAIL"] as const;
 
-const providerConnectionStates: ProviderConnectionState[] = ["connected", "not-connected", "pending", "unavailable"];
+const providerConnectionStates: ProviderConnectionState[] = ["connected", "not-connected", "pending", "expired", "unavailable"];
 
 function readValue(value: string | undefined): string | null {
   const normalized = value?.trim();
@@ -53,8 +55,16 @@ export function readAuth0Environment(env: NodeJS.ProcessEnv = process.env): Auth
     ["AUTH0_CLIENT_ID", clientId],
     ["AUTH0_CLIENT_SECRET", clientSecret],
     ["AUTH0_SECRET", secret],
+    ["APP_BASE_URL or NEXT_PUBLIC_APP_URL", appBaseUrl],
   ];
   const missingValues = requiredValues.flatMap(([key, value]) => (value ? [] : [key]));
+  const invalidValues: string[] = [];
+
+  if (secret && secret.length < 32) {
+    invalidValues.push("AUTH0_SECRET must be at least 32 characters (64 hex characters recommended).");
+  }
+
+  const configurationIssues = [...missingValues, ...invalidValues];
 
   return {
     domain,
@@ -67,8 +77,10 @@ export function readAuth0Environment(env: NodeJS.ProcessEnv = process.env): Auth
     googleConnectionName: readValue(env.AUTH0_GOOGLE_CONNECTION_NAME) ?? "google-oauth2",
     googleConnectionStateOverride: readConnectionStateOverride(env.WARRANT_GOOGLE_CONNECTION_STATE),
     googleConnectionEmailOverride: readValue(env.WARRANT_GOOGLE_CONNECTION_EMAIL),
-    isConfigured: missingValues.length === 0,
+    isConfigured: configurationIssues.length === 0,
     missingValues,
+    invalidValues,
+    configurationIssues,
   };
 }
 
