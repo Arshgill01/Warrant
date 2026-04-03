@@ -3130,3 +3130,98 @@ Targeted checks:
 - Exact provider-side model identifier naming for Gemma may differ by SDK/endpoint and can change; mapping must stay centralized and overrideable.
 - Real provider invocation depends on valid local API key and network availability, so CI/unit tests should mock invocation transport.
 - Tight output guardrails can increase failed calls when prompts are weak; role prompts must stay explicit and schema-driven.
+
+## ExecPlan — Runtime State Binding for Graph/Timeline/Audit (2026-04-03)
+
+### Objective
+
+Bind graph, timeline, and audit-facing presentation contracts to real runtime actor identities, runtime control events, and proposal control decisions so the demo surfaces attribute behavior to actual runtime branches instead of mostly conceptual placeholders.
+
+### Demo relevance
+
+This strengthens the core proof moments in the 3-minute story by making attribution truthful and legible:
+
+1. planner delegates child branches with identifiable runtime actors
+2. child proposals move through explicit control states (policy, approval, provider)
+3. approvals/denials/revocations/execution results map to branch and warrant lineage in visible UI
+4. graph and timeline stay coherent when runtime/control state changes
+
+### Scope
+
+In scope:
+
+- sync this worktree with merged real-agent runtime and control-bridge outputs needed for binding
+- add stable runtime-to-presentation adapters (not deep UI coupling)
+- map runtime actor identity into graph nodes and node detail surfaces
+- map runtime control events and control decisions into timeline/audit display records
+- align node/timeline status derivation to runtime/control signals where available
+- preserve deterministic scenario readability and existing graph layout
+- add or update focused tests covering attribution and status semantics
+
+Out of scope:
+
+- redesigning graph layout or component architecture
+- exposing raw runtime internals directly in UI components
+- replacing the existing demo scenario narrative or presets
+- adding new providers, new agent types, or unrelated auth work
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/demo.ts`
+- `src/contracts/display.ts`
+- `src/demo-fixtures/display.ts`
+- `src/components/demo/demo-surface.tsx`
+- `src/components/graph/agent-node.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/agents/main-scenario.ts` (only for adapter-fed scenario wiring if required)
+- `tests/delegation-graph.test.ts`
+- `tests/state-surface-proof.test.tsx`
+- `tests/demo-fixtures.test.ts`
+- `tests/node-detail-panel.test.tsx`
+- `tests/routes.test.tsx`
+
+### Invariants to preserve
+
+- Child warrants only narrow parent authority.
+- Revoking a branch invalidates descendants and remains visibly branch-specific.
+- Approval state stays distinct from local policy and provider execution readiness.
+- Graph/timeline derive from the same canonical scenario state and deterministic ordering.
+- Token Vault/provider boundary remains legible; runtime binding must not collapse gates.
+- UI remains readable; do not trade legibility for raw-data density.
+
+### Implementation steps
+
+1. Bring in the merged runtime/control-bridge baseline required by this track and verify the branch compiles at baseline.
+2. Introduce adapter utilities that map runtime control decisions/events into presentation-level actor/status metadata.
+3. Bind graph node and node-detail data paths to runtime actor identity and latest runtime/control state where present.
+4. Bind timeline/audit display records to runtime events for proposal, denial, approval, revocation, and execution attribution.
+5. Align summary/status labels to runtime/control states while preserving existing serious, compact UI presentation.
+6. Add/update targeted tests for graph attribution, timeline attribution, and status semantics.
+7. Run lint/typecheck/test/build and perform manual `/demo` scenario inspection for planner/calendar/comms attribution and branch revoke behavior.
+8. Commit in small slices:
+   - runtime -> graph adapter
+   - runtime -> timeline/audit adapter
+   - detail/status binding cleanup
+   - polish + validation
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run dev -- --port 3000` (manual `/demo` walkthrough)
+
+Manual checks on `/demo`:
+
+- Planner, Calendar, and Comms identities are visible and consistent across graph, detail panel, and timeline.
+- Proposal creation, policy denial, approval requested/approved/denied, execution result, and revocation events are attributable to correct agent + warrant + branch.
+- Post-revocation behavior still blocks Comms branch while Calendar branch remains readable and intact.
+
+### Risks
+
+- Binding too directly to runtime internals can create brittle UI coupling; adapters must absorb runtime schema changes.
+- Merged runtime/control outputs may introduce baseline conflicts with this track branch and require careful reconciliation.
+- If timeline status precedence is changed incorrectly, approval and denial states can regress into ambiguous labels.
+- Manual browser verification depends on local run environment; if unavailable, confidence will rely on automated tests only.

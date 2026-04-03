@@ -2,6 +2,7 @@ import type { ActionAttemptOutcome, ProviderActionState } from "@/contracts/acti
 import type { ApprovalStatus } from "@/contracts/approval";
 import type { LedgerEventKind } from "@/contracts/audit";
 import type { WarrantDecisionCode } from "@/contracts/policy";
+import type { RuntimeControlState } from "@/contracts/runtime";
 import type { WarrantStatus } from "@/contracts/warrant";
 
 export const CANONICAL_CONTROL_STATE_SET = [
@@ -84,4 +85,18 @@ export function mapActionOutcomeToControlState(input: {
   }
 
   return "denied_policy";
+}
+
+export function mapRuntimeControlStateToCanonicalState(
+  state: RuntimeControlState,
+): CanonicalControlState {
+  switch (state) {
+    case "proposal_created":
+    case "executable":
+      return "active";
+    case "execution_failed":
+      return "denied_policy";
+    default:
+      return state;
+  }
 }

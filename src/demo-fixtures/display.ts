@@ -1,5 +1,6 @@
 import {
   approvalStatusControlStateMap,
+  mapRuntimeControlStateToCanonicalState,
   mapActionOutcomeToControlState,
   timelineKindControlStateMap,
 } from "@/contracts";
@@ -15,6 +16,7 @@ import type {
   DisplayStatus,
   GraphEdgeDTO,
   GraphNodeDTO,
+  RuntimeProposalControlDecision,
   TimelineEventDisplayRecord,
   WarrantDisplaySummary,
 } from "@/contracts";
@@ -192,6 +194,8 @@ function resolveDisplayStatus(input: {
   warrantStatus: DemoScenario["warrants"][number]["status"];
   expiresAt: string;
   revocationReason: string | null;
+  latestRuntimeControlState: CanonicalControlState | null;
+  latestRuntimeControlReason: string | null;
   pendingApproval: ApprovalStateDisplayRecord | null;
   latestApproval: ApprovalStateDisplayRecord | null;
   latestAction: ActionAttemptDisplayRecord | null;
@@ -218,14 +222,61 @@ function resolveDisplayStatus(input: {
     };
   }
 
+  if (input.latestRuntimeControlState === "blocked_revoked") {
+    return {
+      status: "blocked_revoked",
+      reason:
+        input.latestRuntimeControlReason ??
+        "Runtime control marked this branch blocked because authority was revoked.",
+      source: "action",
+    };
+  }
+
+  if (input.latestRuntimeControlState === "blocked_expired") {
+    return {
+      status: "blocked_expired",
+      reason:
+        input.latestRuntimeControlReason ??
+        "Runtime control marked this branch blocked because the warrant expired.",
+      source: "action",
+    };
+  }
+
+  if (input.latestRuntimeControlState === "denied_policy") {
+    return {
+      status: "denied_policy",
+      reason:
+        input.latestRuntimeControlReason ??
+        "Runtime policy checks denied the latest proposal for this branch.",
+      source: "action",
+    };
+  }
+
+  if (input.latestRuntimeControlState === "provider_unavailable") {
+    return {
+      status: "provider_unavailable",
+      reason:
+        input.latestRuntimeControlReason ??
+        "Runtime control marked this action blocked by provider execution readiness.",
+      source: "provider",
+    };
+  }
+
   if (
     input.pendingApproval ||
-    input.latestAction?.controlState === "approval_required"
+    input.latestAction?.controlState === "approval_required" ||
+    input.latestRuntimeControlState === "approval_required" ||
+    input.latestRuntimeControlState === "approval_pending"
   ) {
     return {
-      status: input.pendingApproval ? "approval_pending" : "approval_required",
+      status:
+        input.pendingApproval ||
+        input.latestRuntimeControlState === "approval_pending"
+          ? "approval_pending"
+          : "approval_required",
       reason:
         input.pendingApproval?.reason ??
+        input.latestRuntimeControlReason ??
         input.latestAction?.outcomeReason ??
         "This branch is waiting for human approval before it can continue.",
       source: "approval",
@@ -320,6 +371,14 @@ export function createWarrantDisplaySummaries(
   );
   const actionRecords = createActionAttemptDisplayRecords(scenario);
   const approvalRecords = createApprovalStateDisplayRecords(scenario);
+  const latestRuntimeDecisionByWarrantId = getLatestRecordsByWarrantId(
+    [...scenario.controlDecisions],
+    (record) => record.at,
+  );
+  const latestRuntimeEventByWarrantId = getLatestRecordsByWarrantId(
+    [...scenario.runtimeEvents],
+    (record) => record.at,
+  );
   const latestActionByWarrantId = getLatestRecordsByWarrantId(
     actionRecords,
     (record) => record.requestedAt,
@@ -353,13 +412,21 @@ export function createWarrantDisplaySummaries(
     const latestAction = latestActionByWarrantId.get(warrant.id) ?? null;
     const latestPolicyDenial =
       latestPolicyDenialByWarrantId.get(warrant.id) ?? null;
+    const latestRuntimeDecision =
+      latestRuntimeDecisionByWarrantId.get(warrant.id) ?? null;
+    const latestRuntimeEvent = latestRuntimeEventByWarrantId.get(warrant.id) ?? null;
     const pendingApproval = pendingApprovalByWarrantId.get(warrant.id) ?? null;
     const latestApproval = latestApprovalByWarrantId.get(warrant.id) ?? null;
+    const latestRuntimeControlState = latestRuntimeDecision
+      ? mapRuntimeControlStateToCanonicalState(latestRuntimeDecision.controlState)
+      : null;
     const status = resolveDisplayStatus({
       agentStatus: agent.status,
       warrantStatus: warrant.status,
       expiresAt: warrant.expiresAt,
       revocationReason: warrant.revocationReason,
+      latestRuntimeControlState,
+      latestRuntimeControlReason: latestRuntimeDecision?.reason ?? null,
       pendingApproval,
       latestApproval,
       latestAction,
@@ -373,6 +440,14 @@ export function createWarrantDisplaySummaries(
       agentId: warrant.agentId,
       agentLabel: agent.label,
       agentRole: agent.role,
+      runtimeActorId: agent.id,
+      runtimeActorLabel: agent.label,
+      latestRuntimeProposalId: latestRuntimeDecision?.proposalId ?? null,
+      latestRuntimeControlState,
+      latestRuntimeControlReason: latestRuntimeDecision?.reason ?? null,
+      latestRuntimeControlAt: latestRuntimeDecision?.at ?? null,
+      latestRuntimeEventTitle: latestRuntimeEvent?.title ?? null,
+      latestRuntimeEventDetail: latestRuntimeEvent?.detail ?? null,
       status: status.status,
       statusReason: status.reason,
       statusSource: status.source,
@@ -399,8 +474,14 @@ export function createActionAttemptDisplayRecords(
   scenario: DemoScenario,
 ): ActionAttemptDisplayRecord[] {
   const agentsById = new Map(scenario.agents.map((agent) => [agent.id, agent]));
+  const latestRuntimeDecisionByActionId = getLatestRecordsByKey(
+    scenario.controlDecisions,
+    (decision) => decision.actionId,
+    (decision) => decision.at,
+  );
 
   return scenario.actionAttempts.map((action) => ({
+    ...bindRuntimeDecisionToAction(action.id, latestRuntimeDecisionByActionId.get(action.id)),
     id: action.id,
     kind: action.kind,
     agentId: action.agentId,
@@ -468,6 +549,16 @@ export function createTimelineEventDisplayRecords(
   const approvalsById = new Map(
     createApprovalStateDisplayRecords(scenario).map((approval) => [approval.id, approval]),
   );
+  const latestRuntimeDecisionByActionId = getLatestRecordsByKey(
+    scenario.controlDecisions,
+    (decision) => decision.actionId,
+    (decision) => decision.at,
+  );
+  const latestRuntimeEventByActionId = getLatestRecordsByKey(
+    scenario.runtimeEvents,
+    (event) => event.actionId,
+    (event) => event.at,
+  );
 
   return [...scenario.timeline]
     .sort((left, right) => {
@@ -480,6 +571,20 @@ export function createTimelineEventDisplayRecords(
       return left.id.localeCompare(right.id);
     })
     .map((event) => {
+      const runtimeActionId =
+        event.actionId ??
+        (event.approvalId
+          ? approvalsById.get(event.approvalId)?.actionId ?? null
+          : null);
+      const runtimeDecision = runtimeActionId
+        ? latestRuntimeDecisionByActionId.get(runtimeActionId) ?? null
+        : null;
+      const runtimeEvent = runtimeActionId
+        ? latestRuntimeEventByActionId.get(runtimeActionId) ?? null
+        : null;
+      const runtimeControlState = runtimeDecision
+        ? mapRuntimeControlStateToCanonicalState(runtimeDecision.controlState)
+        : null;
       const meta = timelineEventMeta[event.kind];
       const controlState = resolveTimelineControlState({
         eventKind: event.kind,
@@ -491,6 +596,7 @@ export function createTimelineEventDisplayRecords(
           event.approvalId
             ? approvalsById.get(event.approvalId)?.controlState ?? null
             : null,
+        runtimeState: runtimeControlState,
       });
       const lineagePath = event.warrantId
         ? getWarrantLineagePath(event.warrantId, warrantsById, agentLabelsById)
@@ -532,6 +638,11 @@ export function createTimelineEventDisplayRecords(
         lineagePath,
         title: event.title,
         description: event.description,
+        proposalId: runtimeDecision?.proposalId ?? runtimeEvent?.proposalId ?? null,
+        runtimeEventId: runtimeEvent?.id ?? null,
+        runtimeTitle: runtimeEvent?.title ?? null,
+        runtimeDetail: runtimeEvent?.detail ?? runtimeDecision?.reason ?? null,
+        runtimeControlState,
       };
     });
 }
@@ -540,7 +651,17 @@ function resolveTimelineControlState(input: {
   eventKind: LedgerEventKind;
   actionState: CanonicalControlState | null;
   approvalState: CanonicalControlState | null;
+  runtimeState: CanonicalControlState | null;
 }): CanonicalControlState {
+  if (
+    (input.eventKind === "action.allowed" ||
+      input.eventKind === "action.blocked" ||
+      input.eventKind === "approval.requested") &&
+    input.runtimeState
+  ) {
+    return input.runtimeState;
+  }
+
   if (input.eventKind === "action.blocked" && input.actionState) {
     return input.actionState;
   }
@@ -566,12 +687,16 @@ export function createDelegationGraphView(
     nodes: warrantSummaries.map<GraphNodeDTO>((summary) => ({
       id: summary.id,
       agentId: summary.agentId,
+      runtimeActorId: summary.runtimeActorId,
+      runtimeActorLabel: summary.runtimeActorLabel,
       parentId: summary.parentId,
       label: summary.agentLabel,
       role: summary.agentRole,
       status: summary.status,
       statusReason: summary.statusReason,
       statusSource: summary.statusSource,
+      runtimeStatus: summary.latestRuntimeControlState,
+      runtimeStatusReason: summary.latestRuntimeControlReason,
       purpose: summary.purpose,
       capabilityBadges: summary.capabilities,
       canDelegate: summary.canDelegate,
@@ -586,6 +711,60 @@ export function createDelegationGraphView(
         status: summary.status,
       })),
     warrantSummaries,
+  };
+}
+
+function getLatestRecordsByKey<
+  Record extends { id: string },
+  Key extends string,
+>(
+  records: readonly Record[],
+  getKey: (record: Record) => Key | null,
+  getAt: (record: Record) => string,
+): Map<Key, Record> {
+  const latestByKey = new Map<Key, Record>();
+
+  records.forEach((record) => {
+    const key = getKey(record);
+    if (!key) {
+      return;
+    }
+
+    const existing = latestByKey.get(key);
+    if (!existing) {
+      latestByKey.set(key, record);
+      return;
+    }
+
+    const atComparison = getAt(record).localeCompare(getAt(existing));
+    if (atComparison > 0 || (atComparison === 0 && record.id.localeCompare(existing.id) > 0)) {
+      latestByKey.set(key, record);
+    }
+  });
+
+  return latestByKey;
+}
+
+function bindRuntimeDecisionToAction(
+  actionId: string,
+  decision: RuntimeProposalControlDecision | undefined,
+): {
+  proposalId: string | null;
+  runtimeControlState: CanonicalControlState | null;
+  runtimeControlReason: string | null;
+} {
+  if (!decision || decision.actionId !== actionId) {
+    return {
+      proposalId: null,
+      runtimeControlState: null,
+      runtimeControlReason: null,
+    };
+  }
+
+  return {
+    proposalId: decision.proposalId,
+    runtimeControlState: mapRuntimeControlStateToCanonicalState(decision.controlState),
+    runtimeControlReason: decision.reason,
   };
 }
 
