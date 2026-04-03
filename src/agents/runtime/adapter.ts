@@ -32,9 +32,13 @@ export interface RuntimeModelFailure {
   code:
     | "runtime-config-invalid"
     | "provider-request-failed"
-    | "provider-response-invalid";
+    | "provider-response-invalid"
+    | "output-not-json"
+    | "output-schema-invalid";
   message: string;
   issues?: RuntimeModelStartupValidation["issues"];
+  validationErrors?: string[];
+  rawText?: string | null;
 }
 
 export type RuntimeModelInvocationResult =
@@ -202,4 +206,265 @@ export async function invokeRuntimeModel(
 
 export function createRoleAwareSystemPrompt(role: AgentRole): string {
   return buildRoleAwareSystemPrompt(role);
+}
+
+export interface StructuredOutputValidationSuccess<T> {
+  ok: true;
+  value: T;
+}
+
+export interface StructuredOutputValidationFailure {
+  ok: false;
+  errors: string[];
+}
+
+export type StructuredOutputValidationResult<T> =
+  | StructuredOutputValidationSuccess<T>
+  | StructuredOutputValidationFailure;
+
+export interface StructuredOutputSchema<T> {
+  name: string;
+  description: string;
+  validate: (value: unknown) => StructuredOutputValidationResult<T>;
+}
+
+export interface StructuredRuntimeModelInvocationInput<T>
+  extends RuntimeModelInvocationInput {
+  schema: StructuredOutputSchema<T>;
+}
+
+export interface StructuredRuntimeModelSuccess<T> {
+  ok: true;
+  value: T;
+  rawText: string;
+  attempts: 1 | 2;
+  repaired: boolean;
+  requestId: string | null;
+  configuration: RuntimeModelConfiguration;
+}
+
+export interface StructuredRuntimeModelFailure {
+  ok: false;
+  failure: RuntimeModelFailure;
+  attempts: 0 | 1 | 2;
+  repaired: boolean;
+  configuration: RuntimeModelConfiguration;
+}
+
+export type StructuredRuntimeModelResult<T> =
+  | StructuredRuntimeModelSuccess<T>
+  | StructuredRuntimeModelFailure;
+
+const maxStructuredOutputAttempts = 2;
+
+function tryParseJsonText(text: string): unknown | null {
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    // Continue to fallback extractors.
+  }
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch?.[1]) {
+    try {
+      return JSON.parse(fencedMatch[1]) as unknown;
+    } catch {
+      // Continue to fallback extractors.
+    }
+  }
+
+  const objectStart = trimmed.indexOf("{");
+  const objectEnd = trimmed.lastIndexOf("}");
+  if (objectStart >= 0 && objectEnd > objectStart) {
+    const objectSlice = trimmed.slice(objectStart, objectEnd + 1);
+    try {
+      return JSON.parse(objectSlice) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function buildRepairPrompt(input: {
+  task: string;
+  originalPrompt: string;
+  schema: StructuredOutputSchema<unknown>;
+  lastOutputText: string;
+  errors: string[];
+  context?: string;
+}): string {
+  const sections = [
+    `Task: ${input.task}`,
+    `Original prompt:\n${input.originalPrompt}`,
+    `Required output schema: ${input.schema.name}`,
+    `Schema description:\n${input.schema.description}`,
+    `Validation errors:\n- ${input.errors.join("\n- ")}`,
+    `Last invalid output:\n${input.lastOutputText}`,
+    "Return corrected JSON only. Do not include prose or markdown fences.",
+  ];
+
+  if (input.context) {
+    sections.push(`Context:\n${input.context}`);
+  }
+
+  return sections.join("\n\n");
+}
+
+function validateStructuredOutput<T>(
+  schema: StructuredOutputSchema<T>,
+  rawText: string,
+): StructuredOutputValidationResult<T> | { ok: false; errors: string[]; notJson: true } {
+  const parsed = tryParseJsonText(rawText);
+
+  if (parsed === null) {
+    return {
+      ok: false,
+      notJson: true,
+      errors: ["Model output was not valid JSON."],
+    };
+  }
+
+  return schema.validate(parsed);
+}
+
+function isNotJsonValidationFailure(
+  result: StructuredOutputValidationResult<unknown> | { ok: false; errors: string[]; notJson: true },
+): result is { ok: false; errors: string[]; notJson: true } {
+  return !result.ok && "notJson" in result && result.notJson === true;
+}
+
+function asUnknownSchema<T>(
+  schema: StructuredOutputSchema<T>,
+): StructuredOutputSchema<unknown> {
+  return {
+    ...schema,
+    validate: (value: unknown) => schema.validate(value) as StructuredOutputValidationResult<unknown>,
+  };
+}
+
+export async function invokeRuntimeModelStructuredOutput<T>(
+  input: StructuredRuntimeModelInvocationInput<T>,
+  transport: RuntimeModelTransport = callGoogleRuntimeModel,
+): Promise<StructuredRuntimeModelResult<T>> {
+  const startup = getRuntimeModelStartupValidation();
+
+  if (!startup.ok) {
+    return {
+      ok: false,
+      attempts: 0,
+      repaired: false,
+      configuration: startup.configuration,
+      failure: {
+        code: "runtime-config-invalid",
+        message: "Runtime model configuration is invalid.",
+        issues: startup.issues,
+      },
+    };
+  }
+
+  let attemptCount: 0 | 1 | 2 = 0;
+  let repaired = false;
+  let lastRawText: string | null = null;
+  let lastValidationErrors: string[] = [];
+  let requestId: string | null = null;
+  let lastProviderError: string | null = null;
+  const schemaForRepair = asUnknownSchema(input.schema);
+
+  let currentPrompt = buildUserPrompt(input);
+
+  while (attemptCount < maxStructuredOutputAttempts) {
+    let response: RuntimeModelResponse;
+    try {
+      response = await transport({
+        configuration: startup.configuration,
+        systemPrompt: buildRoleAwareSystemPrompt(input.role),
+        userPrompt: currentPrompt,
+      });
+      requestId = response.requestId;
+    } catch (error) {
+      attemptCount = (attemptCount + 1) as 1 | 2;
+      lastProviderError = error instanceof Error
+        ? error.message
+        : "Unknown provider invocation failure.";
+      return {
+        ok: false,
+        attempts: attemptCount,
+        repaired,
+        configuration: startup.configuration,
+        failure: {
+          code: "provider-request-failed",
+          message: lastProviderError,
+          rawText: lastRawText,
+        },
+      };
+    }
+
+    attemptCount = (attemptCount + 1) as 1 | 2;
+    lastRawText = response.text;
+    const validationResult = validateStructuredOutput(input.schema, response.text);
+
+    if (validationResult.ok) {
+      return {
+        ok: true,
+        value: validationResult.value,
+        rawText: response.text,
+        attempts: attemptCount,
+        repaired,
+        requestId,
+        configuration: startup.configuration,
+      };
+    }
+
+    lastValidationErrors = validationResult.errors;
+    if (attemptCount >= maxStructuredOutputAttempts) {
+      return {
+        ok: false,
+        attempts: attemptCount,
+        repaired,
+        configuration: startup.configuration,
+        failure: {
+          code: isNotJsonValidationFailure(validationResult)
+            ? "output-not-json"
+            : "output-schema-invalid",
+          message:
+            isNotJsonValidationFailure(validationResult)
+              ? "Model output was not valid JSON after one repair retry."
+              : "Model output failed schema validation after one repair retry.",
+          validationErrors: validationResult.errors,
+          rawText: response.text,
+        },
+      };
+    }
+
+    repaired = true;
+    currentPrompt = buildRepairPrompt({
+      task: input.task,
+      originalPrompt: input.prompt,
+      schema: schemaForRepair,
+      lastOutputText: response.text,
+      errors: validationResult.errors,
+      context: input.context,
+    });
+  }
+
+  return {
+    ok: false,
+    attempts: attemptCount,
+    repaired,
+    configuration: startup.configuration,
+    failure: {
+      code: "output-schema-invalid",
+      message: "Model output could not be validated.",
+      validationErrors: lastValidationErrors,
+      rawText: lastRawText,
+    },
+  };
 }
