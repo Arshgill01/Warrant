@@ -1,11 +1,16 @@
 import type { ModelAdapterRequest } from "@/contracts";
+import {
+  PLANNER_SCHEMA_DESCRIPTION,
+  PLANNER_SCHEMA_NAME,
+  type PlannerSchemaIssue,
+  validatePlannerStructuredPlan,
+} from "@/agents/planner-schema";
 import type {
   PlannerRuntimeDeps,
   PlannerRuntimeEvent,
   PlannerRuntimeIdentity,
   PlannerRuntimeInput,
   PlannerRuntimeResult,
-  PlannerStructuredPlan,
 } from "@/agents/types";
 
 const plannerRuntimeIdentity: PlannerRuntimeIdentity = {
@@ -14,11 +19,7 @@ const plannerRuntimeIdentity: PlannerRuntimeIdentity = {
   label: "Planner Agent",
 };
 
-const plannerSchemaName = "planner.delegation-plan.v1";
-const plannerSchemaDescription =
-  "JSON object with goalInterpretation string and delegationDrafts[] containing childRole, objective, requestedCapabilities.";
-
-function buildPlannerPrompt(input: PlannerRuntimeInput): string {
+export function buildPlannerPrompt(input: PlannerRuntimeInput): string {
   return [
     "You are the Planner Agent for the Warrant demo.",
     "Interpret the goal and propose only narrow child delegation requests.",
@@ -27,22 +28,6 @@ function buildPlannerPrompt(input: PlannerRuntimeInput): string {
     `Root request id: ${input.rootRequestId}`,
     `Parent warrant capabilities: ${input.parentWarrant.capabilities.join(", ")}`,
   ].join("\n");
-}
-
-function toPlannerStructuredPlan(rawOutput: unknown): PlannerStructuredPlan {
-  if (!rawOutput || typeof rawOutput !== "object") {
-    throw new Error("Planner model output must be an object.");
-  }
-
-  const candidate = rawOutput as Partial<PlannerStructuredPlan>;
-  if (typeof candidate.goalInterpretation !== "string") {
-    throw new Error("Planner model output missing goalInterpretation string.");
-  }
-  if (!Array.isArray(candidate.delegationDrafts)) {
-    throw new Error("Planner model output missing delegationDrafts array.");
-  }
-
-  return candidate as PlannerStructuredPlan;
 }
 
 function createEvent(
@@ -59,6 +44,10 @@ function createEvent(
   };
 }
 
+function formatSchemaIssues(issues: PlannerSchemaIssue[]): string {
+  return issues.map((issue) => `${issue.path}: ${issue.message}`).join(" | ");
+}
+
 export function runPlannerRuntime(
   input: PlannerRuntimeInput,
   deps: PlannerRuntimeDeps,
@@ -71,15 +60,22 @@ export function runPlannerRuntime(
     actorRole: "planner",
     actorId: plannerRuntimeIdentity.id,
     objective: input.goal,
-    schemaName: plannerSchemaName,
-    schemaDescription: plannerSchemaDescription,
+    schemaName: PLANNER_SCHEMA_NAME,
+    schemaDescription: PLANNER_SCHEMA_DESCRIPTION,
     instructions: buildPlannerPrompt(input),
     repairContext: null,
     attempt: 1,
   };
 
   const rawPlan = deps.modelAdapter.invokeStructured(request);
-  const plan = toPlannerStructuredPlan(rawPlan);
+  const validation = validatePlannerStructuredPlan(rawPlan);
+
+  if (!validation.ok || !validation.plan) {
+    throw new Error(
+      `Planner output failed schema validation: ${formatSchemaIssues(validation.issues)}`,
+    );
+  }
+
   events.push(
     createEvent(
       input.now,
@@ -92,8 +88,7 @@ export function runPlannerRuntime(
   return {
     identity: plannerRuntimeIdentity,
     source: "model",
-    plan,
+    plan: validation.plan,
     events,
   };
 }
-
