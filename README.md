@@ -91,6 +91,22 @@ Optional debug overrides:
 
 Use overrides only for UI rehearsal. Real provider delegation should use Auth0 sign-in plus `/auth/connect`.
 
+Required for runtime model adapter calls:
+
+- `GOOGLE_API_KEY` (store in local ignored `.env.local` only)
+
+Optional runtime model tuning (demo defaults are already low-variance):
+
+- `WARRANT_RUNTIME_MODEL_PROVIDER_ID` (default `gemma-4-31b`)
+- `WARRANT_RUNTIME_MODEL_TEMPERATURE` (default `0.1`)
+- `WARRANT_RUNTIME_MODEL_TOP_P` (default `0.1`)
+- `WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS` (default `2048`)
+
+Runtime startup guard:
+
+- Use `assertRuntimeModelStartup()` from `src/agents/runtime/config.ts` to fail fast on missing/invalid model config.
+- Structured runtime calls use schema validation with one repair retry, then return explicit structured failure if still invalid.
+
 ### Run Locally
 
 ```bash
