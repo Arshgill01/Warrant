@@ -15,6 +15,8 @@ export type AgentNodeData = {
   role: AgentRole;
   status: DisplayStatus;
   statusReason: string;
+  runtimeActorId: string;
+  runtimeStatus: DisplayStatus | null;
   capabilities: string[];
   purpose: string;
   canDelegate: boolean;
@@ -79,6 +81,9 @@ export const AgentNodeComponent = memo(({ data, selected }: NodeProps<AgentNode>
         </div>
         <div className="flex-1 overflow-hidden">
           <h3 className="truncate font-bold tracking-tight text-[var(--foreground)]">{data.label}</h3>
+          <p className="truncate font-mono text-[9px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+            runtime: {data.runtimeActorId}
+          </p>
           <div className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${statusColors[data.status]}`}>
             {formatDisplayStatus(data.status)}
           </div>

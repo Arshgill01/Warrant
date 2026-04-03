@@ -27,12 +27,16 @@ export interface DisplayField {
 export interface DelegationGraphNodeRecord {
   id: string;
   agentId: string;
+  runtimeActorId: string;
+  runtimeActorLabel: string;
   parentId: string | null;
   label: string;
   role: AgentRole;
   status: DisplayStatus;
   statusReason: string;
   statusSource: DisplayStatusSource;
+  runtimeStatus: CanonicalControlState | null;
+  runtimeStatusReason: string | null;
   purpose: string;
   capabilityBadges: string[];
   canDelegate: boolean;
@@ -50,6 +54,7 @@ export type GraphNodeDTO = DelegationGraphNodeRecord;
 export type GraphEdgeDTO = DelegationGraphEdgeRecord;
 export interface ActionAttemptDisplayRecord {
   id: string;
+  proposalId: string | null;
   kind: ActionKind;
   agentId: string;
   agentLabel: string;
@@ -61,6 +66,8 @@ export interface ActionAttemptDisplayRecord {
   resource: string;
   outcome: ActionAttemptOutcome;
   controlState: CanonicalControlState;
+  runtimeControlState: CanonicalControlState | null;
+  runtimeControlReason: string | null;
   outcomeReason: string;
   authorization: ActionAuthorizationSnapshot;
   approvalRequestId: string | null;
@@ -99,6 +106,14 @@ export interface WarrantDisplaySummary {
   status: DisplayStatus;
   statusReason: string;
   statusSource: DisplayStatusSource;
+  runtimeActorId: string;
+  runtimeActorLabel: string;
+  latestRuntimeProposalId: string | null;
+  latestRuntimeControlState: CanonicalControlState | null;
+  latestRuntimeControlReason: string | null;
+  latestRuntimeControlAt: string | null;
+  latestRuntimeEventTitle: string | null;
+  latestRuntimeEventDetail: string | null;
   purpose: string;
   capabilities: string[];
   constraints: DisplayField[];
@@ -140,6 +155,11 @@ export interface TimelineEventDisplayRecord {
   lineagePath: string[];
   title: string;
   description: string;
+  proposalId: string | null;
+  runtimeEventId: string | null;
+  runtimeTitle: string | null;
+  runtimeDetail: string | null;
+  runtimeControlState: CanonicalControlState | null;
 }
 
 export interface DelegationGraphDTO {
