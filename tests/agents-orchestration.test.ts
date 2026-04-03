@@ -180,4 +180,35 @@ describe("main scenario planner flow", () => {
     expect(first).toEqual(second);
     expect(second).toEqual(third);
   });
+
+  it("builds the main pre-revoke stage without approved send or revocation records", () => {
+    const run = runMainScenarioPlannerFlow(undefined, { stage: "main" });
+
+    expect(run.scenario.warrants.find((warrant) => warrant.id === "warrant-comms-child-001")?.status).toBe(
+      "active",
+    );
+    expect(run.scenario.approvals).toEqual([
+      expect.objectContaining({
+        id: "approval-comms-send-001",
+        status: "pending",
+      }),
+    ]);
+    expect(
+      run.scenario.actionAttempts.some((attempt) => attempt.id === "action-comms-send-approved-001"),
+    ).toBe(false);
+    expect(
+      run.scenario.actionAttempts.some((attempt) => attempt.authorization.code === "warrant_revoked"),
+    ).toBe(false);
+    expect(run.scenario.revocations).toEqual([]);
+    expect(run.scenario.timeline.map((event) => event.kind)).toEqual([
+      "scenario.loaded",
+      "warrant.issued",
+      "warrant.issued",
+      "warrant.issued",
+      "action.allowed",
+      "action.allowed",
+      "action.blocked",
+      "approval.requested",
+    ]);
+  });
 });

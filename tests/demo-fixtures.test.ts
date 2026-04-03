@@ -8,6 +8,7 @@ import {
   getDisplayScenarioExamples,
   revokeCommsBranchScenario,
 } from "../src/demo-fixtures";
+import { validateDemoScenarioContract } from "../src/demo-fixtures/scenario-contract";
 import {
   loadDelegationGraphView,
   loadDemoRehearsalSnapshot,
@@ -92,6 +93,20 @@ describe("demo fixtures", () => {
       "recipient_not_allowed",
     );
     expect(examples.commsChildWarrant.latestApproval?.id).toBe("approval-comms-send-001");
+  });
+
+  it("keeps stage-specific scenario contracts valid for main and comms-revoked presets", () => {
+    const main = createMainDemoScenario();
+    const revoked = createCommsRevokedDemoScenario();
+
+    expect(validateDemoScenarioContract(main, "main")).toEqual({
+      ok: true,
+      issues: [],
+    });
+    expect(validateDemoScenarioContract(revoked, "comms-revoked")).toEqual({
+      ok: true,
+      issues: [],
+    });
   });
 
   it("loads graph and timeline views from the same canonical state and resets safely", () => {
@@ -246,6 +261,44 @@ describe("demo fixtures", () => {
     expect(rehearsal.recoveryReason).toMatch(/restored the canonical main scenario/i);
     expect(scenario.agents[0]?.label).toBe("Planner Agent");
     expect(scenario.revocations).toEqual([]);
+  });
+
+  it("rejects contract-invalid custom state and repairs to canonical main preset", () => {
+    const broken = createMainDemoScenario();
+    const firstAction = broken.actionAttempts.find(
+      (action) => action.id === "action-calendar-read-001",
+    );
+
+    if (!firstAction) {
+      throw new Error("Expected calendar action in main scenario.");
+    }
+
+    firstAction.parentWarrantId = "warrant-does-not-exist";
+
+    writeFileSync(
+      demoStateFile,
+      JSON.stringify({
+        version: 1,
+        kind: "custom",
+        preset: "main",
+        scenario: broken,
+        updatedAt: "2026-04-17T09:00:00.000Z",
+      }),
+      "utf8",
+    );
+
+    const rehearsal = loadDemoRehearsalSnapshot();
+    const repaired = loadDemoState();
+
+    expect(rehearsal.preset).toBe("main");
+    expect(rehearsal.recoveredFromInvalidState).toBe(true);
+    expect(rehearsal.recoveryReason).toMatch(/restored the canonical main scenario/i);
+    expect(
+      validateDemoScenarioContract(repaired, "main"),
+    ).toEqual({
+      ok: true,
+      issues: [],
+    });
   });
 
   it("flags recovery when the stored demo state file is half-written", () => {

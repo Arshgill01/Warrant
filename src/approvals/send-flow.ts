@@ -2,6 +2,7 @@ import type {
   ActionPathSnapshot,
   ApprovalRequest,
   ApprovalStatus,
+  GmailSendResult,
   SendApprovalBoundarySummary,
   SendApprovalState,
   SendApprovalStateRecord,
@@ -213,9 +214,85 @@ function buildExecutionPathSnapshot(
   };
 }
 
+function buildProviderExecutionPathSnapshot(
+  providerResult: GmailSendResult,
+): ActionPathSnapshot {
+  switch (providerResult.state) {
+    case "success":
+      return {
+        kind: "gmail.send",
+        label: "Provider execution",
+        state: "ready",
+        gate: "auth0",
+        headline: providerResult.headline,
+        detail: providerResult.detail,
+        nextStep: providerResult.nextStep,
+      };
+    case "pending":
+      return {
+        kind: "gmail.send",
+        label: "Provider execution",
+        state: "pending",
+        gate: "auth0",
+        headline: providerResult.headline,
+        detail: providerResult.detail,
+        nextStep: providerResult.nextStep,
+      };
+    case "execution-blocked":
+      return {
+        kind: "gmail.send",
+        label: "Provider execution",
+        state: "blocked",
+        gate: "approval",
+        headline: providerResult.headline,
+        detail: providerResult.detail,
+        nextStep: providerResult.nextStep,
+      };
+    case "disconnected":
+    case "unavailable":
+    case "failed":
+      return {
+        kind: "gmail.send",
+        label: "Provider execution",
+        state: "blocked",
+        gate: "auth0",
+        headline: providerResult.headline,
+        detail: providerResult.detail,
+        nextStep: providerResult.nextStep,
+      };
+  }
+}
+
 export function buildSendApprovalBoundarySummary(
   state: SendApprovalState,
+  providerResult: GmailSendResult | null = null,
 ): SendApprovalBoundarySummary {
+  const approvalExecutionReadiness = buildExecutionPathSnapshot(state);
+  const providerExecution = providerResult
+    ? buildProviderExecutionPathSnapshot(providerResult)
+    : null;
+
+  const executionReadiness =
+    state !== "approved"
+      ? approvalExecutionReadiness
+      : providerExecution
+        ? ({
+            kind: "gmail.send",
+            label: "Final execution readiness",
+            state: providerExecution.state,
+            gate: providerExecution.gate,
+            headline:
+              providerExecution.state === "ready"
+                ? "Approval and provider execution are both ready."
+                : "Approval is ready, but provider execution is still blocked.",
+            detail:
+              providerExecution.state === "ready"
+                ? "The explicit Auth0 approval release was provided and the delegated provider path executed the send."
+                : `Approval released execution, but the delegated provider path returned: ${providerExecution.detail}`,
+            nextStep: providerExecution.nextStep,
+          } satisfies ActionPathSnapshot)
+        : approvalExecutionReadiness;
+
   return {
     localEligibility: {
       kind: "gmail.send",
@@ -228,7 +305,8 @@ export function buildSendApprovalBoundarySummary(
       nextStep: null,
     },
     approvalRequirement: buildApprovalPathSnapshot(state),
-    executionReadiness: buildExecutionPathSnapshot(state),
+    executionReadiness,
+    providerExecution,
   };
 }
 

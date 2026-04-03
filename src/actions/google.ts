@@ -135,6 +135,25 @@ function buildConnectionResult<Kind extends GoogleActionKind, Input, Payload>(
     });
   }
 
+  if (connection.state === "expired") {
+    return buildEnvelope<Kind, Input, Payload>({
+      kind,
+      state: "unavailable",
+      connection,
+      request,
+      headline: `${label} is blocked until Auth0 refreshes delegated Google access.`,
+      detail: connection.detail,
+      data: null,
+      failure: buildFailure(
+        "provider-expired",
+        "The previous delegated Google access expired and must be refreshed before this action can run.",
+        connection.detail,
+        true,
+      ),
+      nextStep: connection.actionLabel ?? "Refresh the Auth0 session, then reconnect Google if needed.",
+    });
+  }
+
   return buildEnvelope<Kind, Input, Payload>({
     kind,
     state: "unavailable",
@@ -354,6 +373,7 @@ async function fetchGoogleJson<Response>(
     }
   | {
       ok: false;
+      code: ProviderActionFailure["code"];
       detail: string;
     }
 > {
@@ -366,11 +386,25 @@ async function fetchGoogleJson<Response>(
       },
     });
     const bodyText = await response.text();
-    const payload = bodyText ? (JSON.parse(bodyText) as Response) : ({} as Response);
+    let payload: Response;
+
+    try {
+      payload = bodyText ? (JSON.parse(bodyText) as Response) : ({} as Response);
+    } catch (error) {
+      return {
+        ok: false,
+        code: "provider-response-invalid",
+        detail:
+          error instanceof Error
+            ? `Google returned an invalid JSON payload: ${error.message}`
+            : "Google returned an invalid JSON payload.",
+      };
+    }
 
     if (!response.ok) {
       return {
         ok: false,
+        code: "provider-request-failed",
         detail: buildGoogleErrorDetail(
           payload,
           `Google returned HTTP ${response.status} while handling this request.`,
@@ -385,6 +419,7 @@ async function fetchGoogleJson<Response>(
   } catch (error) {
     return {
       ok: false,
+      code: "provider-request-failed",
       detail: error instanceof Error ? error.message : "The Google provider request failed unexpectedly.",
     };
   }
@@ -471,7 +506,7 @@ export async function readCalendarAvailability(
       request,
       accessResult.access.connection,
       buildFailure(
-        "provider-request-failed",
+        response.code,
         "Google Calendar could not return the requested availability window.",
         response.detail,
         true,
@@ -555,7 +590,7 @@ export async function prepareGmailDraft(
       request,
       accessResult.access.connection,
       buildFailure(
-        "provider-request-failed",
+        response.code,
         "Gmail could not create the requested draft.",
         response.detail,
         true,
@@ -665,7 +700,7 @@ export async function executeSendEmail(
       request,
       accessResult.access.connection,
       buildFailure(
-        "provider-request-failed",
+        response.code,
         "Gmail could not execute the requested send.",
         response.detail,
         true,
