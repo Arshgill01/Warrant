@@ -2733,3 +2733,91 @@ Manual checks:
 - Auth0 tenant-specific configuration can vary; docs must distinguish local deterministic demo behavior from fully wired provider execution.
 - Over-compressing README can remove nuance about approval and provider boundaries; keep wording concise but precise.
 - Validation may pass in fixture mode while real external provider execution still depends on Auth0 dashboard setup.
+
+## ExecPlan — Planner Runtime Actor With Safe Structured Delegation (2026-04-03)
+
+### Objective
+
+Implement a real Planner runtime actor for the main scenario that calls a shared model adapter, emits structured delegation output, validates model output defensively (schema + semantics), retries one repair pass on invalid output, and degrades to a deterministic bounded fallback plan when needed.
+
+### Demo relevance
+
+This strengthens the core 3-minute thesis path by making planner delegation feel real without sacrificing reliability:
+
+1. planner is a runtime actor, not hardcoded task text
+2. child delegation is explicitly structured and narrow
+3. malformed model output is safely contained
+4. fallback remains truthful to bounded delegation
+
+### Scope
+
+In scope:
+
+- add planner runtime entrypoint with role identity and role-specific input/output contracts
+- add shared model adapter contract used by planner runtime
+- add planner-specific prompt and explicit structured output schema contract
+- add schema validation and semantic validation for planner output
+- add one repair retry path for malformed/invalid planner output
+- add deterministic fallback plan for the canonical investor-update scenario
+- emit planner lifecycle and outcome runtime events
+- wire planner runtime into scenario orchestration without bypassing warrant issuance/authorization boundaries
+- add focused tests for valid, invalid-repair, fallback, and event behavior
+
+Out of scope:
+
+- generic multi-role planning framework
+- direct privileged execution by planner runtime
+- bypasses around warrant issuance, policy checks, approvals, or provider boundaries
+- broad architecture refactors unrelated to planner runtime hardening
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/*` (runtime/model/planner contract additions as needed)
+- `src/agents/types.ts`
+- `src/agents/main-scenario.ts`
+- `src/agents/index.ts`
+- `src/agents/*` (new planner runtime + validation modules)
+- `tests/agents-orchestration.test.ts`
+- `tests/*` (new planner runtime tests)
+
+### Invariants to preserve
+
+- Planner never executes privileged provider actions directly; it only proposes delegation.
+- Planner output is never treated as truth before schema + semantic validation passes.
+- Child capability requests remain narrower than parent warrant authority.
+- Fallback plan for the main scenario grants `calendar.read` and `gmail.draft` only (no direct send authority).
+- Warrant engine remains the authority gate for issuing/enforcing warrants.
+- Deterministic behavior remains stable for demo rehearsals and repeated test runs.
+
+### Implementation steps
+
+1. Add shared runtime/model adapter contracts and planner runtime types (identity, input shape, structured plan contract, runtime events).
+2. Implement planner runtime entrypoint with role-specific prompt/schema contract and model-adapter invocation.
+3. Implement planner schema validation and semantic validation against parent authority + bounded role expectations.
+4. Add one repair retry path that re-prompts with validation failures and re-validates.
+5. Implement deterministic fallback plan for the main scenario when output remains invalid or generation fails.
+6. Emit runtime events for started, valid-plan, invalid-output, fallback-used, and failed outcomes.
+7. Integrate planner runtime into main scenario orchestration while keeping warrant issuance and action execution boundaries unchanged.
+8. Add/update tests for valid path, invalid->repair path, invalid->fallback path, and event traces; then run lint/typecheck/tests/build.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts`
+- `npm run test`
+- `npm run build`
+
+Scenario checks:
+
+- run planner for main scenario with valid model output and inspect structured delegation plan
+- run planner with malformed/semantically-invalid output to confirm repair retry path
+- force persistent invalid output to confirm deterministic fallback and emitted events
+
+### Risks
+
+- If semantic rules are too strict, valid model outputs may degrade too often to fallback and reduce realism.
+- If semantic rules are too loose, planner could request authority that is technically narrow but behaviorally over-broad.
+- Integrating planner runtime into deterministic scenario may unintentionally change existing timeline/task ordering; tests must lock expected ordering.
+- New event kinds/typing could require downstream updates where timeline/display assumes a fixed event taxonomy.
