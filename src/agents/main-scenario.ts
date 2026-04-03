@@ -5,6 +5,10 @@ import type {
   DemoUser,
   LedgerEvent,
   RevocationRecord,
+  RuntimeActionProposal as ActionProposal,
+  RuntimeControlEvent as RuntimeEvent,
+  RuntimeProposalControlDecision as ProposalControlDecision,
+  SharedModelAdapter,
   WarrantContract,
 } from "@/contracts";
 import {
@@ -20,22 +24,27 @@ import {
   decideApprovalRequest,
 } from "@/approvals";
 import {
-  authorizeAction,
   issueChildWarrant,
   issueRootWarrant,
   revokeWarrantBranch,
 } from "@/warrants";
+import { evaluateProposalControl } from "@/agents/runtime-control";
 import type {
   MainScenarioRunResult,
   MainScenarioStage,
+  PlannerDelegationDraft,
   PlannerTaskRecord,
 } from "@/agents/types";
+import { createDeterministicPlannerModelAdapter } from "@/agents/model-adapter";
+import { runPlannerRuntime } from "@/agents/planner-runtime";
 
 const SCENARIO_ID = "demo-scenario-investor-update";
 const ROOT_REQUEST_ID = "request-investor-update-001";
 const REFERENCE_TIME = "2026-04-17T09:00:00.000Z";
 const TARGET_DATE = "2026-04-18";
 const TIMEZONE = "America/Los_Angeles";
+const MAIN_SCENARIO_PROMPT =
+  "Prepare my investor update for tomorrow and coordinate follow-ups.";
 
 const scenarioUser: DemoUser = {
   id: "user-maya-chen",
@@ -206,8 +215,33 @@ function requireIssuedWarrant(result: ReturnType<typeof issueChildWarrant>): War
   return result.warrant;
 }
 
+function assertControlState(
+  decision: ProposalControlDecision,
+  expected: ProposalControlDecision["controlState"],
+  actionId: string,
+): void {
+  if (decision.controlState !== expected) {
+    throw new Error(
+      `Expected control state ${expected} for ${actionId}, got ${decision.controlState}.`,
+    );
+  }
+}
+
 interface MainScenarioRunOptions {
   stage?: MainScenarioStage;
+  plannerModelAdapter?: SharedModelAdapter;
+}
+
+function requireDelegationDraft(
+  drafts: PlannerDelegationDraft[],
+  role: PlannerDelegationDraft["childRole"],
+): PlannerDelegationDraft {
+  const draft = drafts.find((entry) => entry.childRole === role);
+  if (!draft) {
+    throw new Error(`Planner runtime plan missing ${role} delegation draft.`);
+  }
+
+  return draft;
 }
 
 export function runMainScenarioPlannerFlow(
@@ -250,6 +284,26 @@ export function runMainScenarioPlannerFlow(
     createdAt: "2026-04-17T09:01:00.000Z",
     expiresAt: "2026-04-18T18:00:00.000Z",
   });
+  const plannerRuntime = runPlannerRuntime(
+    {
+      rootRequestId: ROOT_REQUEST_ID,
+      goal: MAIN_SCENARIO_PROMPT,
+      now: "2026-04-17T09:01:30.000Z",
+      parentWarrant: rootWarrant,
+    },
+    {
+      modelAdapter:
+        options.plannerModelAdapter ?? createDeterministicPlannerModelAdapter(),
+    },
+  );
+  const calendarDelegationDraft = requireDelegationDraft(
+    plannerRuntime.plan.delegationDrafts,
+    "calendar",
+  );
+  const commsDelegationDraft = requireDelegationDraft(
+    plannerRuntime.plan.delegationDrafts,
+    "comms",
+  );
 
   const calendarWarrant = requireIssuedWarrant(
     issueChildWarrant({
@@ -259,7 +313,7 @@ export function runMainScenarioPlannerFlow(
         createdBy: plannerAgent.id,
         agentId: calendarAgent.id,
         purpose: "Read tomorrow's calendar window before follow-up drafting begins.",
-        capabilities: ["calendar.read"],
+        capabilities: calendarDelegationDraft.requestedCapabilities,
         resourceConstraints: {
           calendarWindow: {
             startsAt: "2026-04-18T08:00:00.000Z",
@@ -284,7 +338,7 @@ export function runMainScenarioPlannerFlow(
         agentId: commsAgent.id,
         purpose:
           "Draft investor follow-ups for approved recipients and request one send after approval.",
-        capabilities: ["gmail.draft", "gmail.send"],
+        capabilities: commsDelegationDraft.requestedCapabilities,
         resourceConstraints: {
           allowedDomains: ["northstar.vc"],
           allowedRecipients: [
@@ -327,7 +381,9 @@ export function runMainScenarioPlannerFlow(
       warrantId: commsWarrant.id,
       status: "completed",
     },
-    {
+  ];
+  if (commsWarrant.capabilities.includes("gmail.send")) {
+    taskPlan.push({
       id: "task-comms-send-approval-001",
       title: "Send approved investor follow-up emails",
       summary:
@@ -337,26 +393,91 @@ export function runMainScenarioPlannerFlow(
       requiredCapabilities: ["gmail.send"],
       warrantId: commsWarrant.id,
       status: "delegated",
-    },
-  ];
+    });
+  }
 
-  const calendarAction = executeCalendarReadAction({
+  const controlDecisions: ProposalControlDecision[] = [];
+  const runtimeEvents: RuntimeEvent[] = [];
+  const recordControlEvaluation = (
+    evaluation: ReturnType<typeof evaluateProposalControl>,
+  ): ProposalControlDecision => {
+    controlDecisions.push(...evaluation.decisions);
+    runtimeEvents.push(...evaluation.runtimeEvents);
+    return evaluation.finalDecision;
+  };
+
+  const calendarProposal: ActionProposal = {
+    id: "proposal-calendar-read-001",
     actionId: "action-calendar-read-001",
     requestedAt: "2026-04-17T09:05:00.000Z",
+    kind: "calendar.read",
+    agentId: calendarWarrant.agentId,
+    warrantId: calendarWarrant.id,
+    target: {
+      scheduledFor: "2026-04-18T10:30:00.000Z",
+    },
+    summary: "Review tomorrow's bounded calendar availability.",
+    resource: `Calendar window for ${TARGET_DATE}`,
+  };
+  const calendarDecision = recordControlEvaluation(
+    evaluateProposalControl({
+      proposal: calendarProposal,
+      warrant: calendarWarrant,
+      warrants,
+      providerCheck: {
+        available: true,
+        state: "success",
+        reason: "Calendar delegated execution path is available.",
+      },
+    }),
+  );
+  assertControlState(calendarDecision, "executable", calendarProposal.actionId);
+
+  const calendarAction = executeCalendarReadAction({
+    actionId: calendarProposal.actionId,
+    requestedAt: calendarProposal.requestedAt,
     warrant: calendarWarrant,
     warrants,
     user: scenarioUser,
     targetDate: TARGET_DATE,
     timezone: TIMEZONE,
-    target: {
-      scheduledFor: "2026-04-18T10:30:00.000Z",
-    },
+    target: calendarProposal.target,
     adapter: adapters.calendar,
   });
 
-  const commsAction = executeGmailDraftAction({
+  const commsDraftProposal: ActionProposal = {
+    id: "proposal-comms-draft-001",
     actionId: "action-comms-draft-001",
     requestedAt: "2026-04-17T09:07:00.000Z",
+    kind: "gmail.draft",
+    agentId: commsWarrant.agentId,
+    warrantId: commsWarrant.id,
+    target: {
+      recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+    },
+    usage: {
+      draftsUsed: 0,
+    },
+    summary: "Draft bounded investor follow-up emails.",
+    resource: "Drafts for partners@northstar.vc and finance@northstar.vc",
+  };
+  const commsDraftDecision = recordControlEvaluation(
+    evaluateProposalControl({
+      proposal: commsDraftProposal,
+      warrant: commsWarrant,
+      warrants,
+      providerCheck: {
+        available: true,
+        state: "success",
+        reason: "Gmail draft path is available for this branch.",
+      },
+    }),
+  );
+  assertControlState(commsDraftDecision, "executable", commsDraftProposal.actionId);
+
+  const commsAction = executeGmailDraftAction({
+    actionId: commsDraftProposal.actionId,
+    requestedAt: commsDraftProposal.requestedAt,
     warrant: commsWarrant,
     warrants,
     user: scenarioUser,
@@ -368,9 +489,38 @@ export function runMainScenarioPlannerFlow(
     adapter: adapters.comms,
   });
 
-  const commsOverreach = executeGmailSendOverreachAction({
+  const commsOverreachProposal: ActionProposal = {
+    id: "proposal-comms-send-overreach-001",
     actionId: "action-comms-send-overreach-001",
     requestedAt: "2026-04-17T09:08:00.000Z",
+    kind: "gmail.send",
+    agentId: commsWarrant.agentId,
+    warrantId: commsWarrant.id,
+    target: {
+      recipients: ["ceo@external-partner.com"],
+    },
+    usage: {
+      sendsUsed: 0,
+    },
+    summary: "Attempt send to an out-of-bounds external recipient.",
+    resource: "Send email to ceo@external-partner.com",
+  };
+  const commsOverreachDecision = recordControlEvaluation(
+    evaluateProposalControl({
+      proposal: commsOverreachProposal,
+      warrant: commsWarrant,
+      warrants,
+    }),
+  );
+  assertControlState(
+    commsOverreachDecision,
+    "denied_policy",
+    commsOverreachProposal.actionId,
+  );
+
+  const commsOverreach = executeGmailSendOverreachAction({
+    actionId: commsOverreachProposal.actionId,
+    requestedAt: commsOverreachProposal.requestedAt,
     warrant: commsWarrant,
     warrants,
     recipients: ["ceo@external-partner.com"],
@@ -380,33 +530,52 @@ export function runMainScenarioPlannerFlow(
   });
 
   const commsSendRequestedAt = "2026-04-17T09:10:00.000Z";
-  const commsSendAction: ActionAttempt = {
-    id: "action-comms-send-001",
+  const commsSendProposal: ActionProposal = {
+    id: "proposal-comms-send-001",
+    actionId: "action-comms-send-001",
+    requestedAt: commsSendRequestedAt,
     kind: "gmail.send",
     agentId: commsWarrant.agentId,
     warrantId: commsWarrant.id,
-    requestedAt: commsSendRequestedAt,
     target: {
       recipients: ["partners@northstar.vc", "finance@northstar.vc"],
     },
     usage: {
       sendsUsed: 0,
     },
+    summary: "Request approval for one bounded investor follow-up send.",
+    resource: "Send to partners@northstar.vc and finance@northstar.vc",
   };
-  const commsSendAuthorization = authorizeAction({
-    warrant: commsWarrant,
-    warrants,
-    action: commsSendAction,
-    now: commsSendRequestedAt,
-  });
+  const commsSendPreApprovalDecision = recordControlEvaluation(
+    evaluateProposalControl({
+      proposal: commsSendProposal,
+      warrant: commsWarrant,
+      warrants,
+      approval: {
+        required: true,
+        status: null,
+      },
+    }),
+  );
+  assertControlState(
+    commsSendPreApprovalDecision,
+    "approval_required",
+    commsSendProposal.actionId,
+  );
 
-  if (!commsSendAuthorization.allowed) {
-    throw new Error(commsSendAuthorization.message);
-  }
+  const commsSendAction: ActionAttempt = {
+    id: commsSendProposal.actionId,
+    kind: commsSendProposal.kind,
+    agentId: commsSendProposal.agentId,
+    warrantId: commsSendProposal.warrantId,
+    requestedAt: commsSendProposal.requestedAt,
+    target: commsSendProposal.target,
+    usage: commsSendProposal.usage,
+  };
 
   const commsSendApproval = createSendApprovalRequest({
     id: "approval-comms-send-001",
-    actionId: commsSendAction.id,
+    actionId: commsSendProposal.actionId,
     warrantId: commsWarrant.id,
     requestedByAgentId: commsAgent.id,
     title: "Approve investor follow-up send",
@@ -431,14 +600,17 @@ export function runMainScenarioPlannerFlow(
 
   const commsSendAttempt = {
     ...commsSendAction,
-    rootRequestId: commsSendAuthorization.lineage.rootRequestId,
-    parentWarrantId: commsSendAuthorization.lineage.parentWarrantId,
+    rootRequestId: rootWarrant.rootRequestId,
+    parentWarrantId: commsWarrant.parentId,
     createdAt: commsSendRequestedAt,
     authorization: {
-      allowed: commsSendAuthorization.allowed,
-      code: commsSendAuthorization.code,
-      message: commsSendAuthorization.message,
-      effectiveStatus: commsSendAuthorization.effectiveStatus,
+      allowed: true,
+      code: commsSendPreApprovalDecision.authorization?.code ?? "allowed",
+      message:
+        commsSendPreApprovalDecision.authorization?.message ??
+        "This branch is within policy but requires explicit approval.",
+      effectiveStatus:
+        commsSendPreApprovalDecision.authorization?.effectiveStatus ?? "active",
       blockedByWarrantId: null,
     },
     summary:
@@ -454,8 +626,7 @@ export function runMainScenarioPlannerFlow(
     const scenario: DemoScenario = {
       id: SCENARIO_ID,
       title: "Investor update for April 18",
-      taskPrompt:
-        "Prepare my investor update for tomorrow and coordinate follow-ups.",
+      taskPrompt: MAIN_SCENARIO_PROMPT,
       referenceTime: REFERENCE_TIME,
       targetDate: TARGET_DATE,
       timezone: TIMEZONE,
@@ -533,6 +704,8 @@ export function runMainScenarioPlannerFlow(
             "Comms Agent stayed inside its warrant, but the real Gmail send is paused until Maya approves this exact email through Auth0.",
         }),
       ],
+      controlDecisions,
+      runtimeEvents,
       examples: {
         calendarChildWarrantId: calendarWarrant.id,
         commsChildWarrantId: commsWarrant.id,
@@ -547,12 +720,51 @@ export function runMainScenarioPlannerFlow(
     return {
       scenario,
       taskPlan,
+      plannerRuntime,
     };
   }
 
-  const commsApprovedSend = executeGmailSendAction({
+  const commsApprovedSendProposal: ActionProposal = {
+    id: "proposal-comms-send-approved-001",
     actionId: "action-comms-send-approved-001",
     requestedAt: "2026-04-17T09:12:00.000Z",
+    kind: "gmail.send",
+    agentId: commsWarrant.agentId,
+    warrantId: commsWarrant.id,
+    target: {
+      recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+    },
+    usage: {
+      sendsUsed: 0,
+    },
+    summary: "Execute the approved bounded Gmail send.",
+    resource: "Live send to partners@northstar.vc and finance@northstar.vc",
+  };
+  const commsApprovedSendDecision = recordControlEvaluation(
+    evaluateProposalControl({
+      proposal: commsApprovedSendProposal,
+      warrant: commsWarrant,
+      warrants,
+      approval: {
+        required: true,
+        status: commsSendApproved.status,
+      },
+      providerCheck: {
+        available: true,
+        state: "success",
+        reason: "Provider send execution path is available.",
+      },
+    }),
+  );
+  assertControlState(
+    commsApprovedSendDecision,
+    "executable",
+    commsApprovedSendProposal.actionId,
+  );
+
+  const commsApprovedSend = executeGmailSendAction({
+    actionId: commsApprovedSendProposal.actionId,
+    requestedAt: commsApprovedSendProposal.requestedAt,
     warrant: commsWarrant,
     warrants,
     user: scenarioUser,
@@ -576,7 +788,9 @@ export function runMainScenarioPlannerFlow(
     revokedAt: commsRevocation.events[0]?.metadata.occurredAt ?? "2026-04-17T09:13:00.000Z",
     reason: commsRevocation.events[0]?.metadata.reason ??
       "Maya revoked the Comms branch after the approved send to prove that delegated authority can be withdrawn immediately.",
-    cascadedWarrantIds: commsRevocation.revokedWarrantIds,
+    cascadedWarrantIds: commsRevocation.revokedWarrantIds.filter(
+      (warrantId) => warrantId !== commsWarrant.id,
+    ),
   });
   const revokedWarrants = commsRevocation.warrants;
   const revokedCommsWarrant = revokedWarrants.find(
@@ -587,9 +801,42 @@ export function runMainScenarioPlannerFlow(
     throw new Error("Expected revoked comms warrant in main scenario.");
   }
 
-  const commsPostRevokeAttempt = executeGmailSendAction({
+  const commsPostRevokeProposal: ActionProposal = {
+    id: "proposal-comms-send-post-revoke-001",
     actionId: "action-comms-send-post-revoke-001",
     requestedAt: "2026-04-17T09:14:00.000Z",
+    kind: "gmail.send",
+    agentId: revokedCommsWarrant.agentId,
+    warrantId: revokedCommsWarrant.id,
+    target: {
+      recipients: ["partners@northstar.vc"],
+    },
+    usage: {
+      sendsUsed: 1,
+    },
+    summary: "Retry send after branch revocation.",
+    resource: "Send investor follow-up to partners@northstar.vc",
+  };
+  const commsPostRevokeDecision = recordControlEvaluation(
+    evaluateProposalControl({
+      proposal: commsPostRevokeProposal,
+      warrant: revokedCommsWarrant,
+      warrants: revokedWarrants,
+      approval: {
+        required: true,
+        status: commsSendApproved.status,
+      },
+    }),
+  );
+  assertControlState(
+    commsPostRevokeDecision,
+    "blocked_revoked",
+    commsPostRevokeProposal.actionId,
+  );
+
+  const commsPostRevokeAttempt = executeGmailSendAction({
+    actionId: commsPostRevokeProposal.actionId,
+    requestedAt: commsPostRevokeProposal.requestedAt,
     warrant: revokedCommsWarrant,
     warrants: revokedWarrants,
     user: scenarioUser,
@@ -618,8 +865,7 @@ export function runMainScenarioPlannerFlow(
   const scenario: DemoScenario = {
     id: SCENARIO_ID,
     title: "Investor update for April 18",
-    taskPrompt:
-      "Prepare my investor update for tomorrow and coordinate follow-ups.",
+    taskPrompt: MAIN_SCENARIO_PROMPT,
     referenceTime: REFERENCE_TIME,
     targetDate: TARGET_DATE,
     timezone: TIMEZONE,
@@ -708,6 +954,8 @@ export function runMainScenarioPlannerFlow(
       }),
       commsPostRevokeAttempt.timelineEvent,
     ],
+    controlDecisions,
+    runtimeEvents,
     examples: {
       calendarChildWarrantId: calendarWarrant.id,
       commsChildWarrantId: commsWarrant.id,
@@ -722,5 +970,6 @@ export function runMainScenarioPlannerFlow(
   return {
     scenario,
     taskPlan,
+    plannerRuntime,
   };
 }

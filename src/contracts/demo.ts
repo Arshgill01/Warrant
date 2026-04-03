@@ -7,6 +7,10 @@ import type {
 import type { AgentIdentity, AgentStatus } from "@/contracts/agent";
 import type { ApprovalRequest } from "@/contracts/approval";
 import type { LedgerEvent, RevocationRecord } from "@/contracts/audit";
+import type {
+  RuntimeControlEvent,
+  RuntimeProposalControlDecision,
+} from "@/contracts/runtime";
 import type { WarrantContract } from "@/contracts/warrant";
 
 export type ExternalSystem = "gmail" | "google-calendar" | "google-docs";
@@ -70,5 +74,7 @@ export interface DemoScenario {
   approvals: DemoApprovalRequest[];
   revocations: RevocationRecord[];
   timeline: LedgerEvent[];
+  controlDecisions: RuntimeProposalControlDecision[];
+  runtimeEvents: RuntimeControlEvent[];
   examples: DemoScenarioExamples;
 }

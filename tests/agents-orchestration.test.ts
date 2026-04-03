@@ -37,6 +37,11 @@ describe("main scenario planner flow", () => {
     expect(commsWarrant?.resourceConstraints.maxSends).toBe(1);
     expect(calendarWarrant?.parentId).toBe(rootWarrant?.id);
     expect(commsWarrant?.parentId).toBe(rootWarrant?.id);
+    expect(run.plannerRuntime.source).toBe("model");
+    expect(run.plannerRuntime.events.map((event) => event.kind)).toEqual([
+      "planner.started",
+      "planner.plan.valid",
+    ]);
   });
 
   it("records draft success separately from send approval gating", () => {
@@ -150,6 +155,28 @@ describe("main scenario planner flow", () => {
         subject: "Investor update follow-up for April 18",
       }),
     );
+    expect(run.scenario.controlDecisions.length).toBeGreaterThan(0);
+    expect(run.scenario.runtimeEvents.length).toBeGreaterThan(0);
+    expect(
+      run.scenario.controlDecisions.filter(
+        (decision) => decision.controlState === "proposal_created",
+      ).length,
+    ).toBe(6);
+    expect(
+      run.scenario.controlDecisions.some(
+        (decision) => decision.controlState === "approval_required",
+      ),
+    ).toBe(true);
+    expect(
+      run.scenario.controlDecisions.some(
+        (decision) => decision.controlState === "approval_approved",
+      ),
+    ).toBe(true);
+    expect(
+      run.scenario.controlDecisions.some(
+        (decision) => decision.controlState === "blocked_revoked",
+      ),
+    ).toBe(true);
     expect(run.scenario.timeline.map((event) => event.kind)).toEqual([
       "scenario.loaded",
       "warrant.issued",
@@ -167,6 +194,7 @@ describe("main scenario planner flow", () => {
     expect(run.scenario.revocations).toEqual([
       expect.objectContaining({
         warrantId: "warrant-comms-child-001",
+        cascadedWarrantIds: [],
       }),
     ]);
     expect(run.scenario.agents.find((agent) => agent.id === "agent-comms-001")?.status).toBe("revoked");
@@ -198,6 +226,16 @@ describe("main scenario planner flow", () => {
     ).toBe(false);
     expect(
       run.scenario.actionAttempts.some((attempt) => attempt.authorization.code === "warrant_revoked"),
+    ).toBe(false);
+    expect(
+      run.scenario.controlDecisions.some(
+        (decision) => decision.controlState === "approval_required",
+      ),
+    ).toBe(true);
+    expect(
+      run.scenario.controlDecisions.some(
+        (decision) => decision.controlState === "approval_approved",
+      ),
     ).toBe(false);
     expect(run.scenario.revocations).toEqual([]);
     expect(run.scenario.timeline.map((event) => event.kind)).toEqual([
