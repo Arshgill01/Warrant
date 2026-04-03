@@ -608,6 +608,82 @@ Manual shell checks during local run:
 - Without real Auth0 and Google credentials in local env, end-to-end sign-in and provider connection cannot be fully exercised in this worktree.
 - Approval state is shell-only here; later approval-track work must replace placeholder approval handling with the real flow.
 
+## ExecPlan — Child Runtime Actors (2026-04-03)
+
+### Objective
+
+Implement real Calendar Agent and Comms Agent runtime actors with distinct identities, role-specific prompts/context/input/output contracts, structured output validation, one-retry repair logic, and explicit runtime events for invalid/degraded behavior.
+
+### Demo relevance
+
+This strengthens Milestone 3 (Useful agent flow) and supports Milestones 4-5 by making child-agent reasoning inspectable, constrained, and non-magical while preserving the rule that privileged actions are still controlled outside runtime/model calls.
+
+### Scope
+
+In scope:
+
+- runtime contracts for Calendar and Comms child actors
+- shared model-adapter invocation path for both runtimes
+- role-specific structured outputs and validation
+- one repair retry on invalid model output
+- structured runtime failure result after retry exhaustion
+- explicit runtime events for invalid-output and degraded paths
+- deterministic tests for valid and invalid/retry/failure scenarios
+
+Out of scope:
+
+- full control bridge wiring
+- direct privileged API execution inside runtime/model invocation
+- planner orchestration redesign
+- non-calendar/non-comms child runtimes
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/*`
+- `src/contracts/*` (runtime-facing types if needed)
+- `tests/*` (runtime coverage)
+
+### Invariants to preserve
+
+- Calendar and Comms roles remain distinct in input, context, output, and allowable proposals.
+- Comms draft generation and send proposal generation are distinct concepts.
+- Child runtimes cannot silently expand authority beyond their role/warrant intent.
+- Structured output validation is mandatory; freeform parsing cannot be system truth.
+- Runtime/model calls do not directly execute privileged actions.
+
+### Implementation steps
+
+1. Define runtime contracts and a shared model adapter interface with explicit runtime identity and event types.
+2. Implement Calendar runtime with schedule-focused prompt, role-specific input/output schema, and validated proposal/summary output.
+3. Implement Comms runtime with draft-focused prompt, distinct optional send-proposal output, and explicit non-execution semantics.
+4. Add shared invalid-output handling with one repair retry max and structured failure fallback.
+5. Emit runtime events for success, invalid output, retry, and failure/degraded paths.
+6. Add deterministic tests covering valid output and invalid/retry/failure paths for each runtime.
+7. Run lint, typecheck, tests, and build before final report.
+
+### Validation steps
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Targeted deterministic runtime checks via unit tests:
+
+- Calendar valid path
+- Calendar invalid->repair path
+- Calendar invalid->retry-exhausted failure path
+- Comms valid draft path
+- Comms valid draft+send-proposal path
+- Comms invalid->repair/failure paths
+
+### Known risks
+
+- No existing schema library is installed, so initial validation may require explicit TypeScript guards; this is reliable but verbose.
+- Prompt text quality impacts runtime realism; tests should validate contract shape and role separation rather than natural-language quality.
+- Integration into broader planner flow may require a follow-up slice once control-bridge interfaces are finalized.
+
 ### Implementation steps
 
 1. Add the ExecPlan and inspect the empty repo baseline.
