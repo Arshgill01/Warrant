@@ -292,8 +292,12 @@ describe("state surface proof coverage", () => {
     expect(deniedApprovalEvent.controlState).toBe("approval_denied");
     expect(policyDeniedBlockedEvent.actionId).toBe(COMMS_OVERREACH_ACTION_ID);
     expect(revokedBlockedEvent.actionId).toBe(COMMS_POST_REVOKE_ACTION_ID);
+    expect(policyDeniedBlockedEvent.proposalId).toBe("proposal-comms-send-overreach-001");
+    expect(revokedBlockedEvent.proposalId).toBe("proposal-comms-send-post-revoke-001");
     expect(policyDeniedBlockedEvent.controlState).toBe("denied_policy");
     expect(revokedBlockedEvent.controlState).toBe("blocked_revoked");
+    expect(policyDeniedBlockedEvent.runtimeControlState).toBe("denied_policy");
+    expect(revokedBlockedEvent.runtimeControlState).toBe("blocked_revoked");
     expect(deniedPolicyAction.authorization.code).not.toBe(
       blockedRevokedAction.authorization.code,
     );
@@ -309,6 +313,8 @@ describe("state surface proof coverage", () => {
     expect(pendingHtml).toContain("current: approval pending");
     expect(pendingHtml).toContain("pending in auth0");
     expect(pendingHtml).toContain("approval required");
+    expect(pendingHtml).toContain("Proposal");
+    expect(pendingHtml).toContain("Runtime");
     expect(pendingHtml).toContain("Policy code: recipient_not_allowed");
 
     expect(deniedApprovalHtml).toContain("current: approval denied");

@@ -65,6 +65,8 @@ describe("route rendering", () => {
     expect(html).toContain("Revocation and expiry do different jobs.");
     expect(html).toContain("Maya revoked the Comms branch after the approved send to prove that delegated authority can be withdrawn immediately.");
     expect(html).toContain("Authorization Timeline");
+    expect(html).toContain("Proposal");
+    expect(html).toContain("Runtime");
     expect(html).toContain("Comms child warrant delegated");
     expect(html).toContain("Draft investor follow-ups for approved recipients and request one send after approval.");
     expect(html).toContain("Tried to send the investor follow-up to a recipient outside this branch.");
