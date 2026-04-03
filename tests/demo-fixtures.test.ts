@@ -138,6 +138,19 @@ describe("demo fixtures", () => {
     expect(loadDemoState().agents[0]?.label).toBe("Planner Agent");
   });
 
+  it("preserves the active preset context when storing a custom scenario snapshot", () => {
+    restoreDemoStatePreset("comms-revoked");
+
+    const scenario = loadDemoState();
+    scenario.agents[0]!.summary = "Custom planner summary";
+    replaceDemoState(scenario);
+
+    const rehearsal = loadDemoRehearsalSnapshot();
+
+    expect(rehearsal.kind).toBe("custom");
+    expect(rehearsal.preset).toBe("comms-revoked");
+  });
+
   it("keeps graph, timeline, and warrant summaries aligned to the same scenario lineage", () => {
     const graphView = loadDelegationGraphView();
     const timeline = loadTimelineEvents();
