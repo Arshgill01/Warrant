@@ -167,6 +167,7 @@ describe("main scenario planner flow", () => {
     expect(run.scenario.revocations).toEqual([
       expect.objectContaining({
         warrantId: "warrant-comms-child-001",
+        cascadedWarrantIds: [],
       }),
     ]);
     expect(run.scenario.agents.find((agent) => agent.id === "agent-comms-001")?.status).toBe("revoked");

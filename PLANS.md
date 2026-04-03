@@ -2733,3 +2733,81 @@ Manual checks:
 - Auth0 tenant-specific configuration can vary; docs must distinguish local deterministic demo behavior from fully wired provider execution.
 - Over-compressing README can remove nuance about approval and provider boundaries; keep wording concise but precise.
 - Validation may pass in fixture mode while real external provider execution still depends on Auth0 dashboard setup.
+
+## ExecPlan — Real-Agent Integration Preflight Seams (2026-04-03)
+
+### Objective
+
+Prepare the current merged codebase for the upcoming real-agent runtime wave by identifying and minimally resolving blocking ambiguity in contracts, runtime boundaries, and event/state flow seams.
+
+### Demo relevance
+
+This preflight protects Milestone 3 to Milestone 6 execution quality. It reduces the chance that upcoming planner/child runtime branches introduce regressions in:
+
+1. warrant-gated action execution
+2. approval-gated sensitive sends
+3. branch revocation and descendant invalidation visibility
+4. graph/timeline coherence during live demo transitions
+
+### Scope
+
+In scope:
+
+- inspect merged planner/orchestration-like flow and identify where real runtime should attach
+- inspect action/timeline/graph DTO assumptions and detect contract drift that could block runtime integration
+- identify conceptual-vs-runtime agent seams and boundary bypass risks
+- apply only minimal blocking fixes (no feature expansion)
+- add a short implementation note/checklist for follow-on real-agent branches
+
+Out of scope:
+
+- implementing real agent runtime or model/tool orchestration
+- adding new product features or broader UX redesign
+- refactoring large architecture surfaces
+- changing core thesis, provider surface, or demo storyline
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/main-scenario.ts`
+- `src/contracts/*` (only if a contract-level blocker is confirmed)
+- `src/demo-fixtures/*` (only for seam/contract coherence)
+- `README.md` or a short note under `docs/` (checklist only)
+- targeted tests under `tests/*` tied to the minimal fixes
+
+### Invariants to preserve
+
+- Two-layer enforcement remains explicit: local Warrant policy and Auth0-backed external execution are separate gates.
+- Child authority remains narrowing-only, never expanding parent authority.
+- Revocation must invalidate descendants and remain visible in graph/timeline/audit surfaces.
+- Approval state and policy denial state remain distinct and legible.
+- Main and comms-revoked fixture presets remain deterministic and stable.
+
+### Implementation steps
+
+1. Audit the merged orchestration, overreach/approval/revoke logic, graph/timeline derivation, and provider-action boundary to map runtime attach points.
+2. Document concrete seam findings, including where agent behavior is currently deterministic fixture logic versus runtime-real.
+3. Apply a minimal blocking contract fix only where drift is confirmed to cause integration ambiguity.
+4. Add a short in-repo implementation checklist for upcoming runtime branches with explicit attach points and guardrails.
+5. Run targeted tests for touched surfaces, then run broader lint/typecheck/test/build validation.
+6. Land the work in small reviewable commits aligned to planning, minimal fix, and checklist slices.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/state-surface-proof.test.tsx tests/delegation-graph.test.ts tests/routes.test.tsx`
+- `npm run test`
+- `npm run build`
+
+Manual checks:
+
+- inspect `/demo` render path and verify main-vs-revoked scenario semantics remain coherent
+- confirm provider send boundary remains explicitly gated by execution release
+- confirm revocation lineage and timeline references remain internally consistent
+
+### Risks
+
+- Some seam findings may be architectural and intentionally deferred; this pass should avoid over-fixing beyond blockers.
+- Contract tightening can break assumptions in tests or fixture mutation helpers if those assumptions were implicit.
+- Preflight notes can drift if follow-on branches do not keep the checklist updated.
