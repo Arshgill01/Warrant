@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertRuntimeModelStartup,
   invokeRuntimeModelStructuredOutput,
   type RuntimeModelResponse,
   type RuntimeModelTransport,
@@ -78,6 +79,14 @@ describe("runtime model startup validation", () => {
     expect(validation.ok).toBe(false);
     expect(validation.configuration.logicalModel).toBe("gemma-4-31b");
     expect(validation.issues.map((issue) => issue.field)).toContain("GOOGLE_API_KEY");
+  });
+
+  it("throws from startup assertion when required config is missing", () => {
+    expect(() =>
+      assertRuntimeModelStartup({
+        WARRANT_RUNTIME_MODEL_PROVIDER_ID: "gemma-4-31b",
+      } as unknown as NodeJS.ProcessEnv)
+    ).toThrowError(/Runtime model startup validation failed/);
   });
 });
 

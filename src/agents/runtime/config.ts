@@ -143,3 +143,18 @@ export function validateRuntimeModelStartup(
 export function getRuntimeModelStartupValidation(): RuntimeModelStartupValidation {
   return validateRuntimeModelStartup();
 }
+
+export function assertRuntimeModelStartup(
+  env: NodeJS.ProcessEnv = process.env,
+): RuntimeModelConfiguration {
+  const startup = validateRuntimeModelStartup(env);
+
+  if (!startup.ok) {
+    const details = startup.issues
+      .map((issue) => `${issue.field}: ${issue.message}`)
+      .join("; ");
+    throw new Error(`Runtime model startup validation failed. ${details}`);
+  }
+
+  return startup.configuration;
+}
