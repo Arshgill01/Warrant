@@ -423,11 +423,6 @@ export function runMainScenarioPlannerFlow(
     blastRadius:
       "If approved, the Comms branch may send this one email to partners@northstar.vc and finance@northstar.vc.",
   });
-  const commsSendApproved = decideApprovalRequest({
-    request: commsSendApproval,
-    status: "approved",
-    decidedAt: "2026-04-17T09:11:00.000Z",
-  });
 
   const commsSendAttempt = {
     ...commsSendAction,
@@ -550,6 +545,12 @@ export function runMainScenarioPlannerFlow(
     };
   }
 
+  const commsSendApproved = decideApprovalRequest({
+    request: commsSendApproval,
+    status: "approved",
+    decidedAt: "2026-04-17T09:11:00.000Z",
+  });
+
   const commsApprovedSend = executeGmailSendAction({
     actionId: "action-comms-send-approved-001",
     requestedAt: "2026-04-17T09:12:00.000Z",
@@ -560,6 +561,7 @@ export function runMainScenarioPlannerFlow(
     usage: {
       sendsUsed: 0,
     },
+    approvalRequestId: commsSendApproved.id,
     adapter: adapters.gmailSend,
   });
   const commsRevocation = revokeWarrantBranch({
