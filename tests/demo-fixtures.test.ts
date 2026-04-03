@@ -138,6 +138,19 @@ describe("demo fixtures", () => {
     expect(loadDemoState().agents[0]?.label).toBe("Planner Agent");
   });
 
+  it("preserves the active preset context when storing a custom scenario snapshot", () => {
+    restoreDemoStatePreset("comms-revoked");
+
+    const scenario = loadDemoState();
+    scenario.agents[0]!.summary = "Custom planner summary";
+    replaceDemoState(scenario);
+
+    const rehearsal = loadDemoRehearsalSnapshot();
+
+    expect(rehearsal.kind).toBe("custom");
+    expect(rehearsal.preset).toBe("comms-revoked");
+  });
+
   it("keeps graph, timeline, and warrant summaries aligned to the same scenario lineage", () => {
     const graphView = loadDelegationGraphView();
     const timeline = loadTimelineEvents();
@@ -210,6 +223,24 @@ describe("demo fixtures", () => {
         actionId: "action-comms-send-post-revoke-001",
         kind: "action.blocked",
       }),
+    );
+  });
+
+  it("keeps in-page revoke transition timestamps aligned with the canonical revoked replay stage", () => {
+    const inPageRevoked = revokeCommsBranchScenario(createMainDemoScenario());
+    const canonicalRevoked = createCommsRevokedDemoScenario();
+
+    expect(inPageRevoked.revocations[0]?.revokedAt).toBe(
+      canonicalRevoked.revocations[0]?.revokedAt,
+    );
+    expect(
+      inPageRevoked.actionAttempts.find(
+        (attempt) => attempt.id === "action-comms-send-post-revoke-001",
+      )?.requestedAt,
+    ).toBe(
+      canonicalRevoked.actionAttempts.find(
+        (attempt) => attempt.id === "action-comms-send-post-revoke-001",
+      )?.requestedAt,
     );
   });
 

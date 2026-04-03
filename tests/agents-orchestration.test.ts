@@ -134,6 +134,7 @@ describe("main scenario planner flow", () => {
     expect(commsApprovedSend).toEqual(
       expect.objectContaining({
         outcome: "allowed",
+        approvalRequestId: "approval-comms-send-001",
         providerState: "success",
         authorization: expect.objectContaining({
           code: "allowed",
@@ -191,6 +192,15 @@ describe("main scenario planner flow", () => {
       "warrant.revoked",
       "action.blocked",
     ]);
+    expect(
+      run.scenario.timeline.find(
+        (event) => event.actionId === "action-comms-send-approved-001",
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        approvalId: "approval-comms-send-001",
+      }),
+    );
     expect(run.scenario.revocations).toEqual([
       expect.objectContaining({
         warrantId: "warrant-comms-child-001",
