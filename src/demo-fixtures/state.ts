@@ -296,10 +296,12 @@ export function replaceDemoState(nextState: DemoScenario): DemoScenario {
     throw new Error("replaceDemoState expected a complete demo scenario.");
   }
 
+  const resolved = resolveDemoState();
+
   writeStoredState(
     createStoredState({
       kind: "custom",
-      preset: DEFAULT_REHEARSAL_PRESET,
+      preset: resolved.storedState.preset,
       scenario: nextState,
     }),
   );

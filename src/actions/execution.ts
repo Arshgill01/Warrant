@@ -329,6 +329,7 @@ export function executeGmailSendAction(input: ExecuteActionBaseInput & {
   adapter: GmailSendAdapter;
   user: DemoUser;
   recipients: string[];
+  approvalRequestId?: string;
 }): ExecutedScenarioAction {
   const action: ActionAttempt = {
     id: input.actionId,
@@ -378,6 +379,7 @@ export function executeGmailSendAction(input: ExecuteActionBaseInput & {
       outcome: "allowed",
       outcomeReason: adapterResult.outcomeReason,
       authorization: createAuthorizationSnapshot(authorization),
+      approvalRequestId: input.approvalRequestId,
       providerState: adapterResult.providerState,
       providerHeadline: adapterResult.providerHeadline,
       providerDetail: adapterResult.providerDetail,
@@ -391,7 +393,7 @@ export function executeGmailSendAction(input: ExecuteActionBaseInput & {
       warrantId: input.warrant.id,
       parentWarrantId: input.warrant.parentId,
       actionId: input.actionId,
-      approvalId: null,
+      approvalId: input.approvalRequestId ?? null,
       revocationId: null,
       title: adapterResult.timelineTitle,
       description: adapterResult.timelineDescription,
