@@ -2733,3 +2733,84 @@ Manual checks:
 - Auth0 tenant-specific configuration can vary; docs must distinguish local deterministic demo behavior from fully wired provider execution.
 - Over-compressing README can remove nuance about approval and provider boundaries; keep wording concise but precise.
 - Validation may pass in fixture mode while real external provider execution still depends on Auth0 dashboard setup.
+
+## ExecPlan — RAI Scenario Runtime Coherence Hardening (2026-04-03)
+
+### Objective
+
+Harden the investor-update scenario after real-agent runtime integration so planner sequencing, child runtime outputs, proposal/control decisions, execution results, and graph/timeline surfaces stay coherent and repeatable across repeated runs.
+
+### Demo relevance
+
+This directly protects the core 3-minute proof path:
+
+1. planner delegates narrower child authority
+2. child runtime produces useful outputs and one policy-denied overreach
+3. sensitive send proposal waits for control decision
+4. execution/result state remains truthful
+5. revoke cuts authority immediately without corrupting history
+
+### Scope
+
+In scope:
+
+- run the full investor-update scenario through current runtime-backed scenario builders and inspect sequencing/state drift
+- remove fragile sequencing mismatches between canonical runtime stage outputs and in-page scenario mutations
+- tighten runtime/control-state consistency so proposal, approval decision, execution, and revoke outcomes remain distinct and ordered
+- harden repeatability so preset restore, in-page mutation, and repeated runs do not blur scenario/control state
+- add targeted tests for transition coherence and repeated-run integrity
+
+Out of scope:
+
+- new agent features, integrations, or scope expansion
+- bypassing runtime-layer execution helpers with static shortcuts
+- changing core deny/approval/revoke semantics
+- broad UI redesign work
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/agents/main-scenario.ts`
+- `src/demo-fixtures/scenario.ts`
+- `src/demo-fixtures/state.ts`
+- `src/components/demo/demo-surface.tsx`
+- `tests/agents-orchestration.test.ts`
+- `tests/demo-fixtures.test.ts`
+- `tests/state-surface-proof.test.tsx`
+
+### Invariants to preserve
+
+- child warrants only narrow from parent authority
+- deny, approval, and revoke outcomes remain separate and inspectable
+- branch revocation invalidates the branch and descendants immediately
+- graph and timeline derive from the same canonical scenario state
+- repeated runs of canonical presets are deterministic and stable
+
+### Implementation steps
+
+1. Baseline current runtime flow and state-binding behavior with tests and repeated local scenario construction checks.
+2. Align scenario transition sequencing so canonical runtime stage outputs and in-page revoke mutation share consistent ordering and timestamps.
+3. Tighten state-binding helpers so custom-vs-preset labeling and persisted state snapshots stay truthful after runtime-driven mutations.
+4. Add focused tests for planner->proposal->decision->execution->revoke coherence and repeated-run replay stability.
+5. Run lint, typecheck, focused tests, full tests, and build.
+6. Commit in small slices: sequencing fixes, state cleanup, repeatability fixes, and final validation/doc updates.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/state-surface-proof.test.tsx tests/routes.test.tsx`
+- `npm run test`
+- `npm run build`
+
+Manual checks:
+
+- run main scenario preset repeatedly and confirm stable graph/timeline ordering
+- revoke Comms branch in-page, verify control-state truthfulness, then restore presets
+- compare in-page revoked custom state behavior against canonical comms-revoked preset for semantic consistency
+
+### Risks
+
+- sequence alignment can accidentally alter expected fixture chronology if timestamps/events are not reconciled carefully
+- tightening state-truth rules may mark more local states as custom, which is acceptable but must stay user-legible
+- deterministic fixture expectations may require snapshot/test updates if canonical ordering semantics are corrected
