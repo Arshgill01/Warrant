@@ -2811,3 +2811,157 @@ Manual checks:
 - Some seam findings may be architectural and intentionally deferred; this pass should avoid over-fixing beyond blockers.
 - Contract tightening can break assumptions in tests or fixture mutation helpers if those assumptions were implicit.
 - Preflight notes can drift if follow-on branches do not keep the checklist updated.
+
+## ExecPlan — Runtime Actor Contracts And Stable Event Vocabulary (2026-04-03)
+
+### Objective
+
+Define shared runtime contracts that make Planner, Calendar, and Comms first-class runtime actors with explicit proposal/control/execution boundaries and a stable event vocabulary for graph, timeline, and control-state binding.
+
+### Demo relevance
+
+This is foundational work for Milestone 3 through Milestone 6. It prevents downstream runtime branches from inventing incompatible state labels or event names and protects the demo beats for:
+
+1. planner delegation into child agents
+2. approval-gated sensitive sends
+3. denied overreach vs revoked-branch failures
+4. graph/timeline legibility during live transitions
+
+### Scope
+
+In scope:
+
+- add runtime actor identity and role contracts for planner/calendar/comms
+- add runtime state/status vocabulary for actor lifecycle
+- add action proposal and proposal-control decision contracts
+- add planner plan and explicit planner validation result contracts
+- add stable `RuntimeEvent` taxonomy with typed payload envelope
+- add agent step result/error contracts suitable for runtime, timeline, and control binding
+- add focused contract tests to lock vocabulary and structural invariants
+
+Out of scope:
+
+- provider-specific execution logic
+- model adapter/runtime orchestration implementation
+- UI rendering or graph layout implementation
+- broad framework abstractions beyond shared contracts
+
+### Files/modules likely affected
+
+- `PLANS.md` (this ExecPlan entry)
+- `src/contracts/agent.ts`
+- `src/contracts/action.ts`
+- `src/contracts/control-state.ts` (only if mapping additions are required)
+- `src/contracts/index.ts`
+- `src/contracts/*` (new runtime contract modules as needed)
+- `tests/*` (targeted contract-level tests)
+
+### Invariants to preserve
+
+- Runtime actors are first-class entities with explicit lineage and warrant identity.
+- Proposal, approval/control, and execution states remain distinct.
+- Status and event vocabularies remain centralized and non-drifting.
+- Domain contracts remain separable from display contracts.
+- Existing deterministic demo fixtures continue to typecheck and run without behavior changes.
+
+### Implementation steps
+
+1. Add base runtime actor and lifecycle contracts (`AgentRuntime`, `AgentRole`, `AgentRuntimeState`) and keep compatibility aliases where existing modules import current role types.
+2. Add proposal/control contracts (`ActionProposal`, `ActionProposalState`, `ProposalControlDecision`) with lineage and warrant identifiers required.
+3. Add planner contracts (`PlannerPlan`, `PlannerPlanValidationResult`) with explicit schema-invalid vs semantically-invalid outcomes and machine-readable reason codes.
+4. Add first-class runtime event contract (`RuntimeEvent`) with stable category union and typed metadata fields for lineage/control/timeline binding.
+5. Add execution result contracts (`AgentStepResult`, error envelopes) and ensure they can encode success, approval-required pauses, policy denial, provider failure, and revoke-driven failures distinctly.
+6. Add/update tests that lock role/event/status vocabulary and validation-shape invariants.
+7. Run lint/typecheck/tests/build, then commit in reviewable slices matching contract surfaces.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/agents-orchestration.test.ts tests/demo-fixtures.test.ts tests/state-surface-proof.test.tsx`
+- `npm run test`
+- `npm run build`
+
+### Risks
+
+- Introducing new shared contract exports can break imports in active parallel branches if aliasing/back-compat is not preserved.
+- Runtime event taxonomy may be over- or under-constrained; this pass should prioritize stable required categories and avoid speculative expansion.
+- Planner semantic validation codes may need tightening once real runtime planner output is wired; keep the first set explicit but minimally sufficient.
+
+## ExecPlan — Real-Agent Model Adapter Guardrails (2026-04-03)
+
+### Objective
+
+Implement a centralized runtime model adapter foundation for real-agent integration using a logical `gemma-4-31b` model, deterministic defaults, strict structured-output validation, and explicit invalid-output failure handling.
+
+### Demo relevance
+
+This enables upcoming runtime-real planner/child-agent work to plug into one reliable invocation path without bypassing policy rigor. It directly strengthens technical execution quality for the demo by preventing freeform model text from becoming runtime truth.
+
+### Scope
+
+In scope:
+
+- add one central runtime-model config surface (provider + model mapping + defaults)
+- set logical runtime model to `gemma-4-31b`
+- map logical model id to provider model id in one file only
+- add one runtime model adapter utility with role-aware invocation
+- add standard structured-output invocation path with schema validation
+- add one repair retry for invalid structured outputs
+- return explicit structured failure after retry exhaustion
+- add startup/config checks for missing/invalid model configuration
+- ensure local env handling keeps real provider key only in ignored local env
+
+Out of scope:
+
+- planner/calendar/comms runtime orchestration logic
+- warrant issuance/enforcement changes
+- Gmail/Calendar provider execution changes
+- non-demo-critical model experimentation and multi-provider expansion
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `.env.example`
+- `.env.local` (local ignored file only)
+- `src/agents/index.ts`
+- `src/agents/runtime/*` (new runtime-model config/adapter modules)
+- `tests/*` (focused runtime-model tests)
+
+### Invariants to preserve
+
+- Do not commit real API keys, provider secrets, or prompt artifacts containing secrets.
+- Keep local policy, approval gating, and provider execution boundaries separate from model-output parsing.
+- Keep model configuration centralized; no duplicated provider/model ids across modules.
+- Model output must never be trusted as runtime truth until schema validation passes.
+- Invalid output paths must remain explicit and caller-visible.
+
+### Implementation steps
+
+1. Add the ExecPlan entry and audit current model/provider seam docs and env handling.
+2. Introduce a central runtime model config module with env parsing, logical-to-provider model mapping, deterministic defaults, and validation helpers.
+3. Add a central runtime model adapter module that supports role-aware invocation and structured-output calls.
+4. Implement schema validation, one repair retry max, and structured failure envelopes for invalid outputs.
+5. Add focused tests for config validation, successful structured parsing, retry success, and retry-exhausted failure.
+6. Update env/example docs placeholders as needed and create local ignored env file for key storage in this worktree only.
+7. Run lint, typecheck, tests, and build before final handoff.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Targeted checks:
+
+- missing runtime key/config returns startup/config failure with explicit fields
+- logical model `gemma-4-31b` resolves through a single mapping point
+- schema-invalid first response triggers exactly one repair retry
+- second schema-invalid response returns structured failure result
+
+### Risks
+
+- Exact provider-side model identifier naming for Gemma may differ by SDK/endpoint and can change; mapping must stay centralized and overrideable.
+- Real provider invocation depends on valid local API key and network availability, so CI/unit tests should mock invocation transport.
+- Tight output guardrails can increase failed calls when prompts are weak; role prompts must stay explicit and schema-driven.
