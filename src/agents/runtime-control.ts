@@ -2,11 +2,11 @@ import type {
   ActionAttempt,
   ActionAuthorizationSnapshot,
   ApprovalStatus,
-  ProposalControlDecision,
+  RuntimeControlEvent,
   RuntimeControlState,
-  RuntimeEvent,
+  RuntimeProposalControlDecision,
+  RuntimeActionProposal,
   WarrantContract,
-  ActionProposal,
   ProviderActionState,
   WarrantDecisionCode,
 } from "@/contracts";
@@ -19,7 +19,7 @@ interface ProviderExecutionCheck {
 }
 
 interface EvaluateProposalControlInput {
-  proposal: ActionProposal;
+  proposal: RuntimeActionProposal;
   warrant: WarrantContract;
   warrants: readonly WarrantContract[];
   approval?: {
@@ -30,12 +30,12 @@ interface EvaluateProposalControlInput {
 }
 
 export interface ProposalControlEvaluation {
-  finalDecision: ProposalControlDecision;
-  decisions: ProposalControlDecision[];
-  runtimeEvents: RuntimeEvent[];
+  finalDecision: RuntimeProposalControlDecision;
+  decisions: RuntimeProposalControlDecision[];
+  runtimeEvents: RuntimeControlEvent[];
 }
 
-function toActionAttempt(proposal: ActionProposal): ActionAttempt {
+function toActionAttempt(proposal: RuntimeActionProposal): ActionAttempt {
   return {
     id: proposal.actionId,
     kind: proposal.kind,
@@ -66,7 +66,7 @@ function toAuthorizationSnapshot(input: ReturnType<typeof authorizeAction>): Act
 }
 
 function buildDecision(input: {
-  proposal: ActionProposal;
+  proposal: RuntimeActionProposal;
   warrant: WarrantContract;
   controlState: RuntimeControlState;
   allowedToExecute: boolean;
@@ -76,7 +76,7 @@ function buildDecision(input: {
   approvalStatus?: ApprovalStatus | null;
   providerState?: ProviderActionState | null;
   metadata?: Record<string, string | number | boolean | null>;
-}): ProposalControlDecision {
+}): RuntimeProposalControlDecision {
   return {
     proposalId: input.proposal.id,
     actionId: input.proposal.actionId,
@@ -96,9 +96,9 @@ function buildDecision(input: {
 }
 
 function buildRuntimeEvent(
-  decision: ProposalControlDecision,
+  decision: RuntimeProposalControlDecision,
   title: string,
-): RuntimeEvent {
+): RuntimeControlEvent {
   return {
     id: `${decision.proposalId}:${decision.controlState}`,
     at: decision.at,
@@ -116,8 +116,8 @@ function buildRuntimeEvent(
 export function evaluateProposalControl(
   input: EvaluateProposalControlInput,
 ): ProposalControlEvaluation {
-  const decisions: ProposalControlDecision[] = [];
-  const runtimeEvents: RuntimeEvent[] = [];
+  const decisions: RuntimeProposalControlDecision[] = [];
+  const runtimeEvents: RuntimeControlEvent[] = [];
 
   const createdDecision = buildDecision({
     proposal: input.proposal,
@@ -302,13 +302,13 @@ export function evaluateProposalControl(
 }
 
 export function createExecutionFailedDecision(input: {
-  proposal: ActionProposal;
+  proposal: RuntimeActionProposal;
   warrant: WarrantContract;
   reason: string;
   authorization: ActionAuthorizationSnapshot | null;
   approvalStatus?: ApprovalStatus | null;
   providerState?: ProviderActionState | null;
-}): ProposalControlDecision {
+}): RuntimeProposalControlDecision {
   return buildDecision({
     proposal: input.proposal,
     warrant: input.warrant,
@@ -323,8 +323,8 @@ export function createExecutionFailedDecision(input: {
 }
 
 export function createRuntimeEventFromDecision(
-  decision: ProposalControlDecision,
+  decision: RuntimeProposalControlDecision,
   title: string,
-): RuntimeEvent {
+): RuntimeControlEvent {
   return buildRuntimeEvent(decision, title);
 }

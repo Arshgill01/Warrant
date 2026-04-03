@@ -1,13 +1,14 @@
 import type {
   ActionAttempt,
-  ActionProposal,
   DemoAgent,
   DemoScenario,
   DemoUser,
   LedgerEvent,
-  ProposalControlDecision,
   RevocationRecord,
-  RuntimeEvent,
+  RuntimeActionProposal as ActionProposal,
+  RuntimeControlEvent as RuntimeEvent,
+  RuntimeProposalControlDecision as ProposalControlDecision,
+  SharedModelAdapter,
   WarrantContract,
 } from "@/contracts";
 import {
@@ -31,14 +32,19 @@ import { evaluateProposalControl } from "@/agents/runtime-control";
 import type {
   MainScenarioRunResult,
   MainScenarioStage,
+  PlannerDelegationDraft,
   PlannerTaskRecord,
 } from "@/agents/types";
+import { createDeterministicPlannerModelAdapter } from "@/agents/model-adapter";
+import { runPlannerRuntime } from "@/agents/planner-runtime";
 
 const SCENARIO_ID = "demo-scenario-investor-update";
 const ROOT_REQUEST_ID = "request-investor-update-001";
 const REFERENCE_TIME = "2026-04-17T09:00:00.000Z";
 const TARGET_DATE = "2026-04-18";
 const TIMEZONE = "America/Los_Angeles";
+const MAIN_SCENARIO_PROMPT =
+  "Prepare my investor update for tomorrow and coordinate follow-ups.";
 
 const scenarioUser: DemoUser = {
   id: "user-maya-chen",
@@ -223,6 +229,19 @@ function assertControlState(
 
 interface MainScenarioRunOptions {
   stage?: MainScenarioStage;
+  plannerModelAdapter?: SharedModelAdapter;
+}
+
+function requireDelegationDraft(
+  drafts: PlannerDelegationDraft[],
+  role: PlannerDelegationDraft["childRole"],
+): PlannerDelegationDraft {
+  const draft = drafts.find((entry) => entry.childRole === role);
+  if (!draft) {
+    throw new Error(`Planner runtime plan missing ${role} delegation draft.`);
+  }
+
+  return draft;
 }
 
 export function runMainScenarioPlannerFlow(
@@ -265,6 +284,26 @@ export function runMainScenarioPlannerFlow(
     createdAt: "2026-04-17T09:01:00.000Z",
     expiresAt: "2026-04-18T18:00:00.000Z",
   });
+  const plannerRuntime = runPlannerRuntime(
+    {
+      rootRequestId: ROOT_REQUEST_ID,
+      goal: MAIN_SCENARIO_PROMPT,
+      now: "2026-04-17T09:01:30.000Z",
+      parentWarrant: rootWarrant,
+    },
+    {
+      modelAdapter:
+        options.plannerModelAdapter ?? createDeterministicPlannerModelAdapter(),
+    },
+  );
+  const calendarDelegationDraft = requireDelegationDraft(
+    plannerRuntime.plan.delegationDrafts,
+    "calendar",
+  );
+  const commsDelegationDraft = requireDelegationDraft(
+    plannerRuntime.plan.delegationDrafts,
+    "comms",
+  );
 
   const calendarWarrant = requireIssuedWarrant(
     issueChildWarrant({
@@ -274,7 +313,7 @@ export function runMainScenarioPlannerFlow(
         createdBy: plannerAgent.id,
         agentId: calendarAgent.id,
         purpose: "Read tomorrow's calendar window before follow-up drafting begins.",
-        capabilities: ["calendar.read"],
+        capabilities: calendarDelegationDraft.requestedCapabilities,
         resourceConstraints: {
           calendarWindow: {
             startsAt: "2026-04-18T08:00:00.000Z",
@@ -299,7 +338,7 @@ export function runMainScenarioPlannerFlow(
         agentId: commsAgent.id,
         purpose:
           "Draft investor follow-ups for approved recipients and request one send after approval.",
-        capabilities: ["gmail.draft", "gmail.send"],
+        capabilities: commsDelegationDraft.requestedCapabilities,
         resourceConstraints: {
           allowedDomains: ["northstar.vc"],
           allowedRecipients: [
@@ -342,7 +381,9 @@ export function runMainScenarioPlannerFlow(
       warrantId: commsWarrant.id,
       status: "completed",
     },
-    {
+  ];
+  if (commsWarrant.capabilities.includes("gmail.send")) {
+    taskPlan.push({
       id: "task-comms-send-approval-001",
       title: "Send approved investor follow-up emails",
       summary:
@@ -352,8 +393,8 @@ export function runMainScenarioPlannerFlow(
       requiredCapabilities: ["gmail.send"],
       warrantId: commsWarrant.id,
       status: "delegated",
-    },
-  ];
+    });
+  }
 
   const controlDecisions: ProposalControlDecision[] = [];
   const runtimeEvents: RuntimeEvent[] = [];
@@ -585,8 +626,7 @@ export function runMainScenarioPlannerFlow(
     const scenario: DemoScenario = {
       id: SCENARIO_ID,
       title: "Investor update for April 18",
-      taskPrompt:
-        "Prepare my investor update for tomorrow and coordinate follow-ups.",
+      taskPrompt: MAIN_SCENARIO_PROMPT,
       referenceTime: REFERENCE_TIME,
       targetDate: TARGET_DATE,
       timezone: TIMEZONE,
@@ -680,6 +720,7 @@ export function runMainScenarioPlannerFlow(
     return {
       scenario,
       taskPlan,
+      plannerRuntime,
     };
   }
 
@@ -747,7 +788,9 @@ export function runMainScenarioPlannerFlow(
     revokedAt: commsRevocation.events[0]?.metadata.occurredAt ?? "2026-04-17T09:13:00.000Z",
     reason: commsRevocation.events[0]?.metadata.reason ??
       "Maya revoked the Comms branch after the approved send to prove that delegated authority can be withdrawn immediately.",
-    cascadedWarrantIds: commsRevocation.revokedWarrantIds,
+    cascadedWarrantIds: commsRevocation.revokedWarrantIds.filter(
+      (warrantId) => warrantId !== commsWarrant.id,
+    ),
   });
   const revokedWarrants = commsRevocation.warrants;
   const revokedCommsWarrant = revokedWarrants.find(
@@ -822,8 +865,7 @@ export function runMainScenarioPlannerFlow(
   const scenario: DemoScenario = {
     id: SCENARIO_ID,
     title: "Investor update for April 18",
-    taskPrompt:
-      "Prepare my investor update for tomorrow and coordinate follow-ups.",
+    taskPrompt: MAIN_SCENARIO_PROMPT,
     referenceTime: REFERENCE_TIME,
     targetDate: TARGET_DATE,
     timezone: TIMEZONE,
@@ -928,5 +970,6 @@ export function runMainScenarioPlannerFlow(
   return {
     scenario,
     taskPlan,
+    plannerRuntime,
   };
 }

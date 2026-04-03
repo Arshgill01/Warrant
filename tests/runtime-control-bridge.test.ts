@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ActionProposal, WarrantContract } from "@/contracts";
+import type { RuntimeActionProposal, WarrantContract } from "@/contracts";
 import { evaluateProposalControl } from "@/agents";
 import { issueRootWarrant, revokeWarrantBranch } from "@/warrants";
 
@@ -31,7 +31,9 @@ function createRootWarrant(overrides: Partial<WarrantContract> = {}): WarrantCon
   };
 }
 
-function createSendProposal(overrides: Partial<ActionProposal> = {}): ActionProposal {
+function createSendProposal(
+  overrides: Partial<RuntimeActionProposal> = {},
+): RuntimeActionProposal {
   return {
     id: "proposal-send-001",
     actionId: "action-send-001",
