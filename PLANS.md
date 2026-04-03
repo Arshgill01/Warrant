@@ -2657,3 +2657,79 @@ Manual checks (if local browser run is available):
 - Tightening scenario-integrity checks could reject currently tolerated custom demo states, increasing repair frequency (acceptable for deterministic rehearsal goals).
 - Refactoring scenario derivation must avoid subtle semantic drift between pre-revoke and post-revoke snapshots.
 - If display ordering is changed without consistent tie-breakers across surfaces, graph and timeline could still diverge under equal timestamps.
+
+## ExecPlan — Release Packaging Judge-Facing Documentation Pass (2026-04-03)
+
+### Objective
+
+Produce a judge-friendly README that explains Warrant’s thesis, architecture boundaries, and runnable demo path clearly and accurately, without changing core product behavior.
+
+### Demo relevance
+
+This directly affects how quickly a reviewer can evaluate the 3-minute proof:
+
+1. understand the thesis in under a minute
+2. run the app with coherent setup instructions
+3. see Auth0 + Token Vault as load-bearing
+4. see what the custom Warrant layer contributes beyond OAuth
+
+### Scope
+
+In scope:
+
+- tighten README narrative around problem framing and thesis
+- make Auth0 responsibilities explicit and non-incidental
+- make Warrant-layer responsibilities explicit and non-overclaimed
+- add concise architecture and main scenario walkthrough
+- tighten setup, environment, local run, and demo rehearsal instructions
+- ensure docs map to currently implemented behavior after Wave 4 hardening
+
+Out of scope:
+
+- new product features or behavior changes
+- deep auth/integration rewrites
+- adding dependencies or production services
+- turning README into a long-form essay
+
+### Files/modules likely affected
+
+- `README.md`
+- `PLANS.md` (this ExecPlan entry only)
+
+### Invariants to preserve
+
+- Core thesis remains unchanged: OAuth for apps is insufficient for delegated multi-agent authority.
+- Two-layer enforcement remains explicit: local Warrant policy + Auth0-backed provider access.
+- No claims that exceed what the current implementation demonstrates.
+- Demo path remains centered on the canonical investor-update scenario and branch revocation proof.
+- Auth0/Token Vault remains visibly load-bearing, not incidental.
+
+### Implementation steps
+
+1. Audit current README and live code paths (`/`, `/demo`, demo fixtures, validation scripts) for factual grounding.
+2. Rewrite README structure to match judge-first flow: thesis, problem, Auth0 role, Warrant role, scenario, architecture, setup/run/demo, project structure.
+3. Tighten setup and env instructions to distinguish required vs optional vars and realistic local prerequisites.
+4. Add concise demo run instructions aligned to current deterministic presets and revocation behavior.
+5. Run documented and baseline validation commands as far as practical; adjust README for accuracy gaps.
+6. Do a final brevity/credibility pass to remove vague or inflated language.
+
+### Validation plan
+
+- `npm ci`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run smoke:demo`
+- `npm run validate`
+
+Manual checks:
+
+- run `npm run dev` and verify `/` and `/demo` load with the documented flow
+- verify README setup and demo steps correspond to real routes, scripts, and markers
+
+### Risks
+
+- Auth0 tenant-specific configuration can vary; docs must distinguish local deterministic demo behavior from fully wired provider execution.
+- Over-compressing README can remove nuance about approval and provider boundaries; keep wording concise but precise.
+- Validation may pass in fixture mode while real external provider execution still depends on Auth0 dashboard setup.

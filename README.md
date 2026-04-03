@@ -1,10 +1,50 @@
 # Warrant
 
-Warrant is a demo-first Auth0 for AI Agents hackathon project built around one thesis:
-
 **OAuth was designed for apps. AI agents need warrants.**
 
-This worktree implements the Auth0-facing shell for the foundation milestone. It makes sign-in, Google connection state, and delegated Gmail or Calendar access setup visible before the warrant engine and graph land.
+Warrant is a demo-first authorization product for multi-agent systems. A human authorizes a root agent, the root agent delegates narrower child warrants, and every downstream action stays bounded, inspectable, and revocable.
+
+## What Warrant Is
+
+Warrant is a focused demo for the Auth0 Authorized to Act hackathon. It is not a generic assistant platform. It is a concrete argument, implemented as a product:
+
+- agent authority should be delegated in constrained branches
+- child agents should only receive narrower permissions
+- revoking one branch should invalidate descendants immediately
+- sensitive actions should require explicit approval
+
+## Why This Problem Matters
+
+Flat app-style OAuth consent is designed for one application acting as one principal. Multi-agent systems break that model:
+
+- one user approval can fan out into many autonomous sub-agents
+- each sub-agent can have a different risk profile
+- an app-level token alone does not explain who delegated what, and why
+
+Warrant adds lineage-aware delegation and branch-level control so this is legible and enforceable.
+
+## What Auth0 Does Here
+
+Auth0 for AI Agents and Token Vault handle identity and external provider delegation:
+
+- user sign-in/session boundary (`/auth/login`, `/auth/logout`)
+- Google connected-account flow through `/auth/connect`
+- delegated Google token access path for Calendar and Gmail actions
+- sensitive send execution-release boundary that stays separate from local policy checks
+
+Auth0 is load-bearing in this architecture. Without it, external Gmail/Calendar execution is unavailable.
+
+## What the Warrant Layer Adds
+
+Warrant is the local authorization layer OAuth does not provide:
+
+- root and child warrant issuance with explicit parent-child lineage
+- narrowing rules so child warrants cannot exceed parent authority
+- resource constraints (recipients, domains, windows, usage caps)
+- branch revocation with descendant invalidation
+- denial reasons and timeline-friendly audit records
+
+Together, Auth0 and Warrant form two-layer enforcement: local policy must allow the action, and Auth0 must be able to release delegated provider access.
 
 ## Stack
 
@@ -14,104 +54,135 @@ This worktree implements the Auth0-facing shell for the foundation milestone. It
 - ESLint
 - Vitest
 
-## Quick start
+## Setup, Environment, And Local Run
+
+### Prerequisites
+
+- Node.js `>=22`
+- npm `>=10`
+
+### Install
 
 ```bash
-npm install
-npm run dev
+npm ci
 ```
 
-Open `http://localhost:3000`.
+### Environment
 
-## Environment
+Create `.env.local` from `.env.example`.
 
-Copy `.env.example` to a local env file and replace the placeholder values before wiring Auth0, OpenAI, or database integrations.
+Required for live Auth0-backed flow (the app still boots without them, but provider actions stay unavailable):
 
-Required for the auth shell:
-
+- `APP_BASE_URL` (or `NEXT_PUBLIC_APP_URL`)
 - `AUTH0_DOMAIN`
 - `AUTH0_CLIENT_ID`
 - `AUTH0_CLIENT_SECRET`
-- `AUTH0_SECRET`
-- `APP_BASE_URL`
+- `AUTH0_SECRET` (at least 32 chars; 64 hex chars recommended)
 
-Recommended for Google delegated access:
+Recommended for Google through Auth0:
 
-- `AUTH0_GOOGLE_CONNECTION_NAME`
+- `AUTH0_GOOGLE_CONNECTION_NAME` (defaults to `google-oauth2`)
 - `AUTH0_TOKEN_VAULT_CONNECTION_ID`
 
-Optional shell-only overrides:
+Optional debug overrides:
 
 - `WARRANT_GOOGLE_CONNECTION_STATE`
 - `WARRANT_GOOGLE_CONNECTION_EMAIL`
 
-Use the shell overrides only to rehearse UI states while the real Auth0 connected-account callback is still being wired. The real path should use Auth0 sign-in plus `/auth/connect`.
+Use overrides only for UI rehearsal. Real provider delegation should use Auth0 sign-in plus `/auth/connect`.
 
-## Auth0 shell behavior
-
-- `/auth/login` and `/auth/logout` come from the Auth0 Next.js SDK middleware.
-- The home page shows three layers separately: app session, Google provider connection, and external action readiness.
-- Calendar read and Gmail draft use thin wrappers that only become ready when Auth0 can supply delegated Google access.
-- Gmail send stays pending behind an approval placeholder even when Auth0 and local policy are both ready.
-
-To connect Google through Auth0, the shell uses the SDK connect-account route at `/auth/connect` with the Google Calendar read and Gmail compose or send scopes.
-
-## Directory guide
-
-- `src/app`: App Router entrypoints and page shell
-- `src/components`: Shared UI used by the scaffold
-- `src/contracts`: Cross-worktree types and coordination contracts
-- `src/auth`: Auth and session boundary
-- `src/connections`: External provider connection boundary
-- `src/warrants`: Warrant issuance and validation boundary
-- `src/agents`: Planner and child-agent orchestration boundary
-- `src/approvals`: Sensitive-action approval boundary
-- `src/actions`: Executable action boundary and capability checks
-- `src/graph`: Delegation tree UI boundary
-- `src/audit`: Lineage, receipts, and event log boundary
-- `src/demo-fixtures`: Deterministic demo fixtures and shared placeholder data
-
-## Canonical demo fixtures
-
-The default deterministic scenario lives in `src/demo-fixtures` and is centered on:
-
-`"Prepare my investor update for tomorrow and coordinate follow-ups."`
-
-Shared consumers should prefer these exports:
-
-- `createDefaultDemoScenario()` for a fresh canonical snapshot
-- `loadDemoState()` and `resetDemoState()` for in-memory rehearsal state
-- `loadDelegationNodes()` for graph-ready delegation data
-- `loadTimelineEvents()` for human-readable timeline data
-- `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
-
-This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
-
-## Intended worktree split
-
-- Auth worktree: `src/auth`, `src/connections`
-- Warrant engine worktree: `src/warrants`, `src/contracts/warrant.ts`, `src/contracts/action.ts`
-- Agents worktree: `src/agents`, `src/actions`
-- Approval worktree: `src/approvals`
-- Graph UI worktree: `src/graph`
-- Audit worktree: `src/audit`
-- Demo stability worktree: `src/demo-fixtures`
-- Shared coordination changes: `src/contracts`, `src/app`, `src/components`
-
-## Validation
-
-Use the same baseline locally and in CI:
+### Run Locally
 
 ```bash
-npm ci
+npm run dev
+```
+
+Open:
+
+- `http://localhost:3000` for Auth0/session and provider readiness surfaces
+- `http://localhost:3000/demo` for the canonical multi-agent delegation demo
+
+### Validate
+
+```bash
 npm run validate
 ```
 
-Validation commands:
+Validation scripts:
 
-- `npm run validate:quick` runs lint, typecheck, and tests.
-- `npm run validate:core` runs `validate:quick` plus a production build.
-- `npm run smoke:demo` starts the built app on a non-default port and checks `/` and `/demo` for canonical demo markers.
-- `npm run validate` runs `validate:core` plus `smoke:demo`.
+- `npm run validate:quick` -> lint + typecheck + tests
+- `npm run validate:core` -> `validate:quick` + production build
+- `npm run smoke:demo` -> starts the built app and checks `/` and `/demo` markers
+- `npm run validate` -> `validate:core` + `smoke:demo`
 
-The GitHub Actions workflow at `.github/workflows/validate.yml` runs the same gate stages (`lint`, `typecheck`, `test`, `build`, `smoke:demo`) with explicit step boundaries so failures are easier to pinpoint during integration.
+## Main Demo Scenario
+
+Canonical user request:
+
+`Prepare my investor update for tomorrow and coordinate follow-ups.`
+
+Current stable flow after Wave 4 hardening:
+
+1. User signs in with Auth0 and links Google through `/auth/connect`.
+2. Planner receives a parent warrant.
+3. Planner issues narrower Calendar and Comms child warrants.
+4. Calendar read succeeds within its time window.
+5. Comms drafts follow-ups for bounded recipients.
+6. Comms overreach send is denied by Warrant policy.
+7. Sensitive send path shows approval boundary.
+8. User revokes Comms branch; descendants lose authority immediately.
+9. Post-revoke send attempt is blocked while Calendar branch remains active.
+
+## Architecture Overview
+
+This repo uses explicit boundaries so reviewers can inspect responsibility clearly:
+
+- `src/auth`: Auth0 session and environment gating.
+- `src/connections`: connected-account state and provider readiness via Auth0.
+- `src/actions`: Gmail/Calendar action envelopes and provider execution boundaries.
+- `src/warrants`: warrant issuance, narrowing checks, authorization, and revocation.
+- `src/approvals`: sensitive action approval state and transitions.
+- `src/agents`: planner + child-agent deterministic orchestration.
+- `src/graph`: delegation graph projection and UI.
+- `src/audit`: timeline and lineage-aware event surfaces.
+- `src/demo-fixtures`: deterministic rehearsal scenarios (`main`, `comms-revoked`).
+
+Request path, simplified:
+
+1. Auth0 proves identity and delegated provider path availability.
+2. Warrant policy checks whether the action is authorized for this branch.
+3. Approval gate (for sensitive actions) decides whether execution can proceed.
+4. Provider action runs only if policy + approval + Auth0 provider path all pass.
+
+## Demo Instructions
+
+1. Start the app with `npm run dev`.
+2. Open `http://localhost:3000/demo`.
+3. Confirm the scenario prompt is visible.
+4. Inspect the delegation graph and timeline for issue, deny, approval, and revoke states.
+5. Use rehearsal controls to switch to `Main scenario (pre-revoke)`.
+6. Use rehearsal controls to switch to `Comms revoked (post-revoke)`.
+7. From `main`, trigger Comms revocation and verify later Comms send is blocked.
+8. Verify Calendar branch remains active after Comms revoke.
+
+For a scriptable sanity check of judge-visible markers:
+
+```bash
+npm run build
+npm run smoke:demo
+```
+
+## Project Structure
+
+- `src/app`: routes (`/`, `/demo`, `/api/demo/state`) and app shell
+- `src/components`: Auth shell, demo surface, delegation graph UI
+- `src/contracts`: shared domain contracts for auth, warrants, actions, approvals, graph, and demo records
+- `src/auth`: Auth0 SDK boundary, session snapshots, env parsing
+- `src/connections`: Google connection setup and token-vault-backed connection state
+- `src/warrants`: issue/validate/authorize/revoke engine
+- `src/agents`: deterministic planner and child-agent scenario orchestration
+- `src/actions`: provider adapters and external action execution envelopes
+- `src/approvals`: approval requirement and decision handling
+- `src/graph`: graph view models and rendering integration
+- `src/audit`: lineage/timeline aggregation boundary
+- `src/demo-fixtures`: canonical seeded scenarios and local rehearsal state
