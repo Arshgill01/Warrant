@@ -1,4 +1,4 @@
-import type { ActionAttemptOutcome } from "@/contracts/action";
+import type { ActionAttemptOutcome, ProviderActionState } from "@/contracts/action";
 import type { ApprovalStatus } from "@/contracts/approval";
 import type { LedgerEventKind } from "@/contracts/audit";
 import type { WarrantDecisionCode } from "@/contracts/policy";
@@ -11,6 +11,8 @@ export const CANONICAL_CONTROL_STATE_SET = [
   "approval_approved",
   "approval_denied",
   "blocked_revoked",
+  "blocked_expired",
+  "provider_unavailable",
   "active",
   "revoked",
   "expired",
@@ -47,10 +49,24 @@ export function isRevocationDecisionCode(code: WarrantDecisionCode): boolean {
   return code === "warrant_revoked" || code === "ancestor_revoked";
 }
 
+export function isExpiryDecisionCode(code: WarrantDecisionCode): boolean {
+  return code === "warrant_expired" || code === "ancestor_expired";
+}
+
 export function mapActionOutcomeToControlState(input: {
   outcome: ActionAttemptOutcome;
   authorizationCode: WarrantDecisionCode;
+  providerState?: ProviderActionState | null;
 }): CanonicalControlState {
+  if (
+    input.providerState === "disconnected" ||
+    input.providerState === "unavailable" ||
+    input.providerState === "failed" ||
+    input.providerState === "execution-blocked"
+  ) {
+    return "provider_unavailable";
+  }
+
   if (input.outcome === "allowed") {
     return "active";
   }
@@ -63,6 +79,9 @@ export function mapActionOutcomeToControlState(input: {
     return "blocked_revoked";
   }
 
+  if (isExpiryDecisionCode(input.authorizationCode)) {
+    return "blocked_expired";
+  }
+
   return "denied_policy";
 }
-

@@ -37,6 +37,8 @@ const statusTone: Record<string, string> = {
   approval_approved: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
   approval_denied: "bg-rose-50 text-rose-700",
   blocked_revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)]",
+  blocked_expired: "bg-slate-100 text-slate-600",
+  provider_unavailable: "bg-amber-50 text-amber-700",
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
   expired: "bg-slate-100 text-slate-600",
   revoked: "bg-[var(--status-revoked-bg)] text-[var(--status-revoked-text)]",
@@ -88,6 +90,10 @@ function formatStatusLabel(value: string): string {
       return "approval denied";
     case "blocked_revoked":
       return "blocked by revocation";
+    case "blocked_expired":
+      return "blocked by expiry";
+    case "provider_unavailable":
+      return "provider unavailable";
     default:
       return value.replaceAll("_", " ").replaceAll("-", " ").replaceAll(".", " ");
   }
