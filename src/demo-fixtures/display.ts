@@ -142,10 +142,11 @@ function isPolicyDeniedAction(record: ActionAttemptDisplayRecord): boolean {
 }
 
 function getLatestRecordsByWarrantId<
-  Record extends { id: string; warrantId: string; requestedAt?: string; expiresAt?: string },
+  Record extends { warrantId: string; requestedAt?: string; expiresAt?: string },
 >(
   records: Record[],
   getAt: (record: Record) => string,
+  getTieBreakerId: (record: Record) => string,
 ): Map<string, Record> {
   const latestByWarrantId = new Map<string, Record>();
 
@@ -159,7 +160,11 @@ function getLatestRecordsByWarrantId<
 
     const atComparison = getAt(record).localeCompare(getAt(existing));
 
-    if (atComparison > 0 || (atComparison === 0 && record.id.localeCompare(existing.id) > 0)) {
+    if (
+      atComparison > 0 ||
+      (atComparison === 0 &&
+        getTieBreakerId(record).localeCompare(getTieBreakerId(existing)) >= 0)
+    ) {
       latestByWarrantId.set(record.warrantId, record);
     }
   });
@@ -371,31 +376,42 @@ export function createWarrantDisplaySummaries(
   );
   const actionRecords = createActionAttemptDisplayRecords(scenario);
   const approvalRecords = createApprovalStateDisplayRecords(scenario);
+  const scenarioActionIds = new Set(actionRecords.map((record) => record.id));
   const latestRuntimeDecisionByWarrantId = getLatestRecordsByWarrantId(
-    [...scenario.controlDecisions],
+    scenario.controlDecisions.filter((record) =>
+      scenarioActionIds.has(record.actionId),
+    ),
     (record) => record.at,
+    (record) => record.proposalId,
   );
   const latestRuntimeEventByWarrantId = getLatestRecordsByWarrantId(
-    [...scenario.runtimeEvents],
+    scenario.runtimeEvents.filter(
+      (record) => record.actionId !== null && scenarioActionIds.has(record.actionId),
+    ),
     (record) => record.at,
+    (record) => record.id,
   );
   const latestActionByWarrantId = getLatestRecordsByWarrantId(
     actionRecords,
     (record) => record.requestedAt,
+    (record) => record.id,
   );
   const latestPolicyDenialByWarrantId = getLatestRecordsByWarrantId(
     actionRecords.filter(isPolicyDeniedAction),
     (record) => record.requestedAt,
+    (record) => record.id,
   );
   const pendingApprovalByWarrantId = getLatestRecordsByWarrantId(
     approvalRecords.filter(
       (approval) => approval.controlState === "approval_pending",
     ),
     (record) => record.requestedAt,
+    (record) => record.id,
   );
   const latestApprovalByWarrantId = getLatestRecordsByWarrantId(
     approvalRecords,
     (record) => record.decidedAt ?? record.requestedAt,
+    (record) => record.id,
   );
 
   return scenario.warrants.map((warrant) => {
@@ -478,6 +494,7 @@ export function createActionAttemptDisplayRecords(
     scenario.controlDecisions,
     (decision) => decision.actionId,
     (decision) => decision.at,
+    (decision) => decision.proposalId,
   );
 
   return scenario.actionAttempts.map((action) => ({
@@ -549,15 +566,22 @@ export function createTimelineEventDisplayRecords(
   const approvalsById = new Map(
     createApprovalStateDisplayRecords(scenario).map((approval) => [approval.id, approval]),
   );
+  const scenarioActionIds = new Set(actionsById.keys());
   const latestRuntimeDecisionByActionId = getLatestRecordsByKey(
-    scenario.controlDecisions,
+    scenario.controlDecisions.filter((decision) =>
+      scenarioActionIds.has(decision.actionId),
+    ),
     (decision) => decision.actionId,
     (decision) => decision.at,
+    (decision) => decision.proposalId,
   );
   const latestRuntimeEventByActionId = getLatestRecordsByKey(
-    scenario.runtimeEvents,
+    scenario.runtimeEvents.filter(
+      (event) => event.actionId !== null && scenarioActionIds.has(event.actionId),
+    ),
     (event) => event.actionId,
     (event) => event.at,
+    (event) => event.id,
   );
 
   return [...scenario.timeline]
@@ -654,6 +678,15 @@ function resolveTimelineControlState(input: {
   runtimeState: CanonicalControlState | null;
 }): CanonicalControlState {
   if (
+    (input.eventKind === "approval.requested" ||
+      input.eventKind === "approval.approved" ||
+      input.eventKind === "approval.denied") &&
+    input.approvalState
+  ) {
+    return input.approvalState;
+  }
+
+  if (
     (input.eventKind === "action.allowed" ||
       input.eventKind === "action.blocked" ||
       input.eventKind === "approval.requested") &&
@@ -664,15 +697,6 @@ function resolveTimelineControlState(input: {
 
   if (input.eventKind === "action.blocked" && input.actionState) {
     return input.actionState;
-  }
-
-  if (
-    (input.eventKind === "approval.requested" ||
-      input.eventKind === "approval.approved" ||
-      input.eventKind === "approval.denied") &&
-    input.approvalState
-  ) {
-    return input.approvalState;
   }
 
   return timelineKindControlStateMap[input.eventKind];
@@ -714,13 +738,11 @@ export function createDelegationGraphView(
   };
 }
 
-function getLatestRecordsByKey<
-  Record extends { id: string },
-  Key extends string,
->(
+function getLatestRecordsByKey<Record, Key extends string>(
   records: readonly Record[],
   getKey: (record: Record) => Key | null,
   getAt: (record: Record) => string,
+  getTieBreakerId: (record: Record) => string,
 ): Map<Key, Record> {
   const latestByKey = new Map<Key, Record>();
 
@@ -737,7 +759,11 @@ function getLatestRecordsByKey<
     }
 
     const atComparison = getAt(record).localeCompare(getAt(existing));
-    if (atComparison > 0 || (atComparison === 0 && record.id.localeCompare(existing.id) > 0)) {
+    if (
+      atComparison > 0 ||
+      (atComparison === 0 &&
+        getTieBreakerId(record).localeCompare(getTieBreakerId(existing)) >= 0)
+    ) {
       latestByKey.set(key, record);
     }
   });
