@@ -24,6 +24,7 @@ export interface PlannerTaskRecord {
 export interface MainScenarioRunResult {
   scenario: DemoScenario;
   taskPlan: PlannerTaskRecord[];
+  plannerRuntime: PlannerRuntimeResult;
 }
 
 export type PlannerChildRole = "calendar" | "comms";

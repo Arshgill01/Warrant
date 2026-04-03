@@ -37,6 +37,11 @@ describe("main scenario planner flow", () => {
     expect(commsWarrant?.resourceConstraints.maxSends).toBe(1);
     expect(calendarWarrant?.parentId).toBe(rootWarrant?.id);
     expect(commsWarrant?.parentId).toBe(rootWarrant?.id);
+    expect(run.plannerRuntime.source).toBe("model");
+    expect(run.plannerRuntime.events.map((event) => event.kind)).toEqual([
+      "planner.started",
+      "planner.plan.valid",
+    ]);
   });
 
   it("records draft success separately from send approval gating", () => {
