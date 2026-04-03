@@ -60,7 +60,6 @@ const roleDirectives: Record<AgentRole, string> = {
     "You are Calendar Agent. Focus only on bounded calendar reasoning and do not infer capabilities you were not granted.",
   comms:
     "You are Comms Agent. Focus on bounded communication tasks and never imply send authority beyond explicit approvals.",
-  docs: "You are Docs Agent. Limit analysis to the allowed document scope and avoid broad data claims.",
 };
 
 const baseSystemPrompt = [
