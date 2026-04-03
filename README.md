@@ -30,11 +30,11 @@ Auth0 for AI Agents and Token Vault handle identity and external provider delega
 - user sign-in/session boundary (`/auth/login`, `/auth/logout`)
 - Google connected-account flow through `/auth/connect`
 - delegated Google token access path for Calendar and Gmail actions
-- approval system integration for sensitive external execution release
+- sensitive send execution-release boundary that stays separate from local policy checks
 
 Auth0 is load-bearing in this architecture. Without it, external Gmail/Calendar execution is unavailable.
 
-## What The Warrant Layer Adds
+## What the Warrant Layer Adds
 
 Warrant is the local authorization layer OAuth does not provide:
 
@@ -71,7 +71,7 @@ npm ci
 
 Create `.env.local` from `.env.example`.
 
-Required for Auth0-backed flow:
+Required for live Auth0-backed flow (the app still boots without them, but provider actions stay unavailable):
 
 - `APP_BASE_URL` (or `NEXT_PUBLIC_APP_URL`)
 - `AUTH0_DOMAIN`
@@ -160,11 +160,10 @@ Request path, simplified:
 2. Open `http://localhost:3000/demo`.
 3. Confirm the scenario prompt is visible.
 4. Inspect the delegation graph and timeline for issue, deny, approval, and revoke states.
-5. Use rehearsal controls to switch between:
-- `Main scenario (pre-revoke)`
-- `Comms revoked (post-revoke)`
-6. From `main`, trigger Comms revocation and verify later Comms send is blocked.
-7. Verify Calendar branch remains active after Comms revoke.
+5. Use rehearsal controls to switch to `Main scenario (pre-revoke)`.
+6. Use rehearsal controls to switch to `Comms revoked (post-revoke)`.
+7. From `main`, trigger Comms revocation and verify later Comms send is blocked.
+8. Verify Calendar branch remains active after Comms revoke.
 
 For a scriptable sanity check of judge-visible markers:
 
