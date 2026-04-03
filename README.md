@@ -1,10 +1,50 @@
 # Warrant
 
-Warrant is a demo-first Auth0 for AI Agents hackathon project built around one thesis:
-
 **OAuth was designed for apps. AI agents need warrants.**
 
-This worktree implements the Auth0-facing shell for the foundation milestone. It makes sign-in, Google connection state, and delegated Gmail or Calendar access setup visible before the warrant engine and graph land.
+Warrant is a demo-first authorization product for multi-agent systems. A human authorizes a root agent, the root agent delegates narrower child warrants, and every downstream action stays bounded, inspectable, and revocable.
+
+## What Warrant Is
+
+Warrant is a focused demo for the Auth0 Authorized to Act hackathon. It is not a generic assistant platform. It is a concrete argument, implemented as a product:
+
+- agent authority should be delegated in constrained branches
+- child agents should only receive narrower permissions
+- revoking one branch should invalidate descendants immediately
+- sensitive actions should require explicit approval
+
+## Why This Problem Matters
+
+Flat app-style OAuth consent is designed for one application acting as one principal. Multi-agent systems break that model:
+
+- one user approval can fan out into many autonomous sub-agents
+- each sub-agent can have a different risk profile
+- an app-level token alone does not explain who delegated what, and why
+
+Warrant adds lineage-aware delegation and branch-level control so this is legible and enforceable.
+
+## What Auth0 Does Here
+
+Auth0 for AI Agents and Token Vault handle identity and external provider delegation:
+
+- user sign-in/session boundary (`/auth/login`, `/auth/logout`)
+- Google connected-account flow through `/auth/connect`
+- delegated Google token access path for Calendar and Gmail actions
+- approval system integration for sensitive external execution release
+
+Auth0 is load-bearing in this architecture. Without it, external Gmail/Calendar execution is unavailable.
+
+## What The Warrant Layer Adds
+
+Warrant is the local authorization layer OAuth does not provide:
+
+- root and child warrant issuance with explicit parent-child lineage
+- narrowing rules so child warrants cannot exceed parent authority
+- resource constraints (recipients, domains, windows, usage caps)
+- branch revocation with descendant invalidation
+- denial reasons and timeline-friendly audit records
+
+Together, Auth0 and Warrant form two-layer enforcement: local policy must allow the action, and Auth0 must be able to release delegated provider access.
 
 ## Stack
 
