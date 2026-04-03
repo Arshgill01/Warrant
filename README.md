@@ -115,62 +115,75 @@ Validation scripts:
 - `npm run smoke:demo` -> starts the built app and checks `/` and `/demo` markers
 - `npm run validate` -> `validate:core` + `smoke:demo`
 
-## Directory guide
+## Main Demo Scenario
 
-- `src/app`: App Router entrypoints and page shell
-- `src/components`: Shared UI used by the scaffold
-- `src/contracts`: Cross-worktree types and coordination contracts
-- `src/auth`: Auth and session boundary
-- `src/connections`: External provider connection boundary
-- `src/warrants`: Warrant issuance and validation boundary
-- `src/agents`: Planner and child-agent orchestration boundary
-- `src/approvals`: Sensitive-action approval boundary
-- `src/actions`: Executable action boundary and capability checks
-- `src/graph`: Delegation tree UI boundary
-- `src/audit`: Lineage, receipts, and event log boundary
-- `src/demo-fixtures`: Deterministic demo fixtures and shared placeholder data
+Canonical user request:
 
-## Canonical demo fixtures
+`Prepare my investor update for tomorrow and coordinate follow-ups.`
 
-The default deterministic scenario lives in `src/demo-fixtures` and is centered on:
+Current stable flow after Wave 4 hardening:
 
-`"Prepare my investor update for tomorrow and coordinate follow-ups."`
+1. User signs in with Auth0 and links Google through `/auth/connect`.
+2. Planner receives a parent warrant.
+3. Planner issues narrower Calendar and Comms child warrants.
+4. Calendar read succeeds within its time window.
+5. Comms drafts follow-ups for bounded recipients.
+6. Comms overreach send is denied by Warrant policy.
+7. Sensitive send path shows approval boundary.
+8. User revokes Comms branch; descendants lose authority immediately.
+9. Post-revoke send attempt is blocked while Calendar branch remains active.
 
-Shared consumers should prefer these exports:
+## Architecture Overview
 
-- `createDefaultDemoScenario()` for a fresh canonical snapshot
-- `loadDemoState()` and `resetDemoState()` for in-memory rehearsal state
-- `loadDelegationNodes()` for graph-ready delegation data
-- `loadTimelineEvents()` for human-readable timeline data
-- `loadScenarioExamples()` for the seeded valid, blocked, approval-pending, and revoked examples
+This repo uses explicit boundaries so reviewers can inspect responsibility clearly:
 
-This layer is demo infrastructure only. It does not replace future Auth0 integration, warrant enforcement, or persistence.
+- `src/auth`: Auth0 session and environment gating.
+- `src/connections`: connected-account state and provider readiness via Auth0.
+- `src/actions`: Gmail/Calendar action envelopes and provider execution boundaries.
+- `src/warrants`: warrant issuance, narrowing checks, authorization, and revocation.
+- `src/approvals`: sensitive action approval state and transitions.
+- `src/agents`: planner + child-agent deterministic orchestration.
+- `src/graph`: delegation graph projection and UI.
+- `src/audit`: timeline and lineage-aware event surfaces.
+- `src/demo-fixtures`: deterministic rehearsal scenarios (`main`, `comms-revoked`).
 
-## Intended worktree split
+Request path, simplified:
 
-- Auth worktree: `src/auth`, `src/connections`
-- Warrant engine worktree: `src/warrants`, `src/contracts/warrant.ts`, `src/contracts/action.ts`
-- Agents worktree: `src/agents`, `src/actions`
-- Approval worktree: `src/approvals`
-- Graph UI worktree: `src/graph`
-- Audit worktree: `src/audit`
-- Demo stability worktree: `src/demo-fixtures`
-- Shared coordination changes: `src/contracts`, `src/app`, `src/components`
+1. Auth0 proves identity and delegated provider path availability.
+2. Warrant policy checks whether the action is authorized for this branch.
+3. Approval gate (for sensitive actions) decides whether execution can proceed.
+4. Provider action runs only if policy + approval + Auth0 provider path all pass.
 
-## Validation
+## Demo Instructions
 
-Use the same baseline locally and in CI:
+1. Start the app with `npm run dev`.
+2. Open `http://localhost:3000/demo`.
+3. Confirm the scenario prompt is visible.
+4. Inspect the delegation graph and timeline for issue, deny, approval, and revoke states.
+5. Use rehearsal controls to switch between:
+- `Main scenario (pre-revoke)`
+- `Comms revoked (post-revoke)`
+6. From `main`, trigger Comms revocation and verify later Comms send is blocked.
+7. Verify Calendar branch remains active after Comms revoke.
+
+For a scriptable sanity check of judge-visible markers:
 
 ```bash
-npm ci
-npm run validate
+npm run build
+npm run smoke:demo
 ```
 
-Validation commands:
+## Project Structure
 
-- `npm run validate:quick` runs lint, typecheck, and tests.
-- `npm run validate:core` runs `validate:quick` plus a production build.
-- `npm run smoke:demo` starts the built app on a non-default port and checks `/` and `/demo` for canonical demo markers.
-- `npm run validate` runs `validate:core` plus `smoke:demo`.
-
-The GitHub Actions workflow at `.github/workflows/validate.yml` runs the same gate stages (`lint`, `typecheck`, `test`, `build`, `smoke:demo`) with explicit step boundaries so failures are easier to pinpoint during integration.
+- `src/app`: routes (`/`, `/demo`, `/api/demo/state`) and app shell
+- `src/components`: Auth shell, demo surface, delegation graph UI
+- `src/contracts`: shared domain contracts for auth, warrants, actions, approvals, graph, and demo records
+- `src/auth`: Auth0 SDK boundary, session snapshots, env parsing
+- `src/connections`: Google connection setup and token-vault-backed connection state
+- `src/warrants`: issue/validate/authorize/revoke engine
+- `src/agents`: deterministic planner and child-agent scenario orchestration
+- `src/actions`: provider adapters and external action execution envelopes
+- `src/approvals`: approval requirement and decision handling
+- `src/graph`: graph view models and rendering integration
+- `src/audit`: lineage/timeline aggregation boundary
+- `src/demo-fixtures`: canonical seeded scenarios and local rehearsal state
