@@ -15,8 +15,8 @@ const cloneScenario = <Value>(value: Value): Value => structuredClone(value);
 const COMMS_WARRANT_ID = "warrant-comms-child-001";
 const COMMS_POST_REVOKE_ACTION_ID = "action-comms-send-post-revoke-001";
 const COMMS_REVOCATION_ID = "revocation-comms-001";
-const COMMS_REVOKED_AT = "2026-04-17T09:12:00.000Z";
-const COMMS_POST_REVOKE_ATTEMPT_AT = "2026-04-17T09:13:00.000Z";
+const COMMS_REVOKED_AT = "2026-04-17T09:13:00.000Z";
+const COMMS_POST_REVOKE_ATTEMPT_AT = "2026-04-17T09:14:00.000Z";
 
 export function createCommsRevokedDemoScenario(): DemoScenario {
   return cloneScenario(

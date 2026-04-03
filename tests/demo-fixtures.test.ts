@@ -226,6 +226,24 @@ describe("demo fixtures", () => {
     );
   });
 
+  it("keeps in-page revoke transition timestamps aligned with the canonical revoked replay stage", () => {
+    const inPageRevoked = revokeCommsBranchScenario(createMainDemoScenario());
+    const canonicalRevoked = createCommsRevokedDemoScenario();
+
+    expect(inPageRevoked.revocations[0]?.revokedAt).toBe(
+      canonicalRevoked.revocations[0]?.revokedAt,
+    );
+    expect(
+      inPageRevoked.actionAttempts.find(
+        (attempt) => attempt.id === "action-comms-send-post-revoke-001",
+      )?.requestedAt,
+    ).toBe(
+      canonicalRevoked.actionAttempts.find(
+        (attempt) => attempt.id === "action-comms-send-post-revoke-001",
+      )?.requestedAt,
+    );
+  });
+
   it("restores the revoked replay preset through the warrant engine", () => {
     restoreDemoStatePreset("comms-revoked");
 
