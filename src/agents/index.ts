@@ -11,4 +11,5 @@ export const agentsBoundary: WorktreeBoundary = {
 };
 
 export * from "@/agents/main-scenario";
+export * from "@/agents/runtime-control";
 export * from "@/agents/types";

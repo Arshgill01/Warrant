@@ -2733,3 +2733,95 @@ Manual checks:
 - Auth0 tenant-specific configuration can vary; docs must distinguish local deterministic demo behavior from fully wired provider execution.
 - Over-compressing README can remove nuance about approval and provider boundaries; keep wording concise but precise.
 - Validation may pass in fixture mode while real external provider execution still depends on Auth0 dashboard setup.
+
+## ExecPlan — Real Runtime Proposal Control Bridge (2026-04-03)
+
+### Objective
+
+Bridge real agent action proposals into one inspectable runtime control path so runtime policy and control layers, not model output, determine whether each proposal is denied, approval-gated, executable, provider-unavailable, revoked-blocked, or expired-blocked.
+
+### Demo relevance
+
+This is the core Milestone 4/5 enforcement proof for the real-agent integration wave:
+
+1. planner and child runtimes can propose actions
+2. proposals are always evaluated by Warrant + approval + provider readiness controls
+3. denied vs approval-required vs revoked/expired vs provider-unavailable remain visibly distinct
+4. graph/timeline/runtime surfaces stay coherent for judge inspection
+
+### Scope
+
+In scope:
+
+- add a proposal-to-control evaluation bridge for planner/calendar/comms runtimes
+- define structured runtime control decision contracts (including runtime events)
+- route proposal decisions through existing warrant authorization and approval logic
+- explicitly model revoked/expired branch blocking and provider availability blocking
+- emit consistent runtime/control events and action/state transitions for consumers
+- ensure privileged execution paths stay behind bridge decisions
+- add matrix-style tests covering representative control combinations
+
+Out of scope:
+
+- replacing existing deterministic scenario content with fully live LLM planning
+- redesigning graph UI or demo surface presentation patterns
+- broad auth/provider architecture changes outside bridge integration points
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/action.ts`
+- `src/contracts/control-state.ts`
+- `src/contracts/audit.ts`
+- `src/contracts/demo.ts`
+- `src/contracts/index.ts`
+- `src/agents/types.ts`
+- `src/agents/main-scenario.ts`
+- `src/actions/execution.ts`
+- `src/approvals/send-flow.ts` (if bridge needs approval-state helpers)
+- new runtime-control modules under `src/agents/` and/or `src/actions/`
+- `tests/agents-orchestration.test.ts`
+- new focused runtime bridge tests under `tests/`
+
+### Invariants to preserve
+
+- Child warrants only narrow parent authority; no bridge path may bypass warrant checks.
+- Branch revocation and ancestry expiry remain immediate blockers and are not merged into generic denial.
+- Approval requirement and approval outcomes remain distinct from policy denial.
+- Provider unavailability remains distinct from policy denial and approval denial.
+- Privileged provider execution cannot happen directly from model/runtime proposal output without a positive bridge decision.
+- Event/state outputs remain deterministic and lineage-attributed for graph/timeline consumers.
+
+### Implementation steps
+
+1. Add runtime proposal/control contracts (`RuntimeEvent`, `ProposalControlDecision`, proposal envelope, and explicit control decision states including provider-unavailable and expired/revoked blocking).
+2. Implement a proposal evaluation bridge that accepts a proposal, runs warrant status/permission/resource checks via existing warrant logic, applies approval requirements, and checks provider execution availability when relevant.
+3. Integrate the bridge into planner/child runtime execution flow so calendar/comms proposals always resolve through this decision path before action execution.
+4. Update scenario/action/timeline/runtime event emission to keep `proposal_created`, denial, approval transitions, executable, execution failure, provider-unavailable, blocked-revoked, and blocked-expired semantics explicit.
+5. Add matrix-style tests that exercise representative paths and assert distinct control decisions plus expected state/event outputs.
+6. Run lint/typecheck/tests/build and targeted scenario validations.
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/agents-orchestration.test.ts tests/approval-flow.test.ts tests/warrant-engine.test.ts tests/state-surface-proof.test.tsx tests/runtime-control-bridge.test.ts`
+- `npm run test`
+- `npm run build`
+
+Representative matrix assertions:
+
+- allowed + active + no approval + provider available -> executable
+- allowed + active + approval required -> approval_required
+- allowed + active + approval approved + provider available -> executable
+- allowed + active + approval approved + provider unavailable -> provider_unavailable or execution-blocked equivalent
+- denied by policy + active -> denied_policy
+- allowed + revoked branch -> blocked_revoked
+- allowed + expired warrant -> blocked_expired (or explicit equivalent)
+- approval denied -> approval_denied
+
+### Risks
+
+- Existing deterministic scenario wiring currently mixes direct action construction and execution helpers, so bridge insertion may require careful transition refactors to avoid semantic drift.
+- Introducing new control decision states can break display-layer assumptions if mapping adapters are not updated consistently.
+- Provider-availability checks in deterministic adapters may not fully mirror live Auth0/Token Vault behavior; tests should assert boundary semantics, not mock-specific internals.
