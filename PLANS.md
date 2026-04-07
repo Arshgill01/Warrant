@@ -3509,3 +3509,84 @@ Manual checks:
 - More compact responsive layout can reduce at-a-glance detail unless typography/spacing are tuned carefully.
 - Over-constraining React Flow interaction may hurt inspectability if pan/zoom defaults are too strict.
 - Visual polish changes can accidentally blur status semantics if badge tone/icon rules drift.
+
+## ExecPlan — Production Start Path Truthfulness Hardening (2026-04-07)
+
+### Objective
+
+Reproduce, diagnose, and fix the `npm run start -- --port 3100` production-start failure (`Cannot find module './vendor-chunks/jose.js'`) with the smallest truthful change.
+
+### Demo relevance
+
+A production-startable repo is demo-critical. Judges and reviewers must be able to run the shared app reliably without dev-mode-only behavior. This strengthens technical execution credibility for the 3-minute story.
+
+### Scope
+
+In scope:
+
+- reproduce the reported failure in a clean command sequence
+- capture evidence to classify cause:
+  - stale build output
+  - dependency/install drift
+  - Next.js production artifact issue
+  - auth/jose bundling/runtime issue
+  - incorrect production start procedure
+- apply the smallest grounded fix, or document the clean reproducible procedure if no code fix is required
+- verify status of `.playwright-cli/` and `.tmp-npm-cache-playwright/` as ignore-vs-local artifacts
+
+Out of scope:
+
+- graph/UI changes unrelated to startup
+- broad dependency churn or framework upgrades
+- workaround theater (e.g., replacing production checks with dev-only validation)
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md` (only if startup procedure clarification is needed)
+- `.gitignore` (only if local artifact ignore coverage is justified)
+- `package.json` (only if start/build script clarification is required)
+- minimal auth/runtime files only if the jose artifact issue proves code-level
+
+### Invariants to preserve
+
+- Keep the core demo path and runtime/control semantics unchanged.
+- Do not weaken the distinction between local policy, approval, and provider layers.
+- Avoid broad refactors; prefer isolated and reviewable changes.
+- Do not claim startup success without a successful command-level proof.
+
+### Implementation steps
+
+1. Baseline and reproduce:
+   - record current branch/worktree state and relevant script definitions
+   - run exact clean sequence for production path and capture failure/success evidence
+2. Diagnose:
+   - inspect `.next` production artifacts and stack traces around `vendor-chunks/jose.js`
+   - test strongest hypotheses with minimal perturbation (artifact freshness, install state, start ordering)
+3. Fix minimally:
+   - apply smallest code/config/procedure change needed to make production-start truthful
+   - avoid touching unrelated graph/demo surfaces
+4. Artifact hygiene decision:
+   - determine whether `.playwright-cli/` and `.tmp-npm-cache-playwright/` should be ignored in-repo or left as local transient artifacts
+   - apply minimal ignore/docs adjustment only if warranted
+5. Validate and commit in small slices:
+   - reproduction/diagnostic or startup-procedure clarification
+   - minimal fix (if required)
+   - ignore/cleanup docs tweak (if required)
+
+### Validation plan
+
+- `npm install`
+- `npm run build`
+- `npm run start -- --port 3100`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/delegation-graph.test.ts tests/node-detail-panel.test.tsx tests/state-surface-proof.test.tsx`
+
+If startup behavior is flaky, rerun the production sequence serially and report exact order plus outcomes.
+
+### Risks
+
+- The failure may be nondeterministic and tied to local artifact churn, requiring careful clean-sequence proof.
+- `next typegen` and `.next` artifact generation can create race-like symptoms if commands are run in parallel.
+- A true Next/Auth0 jose bundling bug may require a workaround that should be documented clearly if not safely fixable in this slice.

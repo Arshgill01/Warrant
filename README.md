@@ -118,6 +118,25 @@ Open:
 - `http://localhost:3000` for Auth0/session and provider readiness surfaces
 - `http://localhost:3000/demo` for the canonical multi-agent delegation demo
 
+### Production Start (Clean Sequence)
+
+Use a fresh production build before `next start`.
+
+```bash
+npm install
+npm run build
+npm run start -- --port 3100
+```
+
+Important: `next dev` and `next build` both write to `.next/`. If you ran `npm run dev`, rebuild before `npm run start` to avoid stale/mixed artifacts.
+
+For a non-interactive proof check:
+
+```bash
+npm run build
+npm run smoke:demo
+```
+
 ### Validate
 
 ```bash
