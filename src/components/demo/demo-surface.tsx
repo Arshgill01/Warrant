@@ -337,6 +337,108 @@ type RehearsalControlsState = Pick<
   | "presets"
 >;
 
+type ScenarioFlowStep = {
+  id: string;
+  title: string;
+  status: "complete" | "current" | "upcoming";
+  detail: string;
+  next: string;
+};
+
+const flowStepTone: Record<ScenarioFlowStep["status"], string> = {
+  complete: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
+  current: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
+  upcoming: "bg-slate-100 text-slate-600",
+};
+
+function FlowStepCard({
+  step,
+  index,
+}: {
+  step: ScenarioFlowStep;
+  index: number;
+}) {
+  return (
+    <article className="surface-card p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-[var(--foreground)]">
+          {index + 1}. {step.title}
+        </p>
+        <StatusChip
+          label={step.status}
+          tone={flowStepTone[step.status]}
+        />
+      </div>
+      <p className="text-sm leading-relaxed text-[var(--muted)]">{step.detail}</p>
+      <p className="mt-3 text-xs font-medium text-[var(--foreground)]">
+        Next: {step.next}
+      </p>
+    </article>
+  );
+}
+
+function buildScenarioFlowSteps(input: {
+  commsBranchRevoked: boolean;
+  approvalControlState: string;
+}): ScenarioFlowStep[] {
+  const approvalStatusLabel = formatStatusLabel(input.approvalControlState);
+
+  return [
+    {
+      id: "planner",
+      title: "Planner decomposes the request",
+      status: "complete",
+      detail:
+        "Planner holds the parent warrant and creates narrower Calendar and Comms child warrants for this investor-update task.",
+      next: "Watch each child branch act only inside its delegated role.",
+    },
+    {
+      id: "children",
+      title: "Child roles execute scoped work",
+      status: "complete",
+      detail:
+        "Calendar reads one bounded window. Comms drafts follow-ups for approved recipients. Neither branch can expand scope on its own.",
+      next: "Review the draft output before any send is allowed.",
+    },
+    {
+      id: "draft",
+      title: "Draft is created",
+      status: "complete",
+      detail:
+        "Comms can draft because drafting is allowed by warrant. This does not grant send authority.",
+      next: "The next proof moment checks what happens when Comms overreaches.",
+    },
+    {
+      id: "deny",
+      title: "Overreach is denied",
+      status: "complete",
+      detail:
+        "Comms attempts an out-of-bounds send. Local Warrant policy blocks it with a policy denial reason.",
+      next: "A separate in-bounds send still pauses for explicit approval.",
+    },
+    {
+      id: "approval",
+      title: "Sensitive send hits approval gate",
+      status: input.commsBranchRevoked ? "complete" : "current",
+      detail: input.commsBranchRevoked
+        ? `The in-bounds send moved through approval (${approvalStatusLabel}) and remains visible in audit history.`
+        : `Current state: ${approvalStatusLabel}. Comms is policy-eligible for one bounded send, but real Gmail execution is still gated.`,
+      next: input.commsBranchRevoked
+        ? "Now inspect the revocation proof and post-revoke blocked attempt."
+        : "Revoke Comms to prove authority can be withdrawn immediately.",
+    },
+    {
+      id: "revoke",
+      title: "Comms branch revoke",
+      status: input.commsBranchRevoked ? "complete" : "upcoming",
+      detail: input.commsBranchRevoked
+        ? "Maya revoked the Comms branch. Later sends are blocked even with historical approval records."
+        : "This step is pending in the main preset. Use revoke to show branch-level authority loss.",
+      next: "Use the graph and timeline below to confirm branch-level effects.",
+    },
+  ];
+}
+
 export function deriveRehearsalControlsState(input: {
   rehearsal: DemoRehearsalSnapshot;
   scenario: DemoScenario;
@@ -431,6 +533,14 @@ export function DemoSurface({
   );
   const currentApprovalControlState = examples.commsSendApproval.controlState;
   const commsBranchRevoked = examples.commsChildWarrant.status === "revoked";
+  const flowSteps = useMemo(
+    () =>
+      buildScenarioFlowSteps({
+        commsBranchRevoked,
+        approvalControlState: currentApprovalControlState,
+      }),
+    [commsBranchRevoked, currentApprovalControlState],
+  );
   const approvalBoundaries = commsBranchRevoked
     ? buildRevokedApprovalBoundarySummary()
     : buildSendApprovalBoundarySummary(currentApprovalState);
@@ -484,7 +594,7 @@ export function DemoSurface({
             </h1>
           </div>
           <p className="max-w-2xl text-lg leading-relaxed text-[var(--muted)]">
-            Maya approves one parent warrant for Planner Agent. Planner can delegate only narrower child warrants, and each branch can be denied, approved, revoked, or expired independently.
+            Maya approves one parent warrant for Planner Agent, then the flow proceeds in order: scoped child work, denied overreach, approval-gated send, and branch revoke.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <StatusChip
@@ -580,6 +690,25 @@ export function DemoSurface({
         </>
       ) : null}
 
+      <section className="surface-panel space-y-5 p-6 lg:p-8">
+        <div className="space-y-1">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
+            Scenario Sequence
+          </p>
+          <h2 className="text-2xl font-semibold tracking-tight">
+            What just happened, and what comes next
+          </h2>
+          <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+            Use this strip as the pacing guide for the demo. The graph shows who has authority, proof cards show outcomes, and the timeline shows the exact event order.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {flowSteps.map((step, index) => (
+            <FlowStepCard key={step.id} step={step} index={index} />
+          ))}
+        </div>
+      </section>
+
       <section className="w-full">
         <DelegationGraph
           graphNodes={graphView.nodes}
@@ -588,7 +717,7 @@ export function DemoSurface({
           onRevoke={handleRevokeBranch}
           eyebrow="Visual Hierarchy"
           title="Delegation Tree"
-          description="A map of who received authority, what each branch can do, and which branches are denied, approved, revoked, or expired."
+          description="A map of who received authority, what each branch can do, and which branches are denied, approval-gated, revoked, or expired. Select a node to inspect why."
         />
       </section>
 
