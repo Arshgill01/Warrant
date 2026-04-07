@@ -129,7 +129,18 @@ Validation scripts:
 - `npm run validate:quick` -> lint + typecheck + tests
 - `npm run validate:core` -> `validate:quick` + production build
 - `npm run smoke:demo` -> starts the built app and checks `/` and `/demo` markers
+- `npm run smoke:auth0-live` -> calls `/api/demo/live-preflight` and fails unless readiness is `ready`
 - `npm run validate` -> `validate:core` + `smoke:demo`
+
+Live preflight notes:
+
+- `/api/demo/live-preflight` is demo-tools-gated (enabled in development, or set `WARRANT_ENABLE_DEMO_TOOLS=true`).
+- `token-only` mode validates Auth0 delegated-token readiness without live provider writes.
+- `live` mode performs real provider checks; Gmail draft readiness can create a live draft artifact in the demo account.
+- `smoke:auth0-live` expects a running server. Optional env:
+  - `LIVE_PREFLIGHT_BASE_URL` (default `http://127.0.0.1:3000`)
+  - `LIVE_PREFLIGHT_MODE` (`token-only` or `live`, default `live`)
+  - `LIVE_PREFLIGHT_COOKIE` (optional cookie header for session-bound checks outside a browser)
 
 ## Main Demo Scenario
 
@@ -180,6 +191,9 @@ Request path, simplified:
 6. Use rehearsal controls to switch to `Comms revoked (post-revoke)`.
 7. From `main`, trigger Comms revocation and verify later Comms send is blocked.
 8. Verify Calendar branch remains active after Comms revoke.
+9. Run the live readiness preflight card in `/demo` before recording:
+   - start with `token-only`
+   - run `live` when signed in and connected to Google through Auth0
 
 For a scriptable sanity check of judge-visible markers:
 
