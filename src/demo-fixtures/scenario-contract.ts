@@ -125,6 +125,7 @@ export function validateDemoScenarioContract(
 
   const uniqueSets: Array<[label: string, values: string[]]> = [
     ["warrant", scenario.warrants.map((warrant) => warrant.id)],
+    ["runtime actor", scenario.agents.map((agent) => agent.runtimeActorId)],
     ["action", scenario.actionAttempts.map((action) => action.id)],
     ["approval", scenario.approvals.map((approval) => approval.id)],
     ["revocation", scenario.revocations.map((revocation) => revocation.id)],
@@ -152,6 +153,14 @@ export function validateDemoScenarioContract(
   });
 
   scenario.agents.forEach((agent) => {
+    if (!agent.runtimeActorId.trim()) {
+      issues.push(`Agent ${agent.id} is missing runtimeActorId.`);
+    }
+
+    if (!agent.runtimeActorLabel.trim()) {
+      issues.push(`Agent ${agent.id} is missing runtimeActorLabel.`);
+    }
+
     const warrant = warrantsById.get(agent.warrantId);
 
     if (!warrant) {

@@ -24,6 +24,8 @@ export interface DemoUser {
 }
 
 export interface DemoAgent extends AgentIdentity {
+  runtimeActorId: string;
+  runtimeActorLabel: string;
   status: AgentStatus;
   purpose: string;
   summary: string;
