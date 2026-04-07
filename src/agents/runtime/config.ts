@@ -59,6 +59,25 @@ function readNumberOverride(value: string | undefined, fallback: number): number
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function hasFiniteNumber(value: string | undefined): boolean {
+  const normalized = readOptionalValue(value);
+  if (!normalized) {
+    return false;
+  }
+
+  return Number.isFinite(Number(normalized));
+}
+
+function hasIntegerNumber(value: string | undefined): boolean {
+  const normalized = readOptionalValue(value);
+  if (!normalized) {
+    return false;
+  }
+
+  const parsed = Number(normalized);
+  return Number.isInteger(parsed);
+}
+
 export function readRuntimeModelConfiguration(
   env: NodeJS.ProcessEnv = process.env,
 ): RuntimeModelConfiguration {
@@ -91,6 +110,9 @@ export function validateRuntimeModelStartup(
 ): RuntimeModelStartupValidation {
   const configuration = readRuntimeModelConfiguration(env);
   const issues: RuntimeModelConfigurationIssue[] = [];
+  const temperatureOverride = readOptionalValue(env.WARRANT_RUNTIME_MODEL_TEMPERATURE);
+  const topPOverride = readOptionalValue(env.WARRANT_RUNTIME_MODEL_TOP_P);
+  const maxOutputTokensOverride = readOptionalValue(env.WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS);
 
   if (!configuration.apiKey) {
     issues.push({
@@ -109,6 +131,14 @@ export function validateRuntimeModelStartup(
     });
   }
 
+  if (temperatureOverride && !hasFiniteNumber(env.WARRANT_RUNTIME_MODEL_TEMPERATURE)) {
+    issues.push({
+      code: "invalid",
+      field: "WARRANT_RUNTIME_MODEL_TEMPERATURE",
+      message: "Temperature must be a numeric value between 0 and 1.",
+    });
+  }
+
   if (configuration.defaults.temperature < 0 || configuration.defaults.temperature > 1) {
     issues.push({
       code: "invalid",
@@ -117,11 +147,36 @@ export function validateRuntimeModelStartup(
     });
   }
 
+  if (topPOverride && !hasFiniteNumber(env.WARRANT_RUNTIME_MODEL_TOP_P)) {
+    issues.push({
+      code: "invalid",
+      field: "WARRANT_RUNTIME_MODEL_TOP_P",
+      message: "Top-p must be a numeric value greater than 0 and at most 1.",
+    });
+  }
+
   if (configuration.defaults.topP <= 0 || configuration.defaults.topP > 1) {
     issues.push({
       code: "invalid",
       field: "WARRANT_RUNTIME_MODEL_TOP_P",
       message: "Top-p must be greater than 0 and at most 1.",
+    });
+  }
+
+  if (maxOutputTokensOverride && !hasFiniteNumber(env.WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS)) {
+    issues.push({
+      code: "invalid",
+      field: "WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS",
+      message: "Max output tokens must be a positive integer.",
+    });
+  } else if (
+    maxOutputTokensOverride &&
+    !hasIntegerNumber(env.WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS)
+  ) {
+    issues.push({
+      code: "invalid",
+      field: "WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS",
+      message: "Max output tokens must be a positive integer.",
     });
   }
 

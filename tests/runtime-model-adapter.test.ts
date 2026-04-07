@@ -98,6 +98,30 @@ describe("runtime model startup validation", () => {
       } as unknown as NodeJS.ProcessEnv)
     ).toThrowError(/Runtime model startup validation failed/);
   });
+
+  it("fails startup validation when numeric overrides are malformed", () => {
+    const validation = validateRuntimeModelStartup({
+      GOOGLE_API_KEY: "local-test-key",
+      WARRANT_RUNTIME_MODEL_TEMPERATURE: "not-a-number",
+      WARRANT_RUNTIME_MODEL_TOP_P: "not-a-number",
+      WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS: "1.5",
+    } as unknown as NodeJS.ProcessEnv);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: "WARRANT_RUNTIME_MODEL_TEMPERATURE",
+        }),
+        expect.objectContaining({
+          field: "WARRANT_RUNTIME_MODEL_TOP_P",
+        }),
+        expect.objectContaining({
+          field: "WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS",
+        }),
+      ]),
+    );
+  });
 });
 
 describe("structured runtime model invocation", () => {
