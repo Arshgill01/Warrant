@@ -85,7 +85,7 @@ export function DelegationGraph({
 
   if (!isMounted) {
     return (
-      <section className="flex flex-col overflow-hidden rounded-[2.5rem] border border-[var(--panel-border)] bg-white shadow-sm h-[750px] animate-pulse">
+      <section className="surface-panel flex h-[750px] flex-col overflow-hidden animate-pulse">
         <div className="h-[100px] border-b border-[var(--panel-border)] bg-slate-50/50" />
         <div className="flex-1 bg-[#fafbfc]" />
       </section>
@@ -93,8 +93,8 @@ export function DelegationGraph({
   }
 
   return (
-    <section className="flex flex-col overflow-hidden rounded-[2.5rem] border border-[var(--panel-border)] bg-white shadow-sm transition-all hover:shadow-md">
-      <div className="flex flex-col gap-4 border-b border-[var(--panel-border)] bg-slate-50/50 p-5 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:px-12">
+    <section className="surface-panel flex flex-col overflow-hidden bg-white transition-all hover:shadow-md">
+      <div className="flex flex-col gap-4 border-b border-[var(--panel-border)] bg-slate-50/50 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between lg:px-10">
         <div className="space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">{eyebrow}</p>
           <h2 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-3xl">{title}</h2>
@@ -102,7 +102,7 @@ export function DelegationGraph({
         </div>
       </div>
 
-      <div className="relative h-[560px] w-full bg-[#fafbfc] sm:h-[650px]">
+      <div className="relative h-[560px] w-full bg-[#fafbfc] sm:h-[640px]">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -140,7 +140,7 @@ export function DelegationGraph({
           onRevoke={handleRevoke}
         />
 
-        <div className="absolute right-4 top-4 flex max-w-[calc(100%-2rem)] items-center gap-2 rounded-full border border-[var(--panel-border)] bg-white/88 px-3 py-1.5 shadow-sm backdrop-blur-sm sm:right-8 sm:top-auto sm:bottom-8 sm:max-w-none sm:gap-3 sm:px-4 sm:py-2">
+        <div className="surface-card absolute right-4 top-4 flex max-w-[calc(100%-2rem)] items-center gap-2 bg-white/88 px-3 py-1.5 backdrop-blur-sm sm:right-8 sm:top-auto sm:bottom-8 sm:max-w-none sm:gap-3 sm:px-4 sm:py-2">
           <div className="flex items-center gap-2">
             <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Active Trace</span>

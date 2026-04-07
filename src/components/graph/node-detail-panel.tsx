@@ -84,8 +84,8 @@ export function NodeDetailPanel({
   );
 
   return (
-    <div className="absolute inset-y-0 right-0 z-20 flex w-[min(100%,420px)] max-w-full flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
-      <div className="flex items-center justify-between border-b border-[var(--panel-border)] bg-slate-50/50 p-4 sm:p-6">
+    <div className="absolute inset-y-0 right-0 z-20 flex w-[min(100%,420px)] max-w-full flex-col border-l border-[var(--panel-border)] bg-[var(--panel)] shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
+      <div className="flex items-center justify-between border-b border-[var(--panel-border)] bg-slate-50/60 p-4 sm:p-5">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--panel-border)] bg-white text-[var(--accent)] shadow-sm">
             <FileSearch className="size-5" />
@@ -107,7 +107,7 @@ export function NodeDetailPanel({
         </button>
       </div>
 
-      <div className="custom-scrollbar flex-1 space-y-8 overflow-x-hidden overflow-y-auto p-4 sm:space-y-10 sm:p-6">
+      <div className="custom-scrollbar flex-1 space-y-8 overflow-x-hidden overflow-y-auto p-4 sm:space-y-10 sm:p-5">
         <section className="space-y-3.5 sm:space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div
@@ -456,7 +456,7 @@ export function NodeDetailPanel({
       </div>
 
       {canRevokeBranch ? (
-        <div className="space-y-4 border-t border-[var(--panel-border)] bg-slate-50/80 p-4 sm:p-6">
+        <div className="space-y-4 border-t border-[var(--panel-border)] bg-slate-50/80 p-4 sm:p-5">
           {isRevoked ? (
             <div className="flex items-center gap-3 rounded-xl border border-rose-100 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
               <AlertTriangle className="size-5 shrink-0" />

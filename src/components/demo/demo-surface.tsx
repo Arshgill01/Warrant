@@ -504,7 +504,7 @@ export function DemoSurface({
           </div>
         </div>
 
-        <div className="surface-panel p-8 backdrop-blur-sm">
+        <div className="surface-card p-8 backdrop-blur-sm">
           <div className="mb-6 space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
               Root Warrant Approval
