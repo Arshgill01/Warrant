@@ -916,6 +916,16 @@ export function DemoSurface({
                 </div>
                 <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
                   <span className="font-bold uppercase tracking-tighter opacity-50">
+                    Runtime actor
+                  </span>
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {event.runtimeActorLabel
+                      ? `${event.runtimeActorLabel} (${event.runtimeActorId})`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-[var(--panel-border)]/50 py-2">
+                  <span className="font-bold uppercase tracking-tighter opacity-50">
                     Warrant
                   </span>
                   <span className="font-semibold text-[var(--accent)]">

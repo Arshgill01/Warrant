@@ -456,8 +456,8 @@ export function createWarrantDisplaySummaries(
       agentId: warrant.agentId,
       agentLabel: agent.label,
       agentRole: agent.role,
-      runtimeActorId: agent.id,
-      runtimeActorLabel: agent.label,
+      runtimeActorId: latestRuntimeDecision?.runtimeActorId ?? agent.runtimeActorId,
+      runtimeActorLabel: agent.runtimeActorLabel,
       latestRuntimeProposalId: latestRuntimeDecision?.proposalId ?? null,
       latestRuntimeControlState,
       latestRuntimeControlReason: latestRuntimeDecision?.reason ?? null,
@@ -506,6 +506,9 @@ export function createActionAttemptDisplayRecords(
       agentsById.get(action.agentId),
       `Missing agent for action ${action.id}`,
     ).label,
+    runtimeActorId:
+      latestRuntimeDecisionByActionId.get(action.id)?.runtimeActorId ??
+      required(agentsById.get(action.agentId), `Missing agent for action ${action.id}`).runtimeActorId,
     rootRequestId: action.rootRequestId,
     warrantId: action.warrantId,
     parentWarrantId: action.parentWarrantId,
@@ -559,6 +562,9 @@ export function createTimelineEventDisplayRecords(
   scenario: DemoScenario,
 ): TimelineEventDisplayRecord[] {
   const agentLabelsById = new Map(scenario.agents.map((agent) => [agent.id, agent.label]));
+  const runtimeActorLabelsById = new Map(
+    scenario.agents.map((agent) => [agent.runtimeActorId, agent.runtimeActorLabel]),
+  );
   const warrantsById = new Map(scenario.warrants.map((warrant) => [warrant.id, warrant]));
   const actionsById = new Map(
     createActionAttemptDisplayRecords(scenario).map((action) => [action.id, action]),
@@ -606,6 +612,7 @@ export function createTimelineEventDisplayRecords(
       const runtimeEvent = runtimeActionId
         ? latestRuntimeEventByActionId.get(runtimeActionId) ?? null
         : null;
+      const runtimeActorId = runtimeDecision?.runtimeActorId ?? runtimeEvent?.runtimeActorId ?? null;
       const runtimeControlState = runtimeDecision
         ? mapRuntimeControlStateToCanonicalState(runtimeDecision.controlState)
         : null;
@@ -651,6 +658,10 @@ export function createTimelineEventDisplayRecords(
             : event.actorKind === "agent"
               ? agentLabelsById.get(event.actorId) ?? event.actorId
               : "System",
+        runtimeActorId,
+        runtimeActorLabel: runtimeActorId
+          ? runtimeActorLabelsById.get(runtimeActorId) ?? runtimeActorId
+          : null,
         warrantId: event.warrantId,
         warrantLabel,
         parentWarrantId: event.parentWarrantId,
@@ -776,12 +787,14 @@ function bindRuntimeDecisionToAction(
   decision: RuntimeProposalControlDecision | undefined,
 ): {
   proposalId: string | null;
+  runtimeActorId: string | null;
   runtimeControlState: CanonicalControlState | null;
   runtimeControlReason: string | null;
 } {
   if (!decision || decision.actionId !== actionId) {
     return {
       proposalId: null,
+      runtimeActorId: null,
       runtimeControlState: null,
       runtimeControlReason: null,
     };
@@ -789,6 +802,7 @@ function bindRuntimeDecisionToAction(
 
   return {
     proposalId: decision.proposalId,
+    runtimeActorId: decision.runtimeActorId ?? null,
     runtimeControlState: mapRuntimeControlStateToCanonicalState(decision.controlState),
     runtimeControlReason: decision.reason,
   };
