@@ -15,6 +15,7 @@
     "test": "vitest run",
     "smoke:demo": "node scripts/smoke-demo.mjs",
     "smoke:auth0-live": "node scripts/smoke-auth0-live.mjs",
+    "verify:live-model": "npx --yes tsx scripts/live-model-probe.ts",
     "validate:quick": "npm run lint && npm run typecheck && npm run test",
     "validate:core": "npm run validate:quick && npm run build",
     "validate": "npm run validate:core && npm run smoke:demo"
