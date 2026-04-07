@@ -3385,6 +3385,19 @@ Out of scope:
    - graph/timeline attribution fixes
    - scenario verification + smoke checks
 
+### Execution slices for this run
+
+1. verification harness + checklist tests
+   - add/strengthen targeted checks that map directly to A–G truth criteria
+2. model/config safety fixes
+   - central model config assertion, env hygiene, and explicit startup-invalid behavior where missing
+3. runtime identity/contract truth fixes
+   - ensure planner/calendar/comms runtime-distinct attribution remains first-class in scenario contracts
+4. proposal/control/execution truth fixes
+   - preserve and surface clear state distinctions for deny vs approval vs execute vs revoke
+5. surfaced-state + scenario coherence fixes
+   - keep graph/timeline attribution coherent and deterministic across repeated scenario runs
+
 ### Validation plan
 
 - `npm run lint`
