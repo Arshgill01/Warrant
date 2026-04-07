@@ -211,3 +211,41 @@ Fix:
 1. hard refresh `/demo`
 2. use rehearsal preset restore controls when enabled
 3. re-run the ordered verification sequence from step 6 onward
+
+## 6. After Vercel gives you the production URL, do this next
+
+1. Set `APP_BASE_URL` in Vercel to the exact production origin (for example `https://warrant-demo.vercel.app`).
+2. In Auth0 Application settings, update:
+   - Allowed Callback URLs: `https://<domain>/auth/callback`
+   - Allowed Logout URLs: `https://<domain>`
+   - Allowed Web Origins: `https://<domain>`
+3. Redeploy once env/Auth0 values are in sync.
+4. Run the ordered post-deploy verification checklist.
+5. If recording soon, enable demo tools temporarily (`WARRANT_ENABLE_DEMO_TOOLS=true`) and redeploy.
+
+## 7. Demo preflight checklist (recording readiness)
+
+Use this checklist immediately before recording the 3-minute demo.
+
+1. Baseline deploy sanity:
+   - open `/` and `/demo`
+   - confirm no setup blocker messaging
+2. Auth/session sanity:
+   - sign in through `/auth/login`
+   - ensure logout and re-login both work
+3. Google connection sanity:
+   - run `/auth/connect` and confirm `connected` state in shell
+4. Deterministic demo-state sanity:
+   - in `/demo`, restore `Main scenario (pre-revoke)` preset (if tools enabled)
+   - confirm overreach denied + approval-required + revoke outcomes are visible
+5. Live readiness preflight:
+   - run `/api/demo/live-preflight?mode=token-only`
+   - if ready, run `/api/demo/live-preflight?mode=live`
+6. CLI smoke checks (optional but recommended):
+   - `npm run build`
+   - `npm run smoke:demo`
+   - `LIVE_PREFLIGHT_BASE_URL=https://<domain> LIVE_PREFLIGHT_MODE=token-only npm run smoke:auth0-live`
+7. Recording pass/fail gate:
+   - proceed only if login/connect/provider path and deny/approval/revoke proof points are all stable in one continuous run
+
+If any check fails, resolve it before recording to avoid demo drift mid-take.
