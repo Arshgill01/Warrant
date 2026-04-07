@@ -258,6 +258,15 @@ npm run smoke:demo
 - `src/agents`: deterministic planner and child-agent scenario orchestration
 - `src/actions`: provider adapters and external action execution envelopes
 - `src/approvals`: approval requirement and decision handling
+
+## Submission And Narrative Assets
+
+- `docs/execplan-final-polish-packaging.md`: ordered execution plan used for this final polish branch
+- `docs/submission/devpost-project-description.md`: Devpost-ready project description
+- `docs/submission/judging-checklist.md`: explicit framing against hackathon judging criteria
+- `docs/submission/screenshot-captions.md`: screenshot capture guidance and proof-oriented captions
+- `docs/blog/oauth-for-apps-ai-agents-need-warrants.md`: Auth0 community blog-prize draft
+- `docs/demo/final-3-minute-script.md`: beat-by-beat demo script and recording fallback notes
 - `src/graph`: graph view models and rendering integration
 - `src/audit`: lineage/timeline aggregation boundary
 - `src/demo-fixtures`: canonical seeded scenarios and local rehearsal state
