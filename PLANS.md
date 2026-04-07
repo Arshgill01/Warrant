@@ -3305,3 +3305,104 @@ Manual checks:
 - sequence alignment can accidentally alter expected fixture chronology if timestamps/events are not reconciled carefully
 - tightening state-truth rules may mark more local states as custom, which is acceptable but must stay user-legible
 - deterministic fixture expectations may require snapshot/test updates if canonical ordering semantics are corrected
+
+## ExecPlan — RAI Complete Verification And Truthfulness Closure (2026-04-07)
+
+### Objective
+
+Run a full verification pass on the merged real-agent-integration wave and close small-to-medium gaps that block a truthful “real runtime architecture complete” claim for planner + child runtime flow.
+
+### Demo relevance
+
+This pass protects the final 3-minute proof path by confirming that the investor-update flow is genuinely runtime-backed and branch-constrained:
+
+1. one central runtime model adapter/config path for Gemma
+2. planner, calendar, and comms behave as runtime-distinct actors
+3. child runtime outputs drive proposals and control decisions
+4. deny/approval/revoke remain separable and auditable
+5. graph/timeline attribution references real runtime identities
+
+### Scope
+
+In scope:
+
+- verify checklist A–G against current merged code, tests, and demo path
+- tighten model/config truthfulness (central path, env handling, startup failure behavior)
+- route scenario orchestration through child runtime actors where missing
+- close proposal/control boundary gaps (proposal-created, deny, approval, revoke, provider-ready distinctions)
+- ensure graph/timeline attribution surfaces runtime actor identity coherently
+- keep deterministic replay stable for repeated main-scenario runs
+- add or update focused tests proving corrected behavior
+
+Out of scope:
+
+- broad UI redesign or architecture rewrite
+- new product features, new integrations, or stretch scope
+- replacing deterministic demo fixtures with uncontrolled live behavior
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `.env.example`
+- `src/agents/main-scenario.ts`
+- `src/agents/model-adapter.ts`
+- `src/agents/runtime/*` (adapter bridge/runtime invocation wiring as needed)
+- `src/contracts/demo.ts`
+- `src/contracts/display.ts`
+- `src/demo-fixtures/display.ts`
+- `src/components/demo/demo-surface.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `tests/agents-orchestration.test.ts`
+- `tests/child-runtimes.test.ts`
+- `tests/delegation-graph.test.ts`
+- `tests/node-detail-panel.test.tsx`
+- `tests/state-surface-proof.test.tsx`
+- `tests/routes.test.tsx`
+
+### Invariants to preserve
+
+- Child warrants only narrow authority from parents.
+- Local Warrant policy, approval gating, and provider execution remain separate layers.
+- Denied-policy, approval-required/pending/approved/denied, provider-unavailable, and revoked/expired states remain distinct.
+- Revoking a branch invalidates descendants immediately and stays visible in scenario state.
+- Main and comms-revoked scenarios remain deterministic and repeatable across runs.
+- No real secrets are committed; local runtime key belongs only in ignored local env files.
+
+### Implementation steps
+
+1. Baseline the merged RAI flow with targeted tests and code inspection against checklist A–G.
+2. Fix model/config truthfulness gaps:
+   - remove/avoid duplicate model-adapter paths where they blur “single central adapter” claims
+   - verify env placeholder hygiene and explicit startup-invalid behavior
+3. Wire child runtime actors into investor-update orchestration so calendar/comms proposals come from runtime outputs, not hardcoded-only proposal construction.
+4. Preserve proposal/control/execution boundaries while updating scenario wiring to keep deny, approval, and revoke proof moments intact.
+5. Bind runtime identity attribution into display contracts and UI surfaces where it is currently still agent-id-only.
+6. Re-run deterministic repeatability checks and adjust fixture/state binding only as needed for coherence.
+7. Run full validation, then commit in small slices:
+   - model/config verification fixes
+   - runtime identity/contract fixes
+   - proposal/control truth fixes
+   - graph/timeline attribution fixes
+   - scenario verification + smoke checks
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/runtime-model-adapter.test.ts tests/child-runtimes.test.ts tests/agents-orchestration.test.ts tests/runtime-control-bridge.test.ts tests/delegation-graph.test.ts tests/node-detail-panel.test.tsx tests/state-surface-proof.test.tsx tests/demo-fixtures.test.ts tests/routes.test.tsx`
+- `npm run test`
+- `npm run build`
+
+Manual checks:
+
+- run `/demo` and verify investor-update path still shows planner -> child -> proposals -> control -> result surfaces
+- verify overreach denial remains distinct from approval-required send
+- verify post-revoke send stays blocked while calendar branch remains active
+- replay main scenario preset repeatedly and confirm no immediate state corruption
+
+### Risks
+
+- Wiring child runtimes into the canonical scenario can shift deterministic timestamps/order if not carefully constrained.
+- Tightening runtime identity attribution may require synchronized contract and UI/test updates.
+- Startup validation behavior must remain explicit without forcing unrelated routes to hard-fail unexpectedly.
+- Full external provider truth still depends on real Auth0 connected-account state; local verification can only prove honest unavailable/error envelopes without a live session.
