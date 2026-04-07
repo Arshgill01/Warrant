@@ -33,7 +33,7 @@ const runtimeLogicalModel: RuntimeLogicalModel = "gemma-4-31b";
 
 // Keep logical-to-provider mapping centralized here so SDK identifier changes stay isolated.
 const runtimeProviderModelMap: Record<RuntimeLogicalModel, string> = {
-  "gemma-4-31b": "gemma-4-31b",
+  "gemma-4-31b": "gemma-4-31b-it",
 };
 
 const runtimeDefaults: RuntimeModelDefaults = {
