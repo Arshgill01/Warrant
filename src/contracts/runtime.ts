@@ -226,6 +226,7 @@ export const RUNTIME_CONTROL_STATE_SET = [
   "approval_approved",
   "approval_denied",
   "executable",
+  "executed",
   "execution_failed",
   "blocked_revoked",
   "blocked_expired",
