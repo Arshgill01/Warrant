@@ -159,6 +159,16 @@ describe("main scenario planner flow", () => {
     expect(run.scenario.controlDecisions.length).toBeGreaterThan(0);
     expect(run.scenario.runtimeEvents.length).toBeGreaterThan(0);
     expect(
+      run.scenario.controlDecisions.find(
+        (decision) => decision.actionId === "action-calendar-read-001" && decision.controlState === "executable",
+      )?.runtimeActorId,
+    ).toBe("runtime-calendar-001");
+    expect(
+      run.scenario.controlDecisions.find(
+        (decision) => decision.actionId === "action-comms-send-001" && decision.controlState === "approval_required",
+      )?.runtimeActorId,
+    ).toBe("runtime-comms-001");
+    expect(
       run.scenario.controlDecisions.filter(
         (decision) => decision.controlState === "proposal_created",
       ).length,
