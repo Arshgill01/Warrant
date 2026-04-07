@@ -3406,3 +3406,106 @@ Manual checks:
 - Tightening runtime identity attribution may require synchronized contract and UI/test updates.
 - Startup validation behavior must remain explicit without forcing unrelated routes to hard-fail unexpectedly.
 - Full external provider truth still depends on real Auth0 connected-account state; local verification can only prove honest unavailable/error envelopes without a live session.
+
+## ExecPlan — Topology Graph Hardening (2026-04-07)
+
+### Objective
+
+Harden the delegation topology graph into a stable, readable, product-grade proof surface without changing the underlying runtime truth model.
+
+### Demo relevance
+
+This strengthens the most judge-visible artifact for the core demo beats:
+
+1. planner -> child branch delegation is instantly legible
+2. denied/approval/revoked/expired states are clearly distinct
+3. branch-level revoke remains visibly real
+4. repeated runs and state changes do not make the graph jumpy or fragile
+
+### Baseline findings (before implementation)
+
+- Graph tests are currently green, but they do not cover visual overflow/choppiness (`tests/delegation-graph.test.ts`, `tests/node-detail-panel.test.tsx`, `tests/state-surface-proof.test.tsx`).
+- Mobile graph view becomes too compressed to read when fitting all nodes.
+- Node detail panel has fixed `w-[420px]`, which overflows/clips on mobile when opened.
+- Graph selection resets on every graph data refresh because `selectedWarrantId` is cleared in a broad `useEffect` dependency.
+- Node cards and spacing bias toward desktop width; readability degrades in constrained widths.
+
+### Scope
+
+In scope:
+
+- stabilize graph layout and viewport behavior across repeated state updates
+- reduce node/detail/label overflow in desktop and mobile widths
+- improve node sizing and spacing balance while keeping the current graph metaphor
+- improve edge readability and status legibility without collapsing distinct states
+- improve node detail panel clarity and responsive behavior
+- preserve runtime-derived data truthfulness in graph/status rendering
+
+Out of scope:
+
+- redesigning the graph UI from scratch
+- adding unrelated new graph features or workflows
+- flattening distinct control states into a generic status language
+- replacing runtime-driven graph data with mock-only simplifications
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/graph/delegation-graph.tsx`
+- `src/graph/view-model.ts`
+- `src/components/graph/agent-node.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/components/demo/demo-surface.tsx` (only if graph wrapper props/layout need narrow adjustments)
+- `tests/delegation-graph.test.ts`
+- `tests/node-detail-panel.test.tsx`
+- `tests/state-surface-proof.test.tsx`
+
+### Invariants to preserve
+
+- Child warrants only narrow authority from parent warrants.
+- Revocation remains branch-scoped and descendant-invalidating.
+- `active`, `denied_policy`, `approval_pending`, `approval_denied`, `blocked_revoked`, `blocked_expired`, `revoked`, and `expired` remain visually and semantically distinct.
+- Graph and timeline continue deriving from the same canonical scenario data.
+- Real runtime actor identity and control state attribution remain visible.
+
+### Implementation steps
+
+1. Stabilize graph behavior:
+   - preserve selected node across non-destructive graph updates
+   - avoid unnecessary view resets/reflows that create choppiness
+   - tighten React Flow config for deterministic interaction behavior
+2. Harden layout and node readability:
+   - rebalance node dimensions, typography, and spacing for dense and narrow viewports
+   - tune static graph positioning constants for better branch readability
+   - improve edge stroke/marker legibility without changing state semantics
+3. Harden responsive overflow surfaces:
+   - make node detail panel responsive (mobile-safe width/position)
+   - prevent clipping/overflow for long IDs, labels, and status metadata
+   - ensure graph overlays/chips/controls do not collide with critical content
+4. Validate state visibility and truthfulness:
+   - verify status badges/cards keep critical states distinct
+   - verify revoked/denied/pending/expired semantics remain explicit in node and detail views
+5. Run targeted validation and manual demo checks.
+6. Commit in small slices:
+   - layout/stability fixes
+   - overflow/readability/status/detail-panel hardening
+   - tests + final polish/verification
+
+### Validation plan
+
+- `npm run test -- tests/delegation-graph.test.ts tests/node-detail-panel.test.tsx tests/state-surface-proof.test.tsx`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
+
+Manual checks:
+
+- desktop `/demo`: graph remains stable when toggling presets and revoking Comms branch
+- mobile `/demo`: node cards remain legible, detail panel does not clip off-screen
+- status differentiation remains obvious at a glance (`active`, `blocked`, `pending approval`, `revoked`, `expired`, `denied`)
+
+### Risks
+
+- More compact responsive layout can reduce at-a-glance detail unless typography/spacing are tuned carefully.
+- Over-constraining React Flow interaction may hurt inspectability if pan/zoom defaults are too strict.
+- Visual polish changes can accidentally blur status semantics if badge tone/icon rules drift.
