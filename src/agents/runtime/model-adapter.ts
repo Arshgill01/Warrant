@@ -15,5 +15,5 @@ export interface RuntimeModelResponse {
 }
 
 export interface RuntimeModelAdapter {
-  invoke(input: RuntimeModelInvocation): Promise<RuntimeModelResponse>;
+  invoke(input: RuntimeModelInvocation): RuntimeModelResponse;
 }

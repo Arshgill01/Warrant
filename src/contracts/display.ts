@@ -55,6 +55,7 @@ export type GraphEdgeDTO = DelegationGraphEdgeRecord;
 export interface ActionAttemptDisplayRecord {
   id: string;
   proposalId: string | null;
+  runtimeActorId: string;
   kind: ActionKind;
   agentId: string;
   agentLabel: string;
@@ -144,6 +145,8 @@ export interface TimelineEventDisplayRecord {
   actorKind: LedgerActorKind;
   actorId: string;
   actorLabel: string;
+  runtimeActorId: string | null;
+  runtimeActorLabel: string | null;
   warrantId: string | null;
   warrantLabel: string | null;
   parentWarrantId: string | null;

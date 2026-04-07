@@ -298,6 +298,8 @@ describe("state surface proof coverage", () => {
     expect(revokedBlockedEvent.controlState).toBe("blocked_revoked");
     expect(policyDeniedBlockedEvent.runtimeControlState).toBe("denied_policy");
     expect(revokedBlockedEvent.runtimeControlState).toBe("blocked_revoked");
+    expect(policyDeniedBlockedEvent.runtimeActorId).toBe("runtime-comms-001");
+    expect(revokedBlockedEvent.runtimeActorId).toBe("runtime-comms-001");
     expect(deniedPolicyAction.authorization.code).not.toBe(
       blockedRevokedAction.authorization.code,
     );

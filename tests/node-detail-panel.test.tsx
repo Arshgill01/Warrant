@@ -31,7 +31,7 @@ describe("node detail panel", () => {
     expect(html).toContain("Latest denied action");
     expect(html).toContain("Latest approval");
     expect(html).toContain("Runtime actor");
-    expect(html).toContain("agent-comms-001");
+    expect(html).toContain("runtime-comms-001");
     expect(html).toContain("proposal-comms-send-post-revoke-001");
     expect(html).toContain(
       "Comms Agent tried to send again after Maya revoked the branch.",

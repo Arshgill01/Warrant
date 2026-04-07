@@ -37,6 +37,17 @@ import type {
 } from "@/agents/types";
 import { createDeterministicPlannerModelAdapter } from "@/agents/model-adapter";
 import { runPlannerRuntime } from "@/agents/planner-runtime";
+import {
+  createDeterministicChildRuntimeModelAdapter,
+  runCalendarRuntime,
+  runCommsRuntime,
+} from "@/agents/runtime";
+import type { RuntimeModelAdapter } from "@/agents/runtime/model-adapter";
+import type {
+  CalendarRuntimeOutput,
+  CommsRuntimeOutput,
+  RuntimeExecutionResult,
+} from "@/agents/runtime/types";
 
 const SCENARIO_ID = "demo-scenario-investor-update";
 const ROOT_REQUEST_ID = "request-investor-update-001";
@@ -56,6 +67,8 @@ const scenarioUser: DemoUser = {
 function buildPlannerAgent(): Omit<DemoAgent, "warrantId"> {
   return {
     id: "agent-planner-001",
+    runtimeActorId: "runtime-planner-001",
+    runtimeActorLabel: "Planner Runtime",
     role: "planner",
     label: "Planner Agent",
     status: "active",
@@ -70,6 +83,8 @@ function buildPlannerAgent(): Omit<DemoAgent, "warrantId"> {
 function buildCalendarAgent(): Omit<DemoAgent, "warrantId"> {
   return {
     id: "agent-calendar-001",
+    runtimeActorId: "runtime-calendar-001",
+    runtimeActorLabel: "Calendar Runtime",
     role: "calendar",
     label: "Calendar Agent",
     status: "active",
@@ -84,6 +99,8 @@ function buildCalendarAgent(): Omit<DemoAgent, "warrantId"> {
 function buildCommsAgent(): Omit<DemoAgent, "warrantId"> {
   return {
     id: "agent-comms-001",
+    runtimeActorId: "runtime-comms-001",
+    runtimeActorLabel: "Comms Runtime",
     role: "comms",
     label: "Comms Agent",
     status: "active",
@@ -230,6 +247,7 @@ function assertControlState(
 interface MainScenarioRunOptions {
   stage?: MainScenarioStage;
   plannerModelAdapter?: SharedModelAdapter;
+  childRuntimeModelAdapter?: RuntimeModelAdapter;
 }
 
 function requireDelegationDraft(
@@ -242,6 +260,37 @@ function requireDelegationDraft(
   }
 
   return draft;
+}
+
+function requireRuntimeSuccess<Output>(
+  result: RuntimeExecutionResult<Output>,
+  runtimeLabel: string,
+): Output {
+  if (!result.ok) {
+    throw new Error(
+      `${runtimeLabel} failed before proposal/control bridging: ${result.failure.message}`,
+    );
+  }
+
+  return result.output;
+}
+
+function requireCalendarReadProposal(output: CalendarRuntimeOutput): {
+  startsAt: string;
+  endsAt: string;
+  rationale: string;
+} {
+  const proposal = output.proposals.find((candidate) => candidate.kind === "calendar.read");
+
+  if (!proposal || proposal.kind !== "calendar.read") {
+    throw new Error("Calendar runtime did not produce a required calendar.read proposal.");
+  }
+
+  return proposal;
+}
+
+function resolveCommsSendRecipients(output: CommsRuntimeOutput): string[] {
+  return output.sendProposal?.recipients ?? output.draft.to;
 }
 
 export function runMainScenarioPlannerFlow(
@@ -357,13 +406,75 @@ export function runMainScenarioPlannerFlow(
     }),
   );
 
+  if (!commsWarrant.capabilities.includes("gmail.send")) {
+    throw new Error(
+      "Main investor-update scenario requires Comms send capability for approval/revoke proof moments.",
+    );
+  }
+
   const warrants = [rootWarrant, calendarWarrant, commsWarrant];
+  const childRuntimeModelAdapter =
+    options.childRuntimeModelAdapter ?? createDeterministicChildRuntimeModelAdapter();
+  const calendarRuntime = runCalendarRuntime({
+    modelAdapter: childRuntimeModelAdapter,
+    runtimeInput: {
+      requestId: ROOT_REQUEST_ID,
+      warrantId: calendarWarrant.id,
+      objective: calendarDelegationDraft.objective,
+      timezone: TIMEZONE,
+      now: "2026-04-17T09:04:00.000Z",
+      window: {
+        startsAt: "2026-04-18T08:00:00.000Z",
+        endsAt: "2026-04-18T12:00:00.000Z",
+      },
+      context: {
+        knownCommitments: [
+          {
+            title: "Investor update prep",
+            startsAt: "2026-04-18T09:00:00.000Z",
+            endsAt: "2026-04-18T09:30:00.000Z",
+          },
+        ],
+        constraints: [
+          "Stay inside the delegated calendar window.",
+          "Do not propose communication actions.",
+        ],
+      },
+      allowedCapabilities: calendarWarrant.capabilities,
+    },
+  });
+  const calendarRuntimeOutput = requireRuntimeSuccess(calendarRuntime, "Calendar runtime");
+  const calendarReadProposal = requireCalendarReadProposal(calendarRuntimeOutput);
+  const commsRuntime = runCommsRuntime({
+    modelAdapter: childRuntimeModelAdapter,
+    runtimeInput: {
+      requestId: ROOT_REQUEST_ID,
+      warrantId: commsWarrant.id,
+      objective: commsDelegationDraft.objective,
+      now: "2026-04-17T09:06:00.000Z",
+      context: {
+        recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+        sender: "maya@northstar.vc",
+        constraints: [
+          "Draft before send.",
+          "Keep recipients inside warrant bounds.",
+          "Any send still requires human approval.",
+        ],
+        priorThreadSummary:
+          "Recipients requested KPI and milestone highlights before tomorrow's investor update.",
+      },
+      allowedCapabilities: commsWarrant.capabilities,
+    },
+  });
+  const commsRuntimeOutput = requireRuntimeSuccess(commsRuntime, "Comms runtime");
+  const commsDraftRecipients = commsRuntimeOutput.draft.to;
+  const commsSendRecipients = resolveCommsSendRecipients(commsRuntimeOutput);
   const taskPlan: PlannerTaskRecord[] = [
     {
       id: "task-calendar-context-001",
       title: "Check tomorrow's schedule context",
       summary:
-        "Planner assigns Calendar Agent one bounded read of the April 18 availability window.",
+        "Planner delegates bounded schedule reasoning to Calendar Runtime and receives a read-only proposal for the April 18 window.",
       assignedAgentId: calendarAgent.id,
       assignedRole: calendarAgent.role,
       requiredCapabilities: ["calendar.read"],
@@ -374,7 +485,7 @@ export function runMainScenarioPlannerFlow(
       id: "task-comms-draft-001",
       title: "Draft investor follow-up emails",
       summary:
-        "Planner assigns Comms Agent drafting only for approved Northstar recipients.",
+        "Planner delegates bounded drafting to Comms Runtime and receives draft output plus an optional send proposal.",
       assignedAgentId: commsAgent.id,
       assignedRole: commsAgent.role,
       requiredCapabilities: ["gmail.draft"],
@@ -412,11 +523,12 @@ export function runMainScenarioPlannerFlow(
     requestedAt: "2026-04-17T09:05:00.000Z",
     kind: "calendar.read",
     agentId: calendarWarrant.agentId,
+    runtimeActorId: calendarRuntime.runtime.id,
     warrantId: calendarWarrant.id,
     target: {
-      scheduledFor: "2026-04-18T10:30:00.000Z",
+      scheduledFor: calendarReadProposal.startsAt,
     },
-    summary: "Review tomorrow's bounded calendar availability.",
+    summary: calendarReadProposal.rationale,
     resource: `Calendar window for ${TARGET_DATE}`,
   };
   const calendarDecision = recordControlEvaluation(
@@ -451,15 +563,16 @@ export function runMainScenarioPlannerFlow(
     requestedAt: "2026-04-17T09:07:00.000Z",
     kind: "gmail.draft",
     agentId: commsWarrant.agentId,
+    runtimeActorId: commsRuntime.runtime.id,
     warrantId: commsWarrant.id,
     target: {
-      recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+      recipients: commsDraftRecipients,
     },
     usage: {
       draftsUsed: 0,
     },
-    summary: "Draft bounded investor follow-up emails.",
-    resource: "Drafts for partners@northstar.vc and finance@northstar.vc",
+    summary: commsRuntimeOutput.reasoning,
+    resource: `Drafts for ${commsDraftRecipients.join(" and ")}`,
   };
   const commsDraftDecision = recordControlEvaluation(
     evaluateProposalControl({
@@ -482,7 +595,7 @@ export function runMainScenarioPlannerFlow(
     warrants,
     user: scenarioUser,
     targetDate: TARGET_DATE,
-    recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+    recipients: commsDraftRecipients,
     usage: {
       draftsUsed: 0,
     },
@@ -495,6 +608,7 @@ export function runMainScenarioPlannerFlow(
     requestedAt: "2026-04-17T09:08:00.000Z",
     kind: "gmail.send",
     agentId: commsWarrant.agentId,
+    runtimeActorId: commsRuntime.runtime.id,
     warrantId: commsWarrant.id,
     target: {
       recipients: ["ceo@external-partner.com"],
@@ -536,15 +650,17 @@ export function runMainScenarioPlannerFlow(
     requestedAt: commsSendRequestedAt,
     kind: "gmail.send",
     agentId: commsWarrant.agentId,
+    runtimeActorId: commsRuntime.runtime.id,
     warrantId: commsWarrant.id,
     target: {
-      recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+      recipients: commsSendRecipients,
     },
     usage: {
       sendsUsed: 0,
     },
-    summary: "Request approval for one bounded investor follow-up send.",
-    resource: "Send to partners@northstar.vc and finance@northstar.vc",
+    summary: commsRuntimeOutput.sendProposal?.reason ??
+      "Request approval for one bounded investor follow-up send.",
+    resource: `Send to ${commsSendRecipients.join(" and ")}`,
   };
   const commsSendPreApprovalDecision = recordControlEvaluation(
     evaluateProposalControl({
@@ -581,11 +697,10 @@ export function runMainScenarioPlannerFlow(
     title: "Approve investor follow-up send",
     reason:
       "This action would send a real email to other people. Maya must approve this exact message before Warrant can release the send.",
-    subject: "Investor update follow-up for April 18",
-    bodyText:
-      "Prepared follow-up for tomorrow's investor update.\n\nPlease confirm the owners, timing, and next asks before we send externally.",
-    to: ["partners@northstar.vc", "finance@northstar.vc"],
-    cc: ["maya@northstar.vc"],
+    subject: commsRuntimeOutput.draft.subject,
+    bodyText: commsRuntimeOutput.draft.bodyText,
+    to: commsSendRecipients,
+    cc: commsRuntimeOutput.draft.cc,
     requestedAt: commsSendRequestedAt,
     expiresAt: "2026-04-17T18:00:00.000Z",
     draftId: "draft-investor-update-001",
@@ -610,7 +725,7 @@ export function runMainScenarioPlannerFlow(
     },
     summary:
       "Prepared the investor follow-up send and stopped for approval.",
-    resource: "Send to partners@northstar.vc and finance@northstar.vc",
+    resource: `Send to ${commsSendRecipients.join(" and ")}`,
     outcome: "approval-required" as const,
     outcomeReason:
       "This branch is allowed to request one bounded send, but it still cannot send a real email until Maya approves this exact message.",
@@ -731,15 +846,16 @@ export function runMainScenarioPlannerFlow(
     requestedAt: "2026-04-17T09:12:00.000Z",
     kind: "gmail.send",
     agentId: commsWarrant.agentId,
+    runtimeActorId: commsRuntime.runtime.id,
     warrantId: commsWarrant.id,
     target: {
-      recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+      recipients: commsSendRecipients,
     },
     usage: {
       sendsUsed: 0,
     },
     summary: "Execute the approved bounded Gmail send.",
-    resource: "Live send to partners@northstar.vc and finance@northstar.vc",
+    resource: `Live send to ${commsSendRecipients.join(" and ")}`,
   };
   const commsApprovedSendDecision = recordControlEvaluation(
     evaluateProposalControl({
@@ -769,7 +885,7 @@ export function runMainScenarioPlannerFlow(
     warrant: commsWarrant,
     warrants,
     user: scenarioUser,
-    recipients: ["partners@northstar.vc", "finance@northstar.vc"],
+    recipients: commsSendRecipients,
     usage: {
       sendsUsed: 0,
     },
@@ -809,6 +925,7 @@ export function runMainScenarioPlannerFlow(
     requestedAt: "2026-04-17T09:14:00.000Z",
     kind: "gmail.send",
     agentId: revokedCommsWarrant.agentId,
+    runtimeActorId: commsRuntime.runtime.id,
     warrantId: revokedCommsWarrant.id,
     target: {
       recipients: ["partners@northstar.vc"],

@@ -25,10 +25,10 @@ describe("delegation graph view model", () => {
 
     expect(nodes).toHaveLength(3);
     expect(planner?.data.label).toBe("Planner Agent");
-    expect(planner?.data.runtimeActorId).toBe("agent-planner-001");
+    expect(planner?.data.runtimeActorId).toBe("runtime-planner-001");
     expect(calendar?.data.role).toBe("calendar");
     expect(comms?.data.status).toBe("revoked");
-    expect(comms?.data.runtimeActorId).toBe("agent-comms-001");
+    expect(comms?.data.runtimeActorId).toBe("runtime-comms-001");
     expect(comms?.data.runtimeStatus).toBe("blocked_revoked");
     expect(comms?.data.statusReason).toContain("withdrawn immediately");
     expect(calendar?.position.y).toBe(comms?.position.y);
@@ -61,7 +61,7 @@ describe("delegation graph view model", () => {
     expect(revokedComms?.latestApproval?.title).toBe("Approve investor follow-up send");
     expect(revokedComms?.latestApproval?.status).toBe("approved");
     expect(revokedComms?.statusSource).toBe("warrant");
-    expect(revokedComms?.runtimeActorId).toBe("agent-comms-001");
+    expect(revokedComms?.runtimeActorId).toBe("runtime-comms-001");
     expect(revokedComms?.latestRuntimeProposalId).toBe("proposal-comms-send-post-revoke-001");
     expect(revokedComms?.latestRuntimeControlState).toBe("blocked_revoked");
     expect(revokedComms?.latestPolicyDenial?.id).toBe("action-comms-send-overreach-001");

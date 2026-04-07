@@ -97,7 +97,7 @@ Required for runtime model adapter calls:
 
 Optional runtime model tuning (demo defaults are already low-variance):
 
-- `WARRANT_RUNTIME_MODEL_PROVIDER_ID` (default `gemma-4-31b`)
+- `WARRANT_RUNTIME_MODEL_PROVIDER_ID` (default `gemma-4-31b-it`)
 - `WARRANT_RUNTIME_MODEL_TEMPERATURE` (default `0.1`)
 - `WARRANT_RUNTIME_MODEL_TOP_P` (default `0.1`)
 - `WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS` (default `2048`)

@@ -240,6 +240,7 @@ export interface RuntimeActionProposal {
   requestedAt: string;
   kind: ActionKind;
   agentId: string;
+  runtimeActorId?: string | null;
   warrantId: string;
   target?: ActionTarget;
   usage?: ActionUsageSnapshot;
@@ -252,6 +253,7 @@ export interface RuntimeProposalControlDecision {
   actionId: string;
   at: string;
   agentId: string;
+  runtimeActorId: string | null;
   warrantId: string;
   parentWarrantId: string | null;
   controlState: RuntimeControlState;
@@ -270,6 +272,7 @@ export interface RuntimeControlEvent {
   proposalId: string;
   actionId: string;
   agentId: string;
+  runtimeActorId: string | null;
   warrantId: string;
   parentWarrantId: string | null;
   controlState: RuntimeControlState;

@@ -103,10 +103,10 @@ function buildCalendarPrompt(input: CalendarReasoningInput): string {
   ].join("\n");
 }
 
-export async function runCalendarRuntime(input: {
+export function runCalendarRuntime(input: {
   modelAdapter: RuntimeModelAdapter;
   runtimeInput: CalendarReasoningInput;
-}): Promise<RuntimeExecutionResult<CalendarRuntimeOutput>> {
+}): RuntimeExecutionResult<CalendarRuntimeOutput> {
   return invokeWithValidationAndRepair({
     runtime: calendarRuntimeIdentity,
     schemaName: "calendar_runtime_output",

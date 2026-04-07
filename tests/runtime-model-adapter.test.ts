@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertRuntimeModelStartup,
   invokeRuntimeModelStructuredOutput,
+  readRuntimeModelConfiguration,
   type RuntimeModelResponse,
   type RuntimeModelTransport,
   type StructuredOutputSchema,
@@ -71,6 +72,15 @@ function createTransportWithResponses(responses: string[]): RuntimeModelTranspor
 }
 
 describe("runtime model startup validation", () => {
+  it("maps logical gemma-4-31b to provider id gemma-4-31b-it by default", () => {
+    const configuration = readRuntimeModelConfiguration({
+      GOOGLE_API_KEY: "local-test-key",
+    } as unknown as NodeJS.ProcessEnv);
+
+    expect(configuration.logicalModel).toBe("gemma-4-31b");
+    expect(configuration.providerModelId).toBe("gemma-4-31b-it");
+  });
+
   it("fails startup validation when GOOGLE_API_KEY is missing", () => {
     const validation = validateRuntimeModelStartup({
       WARRANT_RUNTIME_MODEL_PROVIDER_ID: "gemma-4-31b",

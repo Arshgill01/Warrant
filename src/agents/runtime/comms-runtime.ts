@@ -112,10 +112,10 @@ function buildCommsPrompt(input: CommsReasoningInput): string {
   ].join("\n");
 }
 
-export async function runCommsRuntime(input: {
+export function runCommsRuntime(input: {
   modelAdapter: RuntimeModelAdapter;
   runtimeInput: CommsReasoningInput;
-}): Promise<RuntimeExecutionResult<CommsRuntimeOutput>> {
+}): RuntimeExecutionResult<CommsRuntimeOutput> {
   return invokeWithValidationAndRepair({
     runtime: commsRuntimeIdentity,
     schemaName: "comms_runtime_output",

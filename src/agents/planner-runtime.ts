@@ -17,9 +17,9 @@ import type {
 } from "@/agents/types";
 
 const plannerRuntimeIdentity: PlannerRuntimeIdentity = {
-  id: "agent-planner-001",
+  id: "runtime-planner-001",
   role: "planner",
-  label: "Planner Agent",
+  label: "Planner Runtime",
 };
 
 export function buildPlannerPrompt(input: PlannerRuntimeInput): string {
