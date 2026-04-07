@@ -3419,3 +3419,89 @@ Manual checks:
 - Tightening runtime identity attribution may require synchronized contract and UI/test updates.
 - Startup validation behavior must remain explicit without forcing unrelated routes to hard-fail unexpectedly.
 - Full external provider truth still depends on real Auth0 connected-account state; local verification can only prove honest unavailable/error envelopes without a live session.
+
+## ExecPlan — Live Auth0/Google Readiness Preflight (2026-04-07)
+
+### Objective
+
+Add a small demo-only live preflight layer that reports whether the real Auth0 + Google delegated execution path is ready right now, with clear reasons when it is not.
+
+### Demo relevance
+
+This pass reduces one of the highest remaining demo risks: hidden external readiness failure despite passing local policy/demo-fixture checks. It strengthens the claim that Token Vault is load-bearing by making live readiness visible and testable before recording/submission.
+
+### Scope
+
+In scope:
+
+- add a demo-only API route for live readiness (`/api/demo/live-preflight`)
+- implement structured preflight checks for:
+  - runtime model config validity
+  - Auth0 session state
+  - Google connected-account/delegated access state
+  - calendar read path readiness
+  - Gmail draft path readiness
+  - Gmail send gate correctness (must stay blocked without explicit release)
+- add a compact internal/demo UI surface in `/demo` to run and inspect preflight results
+- add a smoke script (`npm run smoke:auth0-live`) that calls the preflight endpoint and fails on non-ready status
+- add focused endpoint/tests for behavior and error envelopes
+
+Out of scope:
+
+- CI-enforced real external checks
+- broad auth/provider refactor
+- app boot dependency on live session
+- new integrations or feature expansion
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `package.json`
+- `README.md`
+- `src/contracts/demo.ts`
+- `src/demo-fixtures/live-preflight.ts` (new)
+- `src/app/api/demo/live-preflight/route.ts` (new)
+- `src/components/demo/demo-live-preflight-card.tsx` (new)
+- `src/components/demo/demo-surface.tsx`
+- `scripts/smoke-auth0-live.mjs` (new)
+- `tests/live-preflight-route.test.ts` (new)
+- `tests/routes.test.tsx` (only if marker expectations need updates)
+
+### Invariants to preserve
+
+- Local warrant policy, approval gate, and provider execution boundaries remain distinct.
+- Send execution remains blocked unless explicitly released.
+- Demo tools stay gated and do not become mandatory for normal app usage.
+- Preflight unavailable/error states remain structured, explicit, and user-legible.
+- No secrets are committed or surfaced.
+
+### Implementation steps
+
+1. Add shared live-preflight contracts and an execution module that computes structured readiness snapshots.
+2. Add demo-only route (`/api/demo/live-preflight`) with mode parsing (`token-only` vs `live`) and no-store responses.
+3. Add a compact demo panel to trigger preflight checks on demand and display per-check results.
+4. Add `smoke:auth0-live` script for manual/demo-time readiness checks.
+5. Add focused tests for route behavior and structured error envelopes.
+6. Update README with usage guidance and operational limits.
+7. Run validation and commit in clean slices.
+
+### Validation plan
+
+- `npm run test -- tests/live-preflight-route.test.ts tests/demo-route-handler.test.ts tests/routes.test.tsx`
+- `npm run test -- tests/auth-shell.test.ts tests/approval-flow.test.ts`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Manual checks:
+
+- open `/demo` and trigger preflight panel checks in `token-only` mode
+- with real signed-in session + connected Google, trigger `live` mode and verify readiness report
+- verify send preflight still reports blocked without explicit release
+
+### Risks
+
+- `live` draft checks may intentionally create a small provider-side artifact in the demo account.
+- Real external readiness remains susceptible to provider/account outages; preflight improves visibility, not guarantees.
+- Route behavior depends on demo tools gating (`WARRANT_ENABLE_DEMO_TOOLS` or development mode), so production rehearsals must set this explicitly.
