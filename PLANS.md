@@ -3919,3 +3919,99 @@ Manual checks:
 - Existing env behavior intentionally supports partial local demo mode; over-tightening could break intended degraded states.
 - Auth0 tenant UI wording can vary; checklist must describe exact values plus where to apply them, not rely on label drift.
 - Docs can drift from code quickly; route and env names must be cross-checked against current implementation before finalizing.
+
+## ExecPlan — Local Live Demo Verification + Operator Runbook (2026-04-07)
+
+### Objective
+
+Run a full local verification pass of the canonical investor-update scenario using the real live model path (`gemma-4-31b` logical model via provider mapping), then produce a concise human operator runbook for repeatable manual verification on the same machine.
+
+### Demo relevance
+
+This closes the final pre-recording confidence gap for the 3-minute story by proving:
+
+1. local startup/config truthfulness for live runtime mode
+2. planner + child runtime behavior is visibly model-backed where intended
+3. policy denial, approval gating, and revocation blocking remain runtime-enforced and legible
+4. a human can rehearse the exact local sequence without reverse-engineering internals
+
+### Scope
+
+In scope:
+
+- local env/startup readiness verification for live runtime model path
+- explicit checks that runtime uses logical `gemma-4-31b` mapping and does not silently fall back
+- investor-update scenario verification across planner, child agents, warrants, control bridge, and state surfaces
+- Auth0/Google/provider readiness verification to the maximum locally provable level
+- concise local operator runbook in repo docs (plus optional short quickcheck file)
+
+Out of scope:
+
+- broad product refactors or new feature work
+- production deployment changes
+- secret rotation, secret migration, or committing real secret values
+- claiming fully live provider execution when local session/account constraints prevent proof
+
+### Files/modules likely affected
+
+- `PLANS.md` (this ExecPlan entry)
+- `docs/local-demo-runbook.md` (new)
+- `docs/local-demo-quickcheck.md` (optional, if useful)
+- minimal source files only if small readiness/observability gaps block truthful verification
+- targeted tests/scripts only if required to validate added readiness surface changes
+
+### Invariants to preserve
+
+- No secrets are committed, printed into docs, or copied into tracked files.
+- Two-layer enforcement remains explicit: Warrant policy and Auth0/provider capability are separate checks.
+- Child warrants remain narrowing-only relative to parent authority.
+- Denied-policy, approval-required/pending/approved/denied, provider-unavailable, and revoke-blocked states remain distinct.
+- Revoking a branch invalidates descendants and remains visible in graph/timeline.
+- Deterministic replay mode may remain available, but this run verifies live runtime path truthfulness.
+
+### Implementation steps
+
+1. Baseline current stable state after real-agent + verification/topology/UI/flow polish:
+   - inspect runtime model config/adapter path, scenario orchestration, control bridge, graph/timeline bindings, and live-preflight route
+   - identify any truthfulness or observability gaps that block local trust in live mode
+2. Verify local readiness:
+   - check env-key presence (without exposing values) for runtime model and Auth0/provider paths
+   - start app locally and verify startup readiness/error surfaces are explicit and non-ambiguous
+3. Verify live model/runtime path:
+   - run investor-update scenario through live planner/child runtime flow
+   - confirm planner/calendar/comms runtime actor attribution and structured proposal/control records
+   - confirm deny vs approval vs execute vs revoke outcomes are runtime-controlled and visible
+4. Verify provider boundary truthfulness:
+   - run live preflight checks (`token-only` and `live` where possible)
+   - record exactly what provider-backed behavior was proven vs blocked by session/account state
+5. Write operator docs:
+   - create `docs/local-demo-runbook.md` with prerequisites, startup, readiness checks, exact manual click-path sequence, expected outcomes, troubleshooting, and final readiness checklist
+   - optionally add `docs/local-demo-quickcheck.md` as a short pre-recording checklist
+6. Validation and final reporting:
+   - run repo-native validation commands relevant to touched surfaces
+   - run manual verification commands/scripts used during the live pass
+   - report pass/fail and open risks with explicit boundaries of what was not locally provable
+
+### Validation plan
+
+- `npm ci`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run smoke:demo`
+- `npm run dev` (manual local verification)
+- `npm run smoke:auth0-live` (when a running server/session context is available)
+
+Manual checks:
+
+- open `http://localhost:3000` and `http://localhost:3000/demo`
+- verify startup/config readiness indicators for runtime model and Auth0/provider path
+- run canonical investor-update sequence and verify planner -> child delegation -> control decisions -> revoke effects
+- verify graph/topology/timeline coherence during the full flow
+
+### Risks
+
+- Full provider-backed proof depends on live Auth0 session and Google connection state; local pass may prove honest unavailable states rather than full live execution.
+- Live model output can vary slightly; verification must rely on structural/runtime boundaries, not exact wording.
+- If observability is too console-only, the runbook may need small UI/readiness clarifications to remain operator-friendly.
