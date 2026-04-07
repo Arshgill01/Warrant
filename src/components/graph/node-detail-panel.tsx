@@ -242,7 +242,7 @@ export function NodeDetailPanel({
               <div className="grid gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                 <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="font-medium text-[var(--muted)]">Resource</span>
-                  <span className="text-right font-semibold text-[var(--foreground)]">
+                  <span className="break-words text-right font-semibold text-[var(--foreground)]">
                     {warrant.latestAction.resource}
                   </span>
                 </div>
@@ -437,15 +437,17 @@ export function NodeDetailPanel({
               <div className="grid gap-3 rounded-xl border border-amber-100 bg-white/80 p-4 text-[11px] font-medium text-slate-700">
                 <div className="flex items-center justify-between gap-3">
                   <span className="uppercase tracking-wider text-slate-500">Attempted action</span>
-                  <span className="font-mono font-bold text-slate-900">{latestPolicyDenial.kind}</span>
+                  <span className="break-all text-right font-mono font-bold text-slate-900">{latestPolicyDenial.kind}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="uppercase tracking-wider text-slate-500">Blocked by warrant</span>
-                  <span className="font-mono font-bold text-slate-900">{latestPolicyDenial.authorization.blockedByWarrantId ?? warrant.id}</span>
+                  <span className="break-all text-right font-mono font-bold text-slate-900">
+                    {latestPolicyDenial.authorization.blockedByWarrantId ?? warrant.id}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="uppercase tracking-wider text-slate-500">Resource</span>
-                  <span className="text-right font-semibold text-slate-900">{latestPolicyDenial.resource}</span>
+                  <span className="break-words text-right font-semibold text-slate-900">{latestPolicyDenial.resource}</span>
                 </div>
               </div>
             </div>

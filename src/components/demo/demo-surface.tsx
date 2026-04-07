@@ -140,11 +140,11 @@ function ExampleCard({
   return (
     <article className="surface-card group relative p-5 transition-all hover:shadow-md">
       <div className="mb-4 flex items-start justify-between gap-4">
-        <div className="space-y-1">
+        <div className="min-w-0 space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
             {eyebrow}
           </p>
-          <h3 className="text-base font-semibold text-[var(--foreground)]">
+          <h3 className="break-words text-base font-semibold text-[var(--foreground)]">
             {title}
           </h3>
         </div>
@@ -154,11 +154,11 @@ function ExampleCard({
         />
       </div>
       <p className="text-sm leading-relaxed text-[var(--muted)]">{detail}</p>
-      <div className="mt-4 flex items-center gap-2 border-t border-[var(--panel-border)] pt-4">
-        <span className="text-[10px] font-bold uppercase tracking-tight text-[var(--muted)]">
+      <div className="mt-4 flex items-start gap-2 border-t border-[var(--panel-border)] pt-4">
+        <span className="shrink-0 text-[10px] font-bold uppercase tracking-tight text-[var(--muted)]">
           Context:
         </span>
-        <span className="text-xs font-medium text-[var(--foreground)]">
+        <span className="min-w-0 break-words text-xs font-medium text-[var(--foreground)]">
           {meta}
         </span>
       </div>
@@ -521,27 +521,27 @@ export function DemoSurface({
           </p>
 
           <div className="mt-8 space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--panel-border)] pb-3">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)] pb-3">
               <span className="text-xs font-medium text-[var(--muted)]">
                 Target Date
               </span>
-              <span className="text-sm font-semibold">
+              <span className="text-right text-sm font-semibold">
                 {formatDate(scenario.targetDate)}
               </span>
             </div>
-            <div className="flex items-center justify-between border-b border-[var(--panel-border)] pb-3">
+            <div className="flex items-center justify-between gap-3 border-b border-[var(--panel-border)] pb-3">
               <span className="text-xs font-medium text-[var(--muted)]">
                 Approved By
               </span>
-              <span className="text-sm font-semibold">
+              <span className="text-right text-sm font-semibold">
                 {scenario.user.label}
               </span>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-medium text-[var(--muted)]">
                 Parent Warrant
               </span>
-              <span className="font-mono text-[10px] font-bold text-[var(--accent)]">
+              <span className="max-w-[70%] break-all text-right font-mono text-[10px] font-bold text-[var(--accent)]">
                 {scenario.rootWarrantId}
               </span>
             </div>
@@ -752,10 +752,10 @@ export function DemoSurface({
                   <p className="mt-2 text-sm font-medium text-[var(--foreground)]">
                     To: {examples.commsSendApproval.preview.to.join(", ")}
                   </p>
-                  <p className="mt-2 text-sm text-[var(--foreground)]">
+                  <p className="mt-2 break-words text-sm text-[var(--foreground)]">
                     Cc: {examples.commsSendApproval.preview.cc.join(", ")}
                   </p>
-                  <p className="mt-2 text-sm text-[var(--foreground)]">
+                  <p className="mt-2 break-words text-sm text-[var(--foreground)]">
                     Draft: {examples.commsSendApproval.preview.draftId ?? "none"}
                   </p>
                 </div>
@@ -764,7 +764,7 @@ export function DemoSurface({
                     Body preview
                   </p>
                   <pre
-                    className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--foreground)]"
+                    className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]"
                     style={{ fontFamily: "inherit" }}
                   >
                     {examples.commsSendApproval.preview.bodyText}
@@ -868,7 +868,7 @@ export function DemoSurface({
               key={event.id}
               className="surface-card group flex flex-col gap-6 p-6 transition-all hover:border-[var(--muted)]/20 hover:shadow-md md:flex-row md:items-center"
             >
-              <div className="flex-1 space-y-3">
+              <div className="min-w-0 flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
                   <StatusChip
                     label={formatStatusLabel(event.controlState)}
@@ -891,7 +891,7 @@ export function DemoSurface({
                   <span className="font-bold uppercase tracking-tighter opacity-50">
                     Actor
                   </span>
-                  <span className="font-semibold text-[var(--foreground)]">
+                  <span className="break-words text-right font-semibold text-[var(--foreground)]">
                     {event.actorLabel}
                   </span>
                 </div>
@@ -899,7 +899,7 @@ export function DemoSurface({
                   <span className="font-bold uppercase tracking-tighter opacity-50">
                     Proposal
                   </span>
-                  <span className="font-semibold text-[var(--foreground)]">
+                  <span className="break-all text-right font-semibold text-[var(--foreground)]">
                     {event.proposalId ?? "—"}
                   </span>
                 </div>
@@ -907,7 +907,7 @@ export function DemoSurface({
                   <span className="font-bold uppercase tracking-tighter opacity-50">
                     Runtime
                   </span>
-                  <span className="font-semibold text-[var(--foreground)]">
+                  <span className="break-words text-right font-semibold text-[var(--foreground)]">
                     {event.runtimeControlState
                       ? formatStatusLabel(event.runtimeControlState)
                       : "—"}
@@ -917,7 +917,7 @@ export function DemoSurface({
                   <span className="font-bold uppercase tracking-tighter opacity-50">
                     Runtime actor
                   </span>
-                  <span className="font-semibold text-[var(--foreground)]">
+                  <span className="break-all text-right font-semibold text-[var(--foreground)]">
                     {event.runtimeActorLabel
                       ? `${event.runtimeActorLabel} (${event.runtimeActorId})`
                       : "—"}
@@ -927,7 +927,7 @@ export function DemoSurface({
                   <span className="font-bold uppercase tracking-tighter opacity-50">
                     Warrant
                   </span>
-                  <span className="font-semibold text-[var(--accent)]">
+                  <span className="break-all text-right font-semibold text-[var(--accent)]">
                     {event.warrantId ?? "—"}
                   </span>
                 </div>
@@ -935,7 +935,7 @@ export function DemoSurface({
                   <span className="font-bold uppercase tracking-tighter opacity-50">
                     Parent
                   </span>
-                  <span className="font-semibold">
+                  <span className="break-all text-right font-semibold">
                     {event.parentWarrantId ?? "root"}
                   </span>
                 </div>

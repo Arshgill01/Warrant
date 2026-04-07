@@ -272,7 +272,9 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             </div>
             <p className="mb-3 text-sm font-medium text-[var(--foreground)]">{result.headline}</p>
             <p className="mb-3 text-sm leading-6 text-[var(--muted)]">{result.detail}</p>
-            <p className="mb-2 text-sm font-medium text-[var(--foreground)]">Request: {renderProviderRequestSummary(result)}</p>
+            <p className="mb-2 break-words text-sm font-medium text-[var(--foreground)]">
+              Request: {renderProviderRequestSummary(result)}
+            </p>
             <p className="mb-2 text-sm leading-6 text-[var(--muted)]">
               Provider state: {result.connection.state.replaceAll("-", " ")}
             </p>
