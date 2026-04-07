@@ -32,9 +32,9 @@ function runtimeEvent(input: {
   };
 }
 
-export async function invokeWithValidationAndRepair<Input, Output>(
+export function invokeWithValidationAndRepair<Input, Output>(
   input: InvokeValidatedRuntimeInput<Input, Output>,
-): Promise<RuntimeExecutionResult<Output>> {
+): RuntimeExecutionResult<Output> {
   const events: RuntimeEvent[] = [
     runtimeEvent({
       kind: "runtime.started",
@@ -47,7 +47,7 @@ export async function invokeWithValidationAndRepair<Input, Output>(
   let firstOutput: unknown;
 
   try {
-    const firstResponse = await input.modelAdapter.invoke({
+    const firstResponse = input.modelAdapter.invoke({
       runtime: input.runtime,
       role: input.runtime.role,
       schemaName: input.schemaName,
@@ -118,7 +118,7 @@ export async function invokeWithValidationAndRepair<Input, Output>(
   let repairedOutput: unknown;
 
   try {
-    const repairResponse = await input.modelAdapter.invoke({
+    const repairResponse = input.modelAdapter.invoke({
       runtime: input.runtime,
       role: input.runtime.role,
       schemaName: input.schemaName,

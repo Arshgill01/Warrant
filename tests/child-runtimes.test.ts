@@ -21,7 +21,7 @@ class ScriptedRuntimeAdapter implements RuntimeModelAdapter {
     private readonly model = "scripted-model-v1",
   ) {}
 
-  async invoke(input: RuntimeModelInvocation): Promise<RuntimeModelResponse> {
+  invoke(input: RuntimeModelInvocation): RuntimeModelResponse {
     this.invocations.push(input);
     const index = this.invocations.length - 1;
     const output = this.scriptedOutputs[index];
