@@ -730,6 +730,9 @@ export function DemoSurface({
             <h2 className="text-3xl font-semibold tracking-tight">
               Canonical Proof Points
             </h2>
+            <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
+              These checks are intentionally separate: policy denial, approval gate, and revocation block are different control outcomes.
+            </p>
           </div>
           <div className="flex gap-4 text-xs font-medium text-[var(--muted)]">
             <span>{controlStateCounts.active ?? 0} Active</span>
@@ -776,7 +779,7 @@ export function DemoSurface({
             meta={examples.commsDraftAction.resource}
           />
           <ExampleCard
-            eyebrow="Blocked Overreach"
+            eyebrow="Policy Denial"
             title={examples.commsOverreachAction.summary}
             statusKey={examples.commsOverreachAction.controlState}
             statusLabel={formatStatusLabel(examples.commsOverreachAction.controlState)}
@@ -784,17 +787,27 @@ export function DemoSurface({
             meta={`Policy code: ${examples.commsOverreachAction.authorization.code}`}
           />
           <ExampleCard
-            eyebrow={postRevokeAction ? "Post-Revoke Failure" : "Sensitive Send"}
-            title={postRevokeAction ? postRevokeAction.summary : examples.commsSendAction.summary}
-            statusKey={postRevokeAction ? postRevokeAction.controlState : examples.commsSendAction.controlState}
-            statusLabel={formatStatusLabel(postRevokeAction ? postRevokeAction.controlState : examples.commsSendAction.controlState)}
-            detail={postRevokeAction ? postRevokeAction.outcomeReason : examples.commsSendAction.outcomeReason}
-            meta={
-              postRevokeAction
-                ? `Policy code: ${postRevokeAction.authorization.code}`
-                : examples.commsSendApproval.title
+            eyebrow="Approval-Gated Send"
+            title={examples.commsSendAction.summary}
+            statusKey={examples.commsSendAction.controlState}
+            statusLabel={formatStatusLabel(examples.commsSendAction.controlState)}
+            detail={
+              commsBranchRevoked
+                ? "This approval-gated send remains in the audit trail as the pre-revocation checkpoint. Revocation impact is shown separately."
+                : examples.commsSendAction.outcomeReason
             }
+            meta={`Approval record: ${examples.commsSendApproval.title} (${formatStatusLabel(examples.commsSendApproval.controlState)})`}
           />
+          {postRevokeAction ? (
+            <ExampleCard
+              eyebrow="Revocation Block"
+              title={postRevokeAction.summary}
+              statusKey={postRevokeAction.controlState}
+              statusLabel={formatStatusLabel(postRevokeAction.controlState)}
+              detail={postRevokeAction.outcomeReason}
+              meta={`Policy code: ${postRevokeAction.authorization.code}`}
+            />
+          ) : null}
         </div>
       </section>
 
