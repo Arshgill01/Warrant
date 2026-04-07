@@ -5,7 +5,6 @@ import {
 } from "@/actions";
 import { getAuthSessionSnapshot } from "@/auth/session";
 import type {
-  AuthSessionSnapshot,
   DemoLivePreflightCheck,
   DemoLivePreflightMode,
   DemoLivePreflightSnapshot,
@@ -99,8 +98,20 @@ function buildSummary(overallState: DemoLivePreflightSnapshot["overallState"]): 
 }
 
 function createCalendarReadFetchStub(): typeof fetch {
+  function resolveRequestUrl(input: Parameters<typeof fetch>[0]): string {
+    if (typeof input === "string") {
+      return input;
+    }
+
+    if (input instanceof URL) {
+      return input.toString();
+    }
+
+    return input.url;
+  }
+
   return async (input) => {
-    const requestUrl = typeof input === "string" ? input : input.url;
+    const requestUrl = resolveRequestUrl(input);
 
     if (!requestUrl.includes("googleapis.com/calendar")) {
       return new Response(
@@ -135,8 +146,20 @@ function createCalendarReadFetchStub(): typeof fetch {
 }
 
 function createGmailDraftFetchStub(): typeof fetch {
+  function resolveRequestUrl(input: Parameters<typeof fetch>[0]): string {
+    if (typeof input === "string") {
+      return input;
+    }
+
+    if (input instanceof URL) {
+      return input.toString();
+    }
+
+    return input.url;
+  }
+
   return async (input) => {
-    const requestUrl = typeof input === "string" ? input : input.url;
+    const requestUrl = resolveRequestUrl(input);
 
     if (!requestUrl.includes("gmail.googleapis.com/gmail/v1/users/me/drafts")) {
       return new Response(

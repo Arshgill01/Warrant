@@ -15,7 +15,10 @@ describe("demo live preflight route", () => {
 
   it("returns 404 when demo tools are disabled", async () => {
     delete process.env.WARRANT_ENABLE_DEMO_TOOLS;
-    process.env.NODE_ENV = "test";
+    process.env = {
+      ...process.env,
+      NODE_ENV: "test",
+    };
 
     const { GET } = await import("@/app/api/demo/live-preflight/route");
     const response = await GET(
@@ -29,7 +32,10 @@ describe("demo live preflight route", () => {
 
   it("returns a structured blocked snapshot when enabled without live auth prerequisites", async () => {
     process.env.WARRANT_ENABLE_DEMO_TOOLS = "true";
-    process.env.NODE_ENV = "test";
+    process.env = {
+      ...process.env,
+      NODE_ENV: "test",
+    };
 
     const { GET } = await import("@/app/api/demo/live-preflight/route");
     const response = await GET(
@@ -46,7 +52,10 @@ describe("demo live preflight route", () => {
 
   it("parses live mode from query params", async () => {
     process.env.WARRANT_ENABLE_DEMO_TOOLS = "true";
-    process.env.NODE_ENV = "test";
+    process.env = {
+      ...process.env,
+      NODE_ENV: "test",
+    };
 
     const { GET } = await import("@/app/api/demo/live-preflight/route");
     const response = await GET(
@@ -60,7 +69,10 @@ describe("demo live preflight route", () => {
 
   it("returns a structured fatal-error envelope when preflight execution throws", async () => {
     process.env.WARRANT_ENABLE_DEMO_TOOLS = "true";
-    process.env.NODE_ENV = "test";
+    process.env = {
+      ...process.env,
+      NODE_ENV: "test",
+    };
 
     vi.doMock("@/demo-fixtures/live-preflight", async () => {
       const actual =
