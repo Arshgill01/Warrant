@@ -3505,3 +3505,187 @@ Manual checks:
 - `live` draft checks may intentionally create a small provider-side artifact in the demo account.
 - Real external readiness remains susceptible to provider/account outages; preflight improves visibility, not guarantees.
 - Route behavior depends on demo tools gating (`WARRANT_ENABLE_DEMO_TOOLS` or development mode), so production rehearsals must set this explicitly.
+
+## ExecPlan — Topology Graph Hardening (2026-04-07)
+
+### Objective
+
+Harden the delegation topology graph into a stable, readable, product-grade proof surface without changing the underlying runtime truth model.
+
+### Demo relevance
+
+This strengthens the most judge-visible artifact for the core demo beats:
+
+1. planner -> child branch delegation is instantly legible
+2. denied/approval/revoked/expired states are clearly distinct
+3. branch-level revoke remains visibly real
+4. repeated runs and state changes do not make the graph jumpy or fragile
+
+### Baseline findings (before implementation)
+
+- Graph tests are currently green, but they do not cover visual overflow/choppiness (`tests/delegation-graph.test.ts`, `tests/node-detail-panel.test.tsx`, `tests/state-surface-proof.test.tsx`).
+- Mobile graph view becomes too compressed to read when fitting all nodes.
+- Node detail panel has fixed `w-[420px]`, which overflows/clips on mobile when opened.
+- Graph selection resets on every graph data refresh because `selectedWarrantId` is cleared in a broad `useEffect` dependency.
+- Node cards and spacing bias toward desktop width; readability degrades in constrained widths.
+
+### Scope
+
+In scope:
+
+- stabilize graph layout and viewport behavior across repeated state updates
+- reduce node/detail/label overflow in desktop and mobile widths
+- improve node sizing and spacing balance while keeping the current graph metaphor
+- improve edge readability and status legibility without collapsing distinct states
+- improve node detail panel clarity and responsive behavior
+- preserve runtime-derived data truthfulness in graph/status rendering
+
+Out of scope:
+
+- redesigning the graph UI from scratch
+- adding unrelated new graph features or workflows
+- flattening distinct control states into a generic status language
+- replacing runtime-driven graph data with mock-only simplifications
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/graph/delegation-graph.tsx`
+- `src/graph/view-model.ts`
+- `src/components/graph/agent-node.tsx`
+- `src/components/graph/node-detail-panel.tsx`
+- `src/components/demo/demo-surface.tsx` (only if graph wrapper props/layout need narrow adjustments)
+- `tests/delegation-graph.test.ts`
+- `tests/node-detail-panel.test.tsx`
+- `tests/state-surface-proof.test.tsx`
+
+### Invariants to preserve
+
+- Child warrants only narrow authority from parent warrants.
+- Revocation remains branch-scoped and descendant-invalidating.
+- `active`, `denied_policy`, `approval_pending`, `approval_denied`, `blocked_revoked`, `blocked_expired`, `revoked`, and `expired` remain visually and semantically distinct.
+- Graph and timeline continue deriving from the same canonical scenario data.
+- Real runtime actor identity and control state attribution remain visible.
+
+### Implementation steps
+
+1. Stabilize graph behavior:
+   - preserve selected node across non-destructive graph updates
+   - avoid unnecessary view resets/reflows that create choppiness
+   - tighten React Flow config for deterministic interaction behavior
+2. Harden layout and node readability:
+   - rebalance node dimensions, typography, and spacing for dense and narrow viewports
+   - tune static graph positioning constants for better branch readability
+   - improve edge stroke/marker legibility without changing state semantics
+3. Harden responsive overflow surfaces:
+   - make node detail panel responsive (mobile-safe width/position)
+   - prevent clipping/overflow for long IDs, labels, and status metadata
+   - ensure graph overlays/chips/controls do not collide with critical content
+4. Validate state visibility and truthfulness:
+   - verify status badges/cards keep critical states distinct
+   - verify revoked/denied/pending/expired semantics remain explicit in node and detail views
+5. Run targeted validation and manual demo checks.
+6. Commit in small slices:
+   - layout/stability fixes
+   - overflow/readability/status/detail-panel hardening
+   - tests + final polish/verification
+
+### Validation plan
+
+- `npm run test -- tests/delegation-graph.test.ts tests/node-detail-panel.test.tsx tests/state-surface-proof.test.tsx`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run build`
+
+Manual checks:
+
+- desktop `/demo`: graph remains stable when toggling presets and revoking Comms branch
+- mobile `/demo`: node cards remain legible, detail panel does not clip off-screen
+- status differentiation remains obvious at a glance (`active`, `blocked`, `pending approval`, `revoked`, `expired`, `denied`)
+
+### Risks
+
+- More compact responsive layout can reduce at-a-glance detail unless typography/spacing are tuned carefully.
+- Over-constraining React Flow interaction may hurt inspectability if pan/zoom defaults are too strict.
+- Visual polish changes can accidentally blur status semantics if badge tone/icon rules drift.
+
+## ExecPlan — Production Start Path Truthfulness Hardening (2026-04-07)
+
+### Objective
+
+Reproduce, diagnose, and fix the `npm run start -- --port 3100` production-start failure (`Cannot find module './vendor-chunks/jose.js'`) with the smallest truthful change.
+
+### Demo relevance
+
+A production-startable repo is demo-critical. Judges and reviewers must be able to run the shared app reliably without dev-mode-only behavior. This strengthens technical execution credibility for the 3-minute story.
+
+### Scope
+
+In scope:
+
+- reproduce the reported failure in a clean command sequence
+- capture evidence to classify cause:
+  - stale build output
+  - dependency/install drift
+  - Next.js production artifact issue
+  - auth/jose bundling/runtime issue
+  - incorrect production start procedure
+- apply the smallest grounded fix, or document the clean reproducible procedure if no code fix is required
+- verify status of `.playwright-cli/` and `.tmp-npm-cache-playwright/` as ignore-vs-local artifacts
+
+Out of scope:
+
+- graph/UI changes unrelated to startup
+- broad dependency churn or framework upgrades
+- workaround theater (e.g., replacing production checks with dev-only validation)
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `README.md` (only if startup procedure clarification is needed)
+- `.gitignore` (only if local artifact ignore coverage is justified)
+- `package.json` (only if start/build script clarification is required)
+- minimal auth/runtime files only if the jose artifact issue proves code-level
+
+### Invariants to preserve
+
+- Keep the core demo path and runtime/control semantics unchanged.
+- Do not weaken the distinction between local policy, approval, and provider layers.
+- Avoid broad refactors; prefer isolated and reviewable changes.
+- Do not claim startup success without a successful command-level proof.
+
+### Implementation steps
+
+1. Baseline and reproduce:
+   - record current branch/worktree state and relevant script definitions
+   - run exact clean sequence for production path and capture failure/success evidence
+2. Diagnose:
+   - inspect `.next` production artifacts and stack traces around `vendor-chunks/jose.js`
+   - test strongest hypotheses with minimal perturbation (artifact freshness, install state, start ordering)
+3. Fix minimally:
+   - apply smallest code/config/procedure change needed to make production-start truthful
+   - avoid touching unrelated graph/demo surfaces
+4. Artifact hygiene decision:
+   - determine whether `.playwright-cli/` and `.tmp-npm-cache-playwright/` should be ignored in-repo or left as local transient artifacts
+   - apply minimal ignore/docs adjustment only if warranted
+5. Validate and commit in small slices:
+   - reproduction/diagnostic or startup-procedure clarification
+   - minimal fix (if required)
+   - ignore/cleanup docs tweak (if required)
+
+### Validation plan
+
+- `npm install`
+- `npm run build`
+- `npm run start -- --port 3100`
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test -- tests/delegation-graph.test.ts tests/node-detail-panel.test.tsx tests/state-surface-proof.test.tsx`
+
+If startup behavior is flaky, rerun the production sequence serially and report exact order plus outcomes.
+
+### Risks
+
+- The failure may be nondeterministic and tied to local artifact churn, requiring careful clean-sequence proof.
+- `next typegen` and `.next` artifact generation can create race-like symptoms if commands are run in parallel.
+- A true Next/Auth0 jose bundling bug may require a workaround that should be documented clearly if not safely fixable in this slice.

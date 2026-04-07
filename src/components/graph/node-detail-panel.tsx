@@ -84,8 +84,8 @@ export function NodeDetailPanel({
   );
 
   return (
-    <div className="absolute bottom-0 right-0 top-0 z-20 flex w-[420px] flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
-      <div className="flex items-center justify-between border-b border-[var(--panel-border)] bg-slate-50/50 p-6">
+    <div className="absolute inset-y-0 right-0 z-20 flex w-[min(100%,420px)] max-w-full flex-col border-l border-[var(--panel-border)] bg-white shadow-2xl transition-all duration-300 ease-in-out animate-in slide-in-from-right">
+      <div className="flex items-center justify-between border-b border-[var(--panel-border)] bg-slate-50/50 p-4 sm:p-6">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--panel-border)] bg-white text-[var(--accent)] shadow-sm">
             <FileSearch className="size-5" />
@@ -107,8 +107,8 @@ export function NodeDetailPanel({
         </button>
       </div>
 
-      <div className="custom-scrollbar flex-1 space-y-10 overflow-y-auto p-8">
-        <section className="space-y-4">
+      <div className="custom-scrollbar flex-1 space-y-8 overflow-x-hidden overflow-y-auto p-4 sm:space-y-10 sm:p-6">
+        <section className="space-y-3.5 sm:space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div
               className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${statusTone[warrant.status]}`}
@@ -116,14 +116,14 @@ export function NodeDetailPanel({
               {statusIcon}
               {formatDisplayStatus(warrant.status)}
             </div>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-tighter text-[var(--muted)]">
+            <span className="break-all text-right font-mono text-[10px] font-bold uppercase tracking-tighter text-[var(--muted)]">
               ID: {warrant.id}
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             <h3
-              className="text-3xl font-bold tracking-tight text-[var(--foreground)]"
+              className="text-2xl font-bold tracking-tight text-[var(--foreground)] sm:text-3xl"
               style={{ fontFamily: "var(--font-serif)" }}
             >
               {warrant.agentLabel}
@@ -135,10 +135,10 @@ export function NodeDetailPanel({
 
           <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
             <div className="flex items-center justify-between gap-3">
-                <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
+              <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
                 Why this status is shown
               </span>
-              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)]">
+              <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)] sm:shrink-0">
                 {formatStatusSource(warrant.statusSource)}
               </span>
             </div>
@@ -152,7 +152,7 @@ export function NodeDetailPanel({
               <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-[var(--muted)]">
                 Runtime actor
               </span>
-              <span className="font-mono text-[11px] font-semibold text-[var(--foreground)]">
+              <span className="break-all text-right font-mono text-[11px] font-semibold text-[var(--foreground)]">
                 {warrant.runtimeActorId}
               </span>
             </div>
@@ -167,7 +167,7 @@ export function NodeDetailPanel({
                 {warrant.latestRuntimeProposalId ? (
                   <p>
                     Proposal:{" "}
-                    <span className="font-mono text-[11px] font-semibold text-[var(--foreground)]">
+                    <span className="break-all font-mono text-[11px] font-semibold text-[var(--foreground)]">
                       {warrant.latestRuntimeProposalId}
                     </span>
                   </p>
@@ -195,12 +195,12 @@ export function NodeDetailPanel({
             {warrant.capabilities.map((capability) => (
               <div
                 key={capability}
-                className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-4"
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/50 p-4"
               >
-                <span className="text-sm font-semibold text-[var(--foreground)]">
+                <span className="text-sm font-semibold text-[var(--foreground)] break-words">
                   {capability}
                 </span>
-                <div className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-600">
                   Allowed
                 </div>
               </div>
@@ -250,7 +250,7 @@ export function NodeDetailPanel({
                   <>
                     <div className="flex items-center justify-between gap-3 text-xs">
                       <span className="font-medium text-[var(--muted)]">Provider state</span>
-                      <span className="font-semibold uppercase tracking-wide text-[var(--foreground)]">
+                      <span className="break-all text-right font-semibold uppercase tracking-wide text-[var(--foreground)]">
                         {warrant.latestAction.providerState.replace("-", " ")}
                       </span>
                     </div>
@@ -300,7 +300,7 @@ export function NodeDetailPanel({
                 ) : null}
                 <p>
                   Recipients:{" "}
-                  {warrant.latestApproval.affectedRecipients.join(", ")}
+                  <span className="break-words">{warrant.latestApproval.affectedRecipients.join(", ")}</span>
                 </p>
                 <p>Blast radius: {warrant.latestApproval.blastRadius}</p>
                 {isRevoked ? (
@@ -330,7 +330,7 @@ export function NodeDetailPanel({
                       <td className="w-1/3 bg-slate-50/30 px-4 py-3 font-medium capitalize text-[var(--muted)]">
                         {constraint.label}
                       </td>
-                      <td className="px-4 py-3 font-mono text-[11px] font-bold text-[var(--foreground)]">
+                      <td className="break-words px-4 py-3 text-right font-mono text-[11px] font-bold text-[var(--foreground)]">
                         {constraint.value}
                       </td>
                     </tr>
@@ -400,7 +400,7 @@ export function NodeDetailPanel({
               <span className="block text-[8px] font-black uppercase tracking-tighter text-slate-400">
                 Parent
               </span>
-              <span className="font-mono text-[10px] font-bold">
+              <span className="break-all font-mono text-[10px] font-bold">
                 {warrant.parentLabel ?? warrant.parentId ?? "ROOT"}
               </span>
             </div>
@@ -409,7 +409,7 @@ export function NodeDetailPanel({
               <span className="block text-[8px] font-black uppercase tracking-tighter text-[var(--accent)]">
                 Current
               </span>
-              <span className="font-mono text-[10px] font-bold text-[var(--accent)]">
+              <span className="break-all font-mono text-[10px] font-bold text-[var(--accent)]">
                 {warrant.id}
               </span>
             </div>
@@ -427,7 +427,7 @@ export function NodeDetailPanel({
                 <p className="text-sm font-semibold text-[var(--foreground)]">
                   {latestPolicyDenial.summary}
                 </p>
-                <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-amber-700">
+                <span className="break-all rounded-full border border-amber-200 bg-white px-2.5 py-1 text-right font-mono text-[10px] font-bold uppercase tracking-widest text-amber-700">
                   {latestPolicyDenial.authorization.code}
                 </span>
               </div>
@@ -454,7 +454,7 @@ export function NodeDetailPanel({
       </div>
 
       {canRevokeBranch ? (
-        <div className="space-y-4 border-t border-[var(--panel-border)] bg-slate-50/80 p-6">
+        <div className="space-y-4 border-t border-[var(--panel-border)] bg-slate-50/80 p-4 sm:p-6">
           {isRevoked ? (
             <div className="flex items-center gap-3 rounded-xl border border-rose-100 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
               <AlertTriangle className="size-5 shrink-0" />

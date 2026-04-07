@@ -5,10 +5,16 @@ import type {
 } from "@/contracts";
 import type { AgentNode } from "@/components/graph/agent-node";
 
-const GRAPH_CENTER_X = 320;
-const ROOT_Y = 84;
-const LEVEL_Y_GAP = 200;
-const LEVEL_X_GAP = 280;
+const GRAPH_CENTER_X = 360;
+const ROOT_Y = 72;
+const LEVEL_Y_GAP = 188;
+const LEVEL_X_GAP = 236;
+
+const ROLE_LAYOUT_ORDER: Record<GraphNodeDTO["role"], number> = {
+  planner: 0,
+  calendar: 1,
+  comms: 2,
+};
 
 type GraphViewModelInput = {
   graphNodes: GraphNodeDTO[];
@@ -58,12 +64,33 @@ export function collectDescendantNodeIds(
 export function buildStableGraphPositions(
   graphNodes: GraphNodeDTO[],
 ): Record<string, XYPosition> {
-  const orderByNodeId = new Map(graphNodes.map((node, index) => [node.id, index]));
-  const sortedNodes = [...graphNodes].sort(
-    (left, right) =>
-      (orderByNodeId.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
-      (orderByNodeId.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-  );
+  const compareNodesForLayout = (left: GraphNodeDTO, right: GraphNodeDTO): number => {
+    const leftParent = left.parentId ?? "";
+    const rightParent = right.parentId ?? "";
+    const parentComparison = leftParent.localeCompare(rightParent);
+
+    if (parentComparison !== 0) {
+      return parentComparison;
+    }
+
+    const roleComparison = ROLE_LAYOUT_ORDER[left.role] - ROLE_LAYOUT_ORDER[right.role];
+
+    if (roleComparison !== 0) {
+      return roleComparison;
+    }
+
+    const labelComparison = left.label.localeCompare(right.label, "en", {
+      sensitivity: "base",
+    });
+
+    if (labelComparison !== 0) {
+      return labelComparison;
+    }
+
+    return left.id.localeCompare(right.id);
+  };
+
+  const sortedNodes = [...graphNodes].sort(compareNodesForLayout);
   const childrenByParent = new Map<string, GraphNodeDTO[]>();
   const roots = sortedNodes.filter((node) => node.parentId === null);
   const levels = new Map<number, GraphNodeDTO[]>();
@@ -77,6 +104,10 @@ export function buildStableGraphPositions(
     const currentChildren = childrenByParent.get(node.parentId) ?? [];
     currentChildren.push(node);
     childrenByParent.set(node.parentId, currentChildren);
+  });
+
+  childrenByParent.forEach((children, parentId) => {
+    childrenByParent.set(parentId, [...children].sort(compareNodesForLayout));
   });
 
   while (queue.length > 0) {
@@ -143,28 +174,68 @@ export function buildDelegationGraphNodes({
 export function buildDelegationGraphEdges(
   graphEdges: GraphEdgeDTO[],
 ): Edge[] {
-  return graphEdges.map((edge) => ({
-    id: edge.id,
-    source: edge.sourceId,
-    target: edge.targetId,
-    animated: edge.status !== "revoked" && edge.status !== "blocked_revoked",
-    style: {
-      stroke:
-        edge.status === "revoked" || edge.status === "blocked_revoked"
-          ? "#cbd5e1"
-          : "var(--accent)",
-      strokeWidth: 2,
-      opacity:
-        edge.status === "revoked" || edge.status === "blocked_revoked"
-          ? 0.5
-          : 1,
-    },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color:
-        edge.status === "revoked" || edge.status === "blocked_revoked"
-          ? "#cbd5e1"
-          : "var(--accent)",
-    },
-  }));
+  const resolveEdgeStyle = (
+    status: GraphEdgeDTO["status"],
+  ): {
+    color: string;
+    opacity: number;
+    strokeDasharray?: string;
+  } => {
+    switch (status) {
+      case "revoked":
+      case "blocked_revoked":
+        return {
+          color: "#be123c",
+          opacity: 0.62,
+          strokeDasharray: "6 5",
+        };
+      case "expired":
+      case "blocked_expired":
+        return {
+          color: "#64748b",
+          opacity: 0.68,
+          strokeDasharray: "5 4",
+        };
+      case "approval_required":
+      case "approval_pending":
+        return {
+          color: "#d97706",
+          opacity: 0.9,
+          strokeDasharray: "4 3",
+        };
+      case "approval_denied":
+      case "denied_policy":
+        return {
+          color: "#e11d48",
+          opacity: 0.82,
+          strokeDasharray: "3 3",
+        };
+      default:
+        return {
+          color: "var(--accent)",
+          opacity: 0.92,
+        };
+    }
+  };
+
+  return graphEdges.map((edge) => {
+    const edgeStyle = resolveEdgeStyle(edge.status);
+
+    return {
+      id: edge.id,
+      source: edge.sourceId,
+      target: edge.targetId,
+      animated: false,
+      style: {
+        stroke: edgeStyle.color,
+        strokeWidth: 2.25,
+        opacity: edgeStyle.opacity,
+        strokeDasharray: edgeStyle.strokeDasharray,
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: edgeStyle.color,
+      },
+    };
+  });
 }
