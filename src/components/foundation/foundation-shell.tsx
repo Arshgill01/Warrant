@@ -38,7 +38,7 @@ const statusItems = [
 
 export function FoundationShell({ boundaries }: FoundationShellProps) {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-6 py-10 sm:px-10 lg:px-12">
+    <main className="page-shell">
       <section className="rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-8 shadow-[0_20px_80px_rgba(16,18,23,0.08)] backdrop-blur">
         <div className="mb-6 inline-flex rounded-full border border-[var(--panel-border)] bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">
           Foundation Scaffold

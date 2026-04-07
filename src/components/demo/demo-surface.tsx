@@ -478,7 +478,7 @@ export function DemoSurface({
     : `current: ${formatStatusLabel(currentApprovalControlState)}`;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-[1400px] flex-col gap-8 px-6 py-10 sm:px-10 lg:px-16">
+    <main className="page-shell">
       <section className="grid gap-8 lg:grid-cols-[1fr_400px]">
         <div className="flex flex-col justify-center space-y-6">
           <div className="space-y-2">

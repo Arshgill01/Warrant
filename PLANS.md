@@ -3689,3 +3689,131 @@ If startup behavior is flaky, rerun the production sequence serially and report 
 - The failure may be nondeterministic and tied to local artifact churn, requiring careful clean-sequence proof.
 - `next typegen` and `.next` artifact generation can create race-like symptoms if commands are run in parallel.
 - A true Next/Auth0 jose bundling bug may require a workaround that should be documented clearly if not safely fixable in this slice.
+
+## ExecPlan — UI Consistency Sweep (2026-04-07)
+
+### Objective
+
+Run a bounded, low-risk UI consistency sweep across major Warrant surfaces so the product reads as one coherent system rather than isolated feature islands.
+
+### Demo relevance
+
+This directly improves judge-facing clarity in the core 3-minute flow by making repeated UI patterns legible and trustworthy:
+
+1. auth/setup, demo, graph, approval, and timeline screens look like one product
+2. status and control-state meaning stays consistent across surfaces
+3. visual seams and overflow glitches are reduced without destabilizing runtime behavior
+
+### Current baseline and ownership boundaries
+
+- Current stable base already includes merged `real-agent-integration` verification and `topology-graph-hardening`.
+- This pass must not alter graph-core ownership areas (node positioning, edge routing, interaction model).
+- Allowed graph-adjacent work: page/frame spacing, container overflow, detail-panel framing, and section-level coherence around the graph.
+
+### Inconsistency audit checklist (pre-implementation)
+
+1. Layout rhythm
+   - container max-width and horizontal padding drift between `/` and `/demo`
+   - section-level vertical rhythm is uneven (`gap`, `p`, and radius values vary without clear grammar)
+2. Repeated surface grammar
+   - multiple near-duplicate panel/card treatments with different border radius, shadow depth, and title spacing
+   - repeated split surfaces (header/body/meta) are structured differently between auth/demo/approval/timeline
+3. Labels, badges, and chips
+   - status pill sizing, tracking, and case treatment are inconsistent across pages/components
+   - repeated status semantics use similar tones but different visual weights
+4. Action/control row alignment
+   - key/value rows use inconsistent text sizing, line rhythm, and divider spacing
+5. State block coherence
+   - info/warn/error blocks and empty-state framing differ in padding, border weight, and hierarchy
+6. Overflow and wrapping
+   - long IDs, runtime actor strings, recipients, and policy labels risk clipping or awkward wrapping in timeline/detail/card rows
+   - some metadata rows lack explicit `min-w-0`/`break-*` safeguards
+7. Graph-adjacent framing (non-core)
+   - graph section shell and detail-panel framing differ from other high-value surfaces
+   - overlay/legend and panel spacing do not fully match the rest of the product grammar
+
+### Scope
+
+In scope:
+
+- normalize shared layout/surface patterns used across `/` and `/demo`
+- improve consistency for section shells, cards, action rows, badges, and state blocks
+- fix obvious overflow/wrapping/clipping outside graph-core internals
+- apply targeted screen-level cleanup after shared normalization
+- preserve existing runtime and control behavior
+
+Out of scope:
+
+- product redesign
+- graph-core logic changes (layout, edge routing, interaction semantics)
+- control/runtime semantics changes
+- broad copywriting overhaul
+- large design-system rebuild
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/globals.css`
+- `src/components/foundation/section-card.tsx`
+- `src/components/foundation/*` (small shared UI normalization helpers as needed)
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/components/demo/demo-surface.tsx`
+- `src/components/demo/demo-rehearsal-controls.tsx`
+- `src/components/demo/demo-live-preflight-card.tsx`
+- `src/graph/delegation-graph.tsx` (graph-adjacent framing/overflow only)
+- `src/components/graph/node-detail-panel.tsx` (framing/overflow only)
+- affected tests only if snapshots/assertions require updates
+
+### Invariants to preserve
+
+- child warrants only narrow parent authority
+- denial vs approval vs revocation vs expiry semantics remain distinct
+- branch revocation behavior remains unchanged and immediate
+- graph/timeline continue to derive from canonical scenario state
+- no graph-core behavior ownership conflicts with topology-hardening scope
+
+### Implementation steps
+
+1. Establish shared normalization primitives
+   - tighten global layout/surface tokens (spacing, radii, panel/card rhythm) with minimal churn
+   - normalize shared status-chip and small indicator treatment where reused
+2. Apply shared card/panel/action-row consistency updates
+   - align repeated header/body/meta structures and key/value row spacing
+   - keep visual hierarchy stable; avoid content or behavior changes
+3. Patch overflow/wrapping failures
+   - add explicit wrapping/break/min-width guards in high-risk rows and metadata fields
+   - verify mobile and desktop graph-adjacent framing stays contained
+4. Screen-level cleanup pass
+   - tune auth/setup and demo sections for coherent spacing rhythm and repeated-surface grammar
+   - keep graph-core internals untouched
+5. Final tightening and validation
+   - run full quality gates
+   - manual visual pass across major surfaces for spacing, overflow, and pattern coherence
+
+### Commit slices
+
+1. inconsistency audit + low-risk shared layout cleanup
+2. shared card/panel/action-row normalization
+3. overflow and alignment fixes
+4. screen-level cleanup pass
+5. final tightening + validation updates
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Manual checks:
+
+- desktop and mobile `/`: spacing rhythm, card coherence, and status-chip consistency
+- desktop and mobile `/demo`: graph-adjacent framing, approval surfaces, and timeline card consistency
+- explicit checks for reduced overflow/wrapping issues in ids, recipients, runtime metadata, and row labels
+- verify no interaction or control-state behavior regressions during scenario browsing/revocation flow
+
+### Risks
+
+- shared-class normalization can unintentionally alter hierarchy if token changes are too broad
+- overflow fixes in dense metadata rows may affect legibility if wrapping rules are too aggressive
+- graph-adjacent framing changes could visually imply graph-core changes; scope discipline is required

@@ -142,7 +142,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
   const tokenExpiry = formatTimestamp(googleConnection.tokenExpiresAt);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-6 py-8 sm:px-10 lg:px-12 lg:py-10">
+    <main className="page-shell">
       <section className="grid gap-6 rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-8 shadow-[0_20px_80px_rgba(10,16,24,0.08)] backdrop-blur lg:grid-cols-[1.4fr_0.8fr]">
         <div className="space-y-5">
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-[var(--muted)]">Auth0 Access Shell</p>
