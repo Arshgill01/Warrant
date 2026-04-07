@@ -5,6 +5,7 @@ import type {
   DemoLivePreflightMode,
   DemoLivePreflightSnapshot,
 } from "@/contracts";
+import { StatusChip } from "@/components/foundation/status-chip";
 
 const stateTone: Record<string, string> = {
   ready: "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
@@ -63,7 +64,7 @@ export function DemoLivePreflightCard() {
   }, [mode]);
 
   return (
-    <section className="rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+    <section className="surface-panel p-6">
       <div className="mb-4 space-y-2">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
           Live readiness preflight
@@ -118,14 +119,15 @@ export function DemoLivePreflightCard() {
 
       {snapshot ? (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-[var(--panel-border)] bg-white p-4">
+          <div className="surface-card p-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-[var(--foreground)]">
                 {snapshot.summary}
               </p>
-              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${stateTone[snapshot.overallState] ?? stateTone.blocked}`}>
-                {formatStateLabel(snapshot.overallState)}
-              </span>
+              <StatusChip
+                label={formatStateLabel(snapshot.overallState)}
+                tone={stateTone[snapshot.overallState] ?? stateTone.blocked}
+              />
             </div>
             <p className="text-xs text-[var(--muted)]">
               Mode: {formatModeLabel(snapshot.mode)} | Checked: {formatCheckedAt(snapshot.checkedAt)}
@@ -141,15 +143,16 @@ export function DemoLivePreflightCard() {
             {snapshot.checks.map((check) => (
               <article
                 key={check.id}
-                className="rounded-xl border border-[var(--panel-border)] bg-white p-4"
+                className="surface-card p-4"
               >
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-[var(--foreground)]">
                     {check.label}
                   </p>
-                  <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${stateTone[check.state] ?? stateTone.blocked}`}>
-                    {formatStateLabel(check.state)}
-                  </span>
+                  <StatusChip
+                    label={formatStateLabel(check.state)}
+                    tone={stateTone[check.state] ?? stateTone.blocked}
+                  />
                 </div>
                 <p className="text-sm font-medium text-[var(--foreground)]">
                   {check.headline}

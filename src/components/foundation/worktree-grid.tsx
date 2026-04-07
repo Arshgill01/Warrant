@@ -12,7 +12,7 @@ const statusTone: Record<WorktreeBoundary["status"], string> = {
 
 export function WorktreeGrid({ boundaries }: WorktreeGridProps) {
   return (
-    <section className="rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-[0_20px_80px_rgba(16,18,23,0.08)] backdrop-blur">
+    <section className="surface-panel p-6 backdrop-blur">
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.22em] text-[var(--muted)]">Worktree boundaries</p>
@@ -27,7 +27,7 @@ export function WorktreeGrid({ boundaries }: WorktreeGridProps) {
         {boundaries.map((boundary) => (
           <article
             key={boundary.key}
-            className="rounded-[1.6rem] border border-[var(--panel-border)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(16,18,23,0.04)]"
+            className="surface-card p-5"
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>

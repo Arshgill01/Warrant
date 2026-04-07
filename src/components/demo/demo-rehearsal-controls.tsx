@@ -32,7 +32,7 @@ export function DemoRehearsalControls({
   presets,
 }: DemoRehearsalControlsProps) {
   return (
-    <section className="rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-6 shadow-sm">
+    <section className="surface-panel p-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">Demo-only rehearsal tools</p>
@@ -42,14 +42,14 @@ export function DemoRehearsalControls({
             gated and meant only for rehearsal or recording.
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--panel-border)] bg-white px-4 py-3 text-right">
+        <div className="surface-card px-4 py-3 text-right">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">Current state</p>
           <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{currentLabel}</p>
           <p className="mt-1 text-xs text-[var(--muted)]">{formatUpdatedAt(updatedAt)}</p>
         </div>
       </div>
 
-      <div className="mb-5 rounded-2xl border border-[var(--panel-border)] bg-white p-4">
+      <div className="surface-card mb-5 p-4">
         <p className="text-sm font-medium text-[var(--foreground)]">{currentDescription}</p>
         {recoveredFromInvalidState && recoveryReason ? (
           <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -66,12 +66,12 @@ export function DemoRehearsalControls({
           return (
             <article
               key={preset.id}
-              className={`rounded-2xl border p-4 ${
+              className={`surface-card p-4 ${
                 isActive
                   ? "border-[var(--accent)] bg-[var(--accent-soft)]/40"
                   : isSourcePreset
                     ? "border-amber-200 bg-amber-50/40"
-                    : "border-[var(--panel-border)] bg-white"
+                    : ""
               }`}
             >
               <div className="mb-3 flex items-center justify-between gap-3">

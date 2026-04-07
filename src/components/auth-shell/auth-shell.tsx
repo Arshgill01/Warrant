@@ -6,6 +6,7 @@ import type {
   ProviderConnectionSnapshot,
 } from "@/contracts";
 import { SectionCard } from "@/components/foundation/section-card";
+import { StatusChip } from "@/components/foundation/status-chip";
 import { googleConnectionStateLegend } from "@/connections";
 
 type AuthShellProps = {
@@ -43,14 +44,6 @@ const providerActionLabels: Record<ProviderActionResult["kind"], string> = {
   "gmail.draft": "Gmail draft",
   "gmail.send": "Send email",
 };
-
-function StatusPill({ label, tone }: { label: string; tone: string }) {
-  return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${tone}`}>
-      {label}
-    </span>
-  );
-}
 
 function formatTimestamp(value: string | null): string | null {
   if (!value) {
@@ -143,7 +136,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
 
   return (
     <main className="page-shell">
-      <section className="grid gap-6 rounded-[2rem] border border-[var(--panel-border)] bg-[var(--panel)] p-8 shadow-[0_20px_80px_rgba(10,16,24,0.08)] backdrop-blur lg:grid-cols-[1.4fr_0.8fr]">
+      <section className="surface-panel grid gap-6 p-6 backdrop-blur sm:p-8 lg:grid-cols-[1.4fr_0.8fr]">
         <div className="space-y-5">
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-[var(--muted)]">Auth0 Access Shell</p>
           <h1 className="max-w-3xl text-4xl leading-tight sm:text-5xl" style={{ fontFamily: "var(--font-serif)" }}>
@@ -154,8 +147,12 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             through Auth0, and external actions stay separate from local Warrant policy.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <StatusPill label={session.state.replace("-", " ")} tone={sessionTone[session.state]} />
-            <StatusPill label={googleConnection.state.replace("-", " ")} tone={connectionTone[googleConnection.state]} />
+            <StatusChip label={session.state.replace("-", " ")} tone={sessionTone[session.state]} size="md" />
+            <StatusChip
+              label={googleConnection.state.replace("-", " ")}
+              tone={connectionTone[googleConnection.state]}
+              size="md"
+            />
             <Link
               href="/demo"
               className="inline-flex rounded-full border border-[var(--panel-border)] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--foreground)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
@@ -165,13 +162,13 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
           </div>
         </div>
 
-        <div className="rounded-[1.6rem] border border-[var(--panel-border)] bg-white/70 p-5 shadow-[0_10px_30px_rgba(10,16,24,0.04)]">
+        <div className="surface-card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">Session</p>
               <h2 className="text-2xl font-semibold">{session.user?.name ?? "Auth0 shell"}</h2>
             </div>
-            <StatusPill label={session.state.replace("-", " ")} tone={sessionTone[session.state]} />
+            <StatusChip label={session.state.replace("-", " ")} tone={sessionTone[session.state]} size="md" />
           </div>
           <p className="mb-4 text-sm leading-6 text-[var(--muted)]">{session.headline}</p>
           <p className="mb-4 text-sm leading-6 text-[var(--muted)]">{session.detail}</p>
@@ -185,7 +182,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
       <section className="grid gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
         <SectionCard title="Auth0 session" eyebrow="Identity gate">
           <div className="space-y-3">
-            <StatusPill label={session.state.replace("-", " ")} tone={sessionTone[session.state]} />
+            <StatusChip label={session.state.replace("-", " ")} tone={sessionTone[session.state]} size="md" />
             <p>{session.headline}</p>
             <p>{session.detail}</p>
             <AuthAction href={sessionAction.href} label={sessionAction.label} />
@@ -194,7 +191,11 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
 
         <SectionCard title="Google through Auth0" eyebrow="Provider connection">
           <div className="space-y-3">
-            <StatusPill label={googleConnection.state.replace("-", " ")} tone={connectionTone[googleConnection.state]} />
+            <StatusChip
+              label={googleConnection.state.replace("-", " ")}
+              tone={connectionTone[googleConnection.state]}
+              size="md"
+            />
             <p>{googleConnection.headline}</p>
             <p>{googleConnection.detail}</p>
             {googleConnection.accountLabel ? (
@@ -224,9 +225,10 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
       <SectionCard title="Google Token Vault readiness" eyebrow="Connect contract">
         <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-3">
-            <StatusPill
+            <StatusChip
               label={googleSetup.status === "ready" ? "connect-ready" : "setup-required"}
               tone={googleSetup.status === "ready" ? "bg-[var(--accent)] text-white" : "bg-[#8a5b1f] text-white"}
+              size="md"
             />
             <p>{googleSetup.headline}</p>
             <p>{googleSetup.detail}</p>
@@ -257,7 +259,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
         {providerResults.map((result) => (
           <article
             key={result.kind}
-            className="rounded-[1.6rem] border border-[var(--panel-border)] bg-white/75 p-5 shadow-[0_10px_30px_rgba(10,16,24,0.04)]"
+            className="surface-card p-5"
           >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
@@ -266,7 +268,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
                 </p>
                 <h2 className="text-2xl font-semibold">{providerActionLabels[result.kind]}</h2>
               </div>
-              <StatusPill label={formatProviderStateLabel(result.state)} tone={providerResultTone[result.state]} />
+              <StatusChip label={formatProviderStateLabel(result.state)} tone={providerResultTone[result.state]} size="md" />
             </div>
             <p className="mb-3 text-sm font-medium text-[var(--foreground)]">{result.headline}</p>
             <p className="mb-3 text-sm leading-6 text-[var(--muted)]">{result.detail}</p>
@@ -298,7 +300,7 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
           {googleConnectionStateLegend.map((state) => (
             <div key={state.state} className="rounded-2xl border border-[var(--panel-border)] bg-white/80 p-4">
               <div className="mb-3">
-                <StatusPill label={state.label} tone={connectionTone[state.state]} />
+                <StatusChip label={state.label} tone={connectionTone[state.state]} size="md" />
               </div>
               <p>{state.detail}</p>
             </div>

@@ -13,6 +13,7 @@ import {
 } from "@/approvals";
 import { DemoLivePreflightCard } from "@/components/demo/demo-live-preflight-card";
 import { DemoRehearsalControls } from "@/components/demo/demo-rehearsal-controls";
+import { StatusChip } from "@/components/foundation/status-chip";
 import type {
   ActionPathSnapshot,
   DemoScenario,
@@ -51,16 +52,6 @@ const pathStateTone: Record<"ready" | "blocked" | "pending", string> = {
   blocked: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
   pending: "bg-[var(--status-pending-bg)] text-[var(--status-pending-text)]",
 };
-
-function StatusPill({ label, tone }: { label: string; tone: string }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${tone}`}
-    >
-      {label}
-    </span>
-  );
-}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
@@ -147,7 +138,7 @@ function ExampleCard({
   meta: string;
 }) {
   return (
-    <article className="group relative rounded-xl border border-[var(--panel-border)] bg-white p-5 transition-all hover:shadow-md">
+    <article className="surface-card group relative p-5 transition-all hover:shadow-md">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
@@ -157,7 +148,7 @@ function ExampleCard({
             {title}
           </h3>
         </div>
-        <StatusPill
+        <StatusChip
           label={statusLabel}
           tone={statusTone[statusKey] || statusTone.active}
         />
@@ -187,7 +178,7 @@ function BoundaryCard({
   eyebrow: string;
 }) {
   return (
-    <article className="rounded-2xl border border-[var(--panel-border)] bg-white p-5 shadow-sm">
+    <article className="surface-card p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -197,7 +188,7 @@ function BoundaryCard({
             {label}
           </h3>
         </div>
-        <StatusPill label={state} tone={pathStateTone[state]} />
+        <StatusChip label={state} tone={pathStateTone[state]} />
       </div>
       <p className="mb-2 text-sm font-medium text-[var(--foreground)]">
         {headline}
@@ -234,15 +225,15 @@ function ApprovalStateCard({
 }) {
   return (
     <article
-      className={`rounded-2xl border p-5 shadow-sm ${
+      className={`surface-card p-5 ${
         isCurrent
           ? "border-[var(--accent)] bg-[var(--accent-soft)]/40"
-          : "border-[var(--panel-border)] bg-white"
+          : ""
       }`}
     >
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-sm font-semibold text-[var(--foreground)]">{label}</p>
-        <StatusPill
+        <StatusChip
           label={executionReady ? "execution ready" : "still blocked"}
           tone={executionReady ? statusTone.approval_approved : statusTone.blocked}
         />
@@ -496,22 +487,24 @@ export function DemoSurface({
             Maya approves one parent warrant for Planner Agent. Planner can delegate only narrower child warrants, and each branch can be denied, approved, revoked, or expired independently.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <StatusPill
+            <StatusChip
               label="fixture-backed demo"
               tone="bg-[var(--accent)] text-white"
+              size="md"
             />
-            <StatusPill
+            <StatusChip
               label={authConfigured ? "auth-ready" : "auth-optional"}
               tone={
                 authConfigured
                   ? "bg-slate-900 text-white"
                   : "bg-slate-100 text-slate-600"
               }
+              size="md"
             />
           </div>
         </div>
 
-        <div className="rounded-3xl border border-[var(--panel-border)] bg-[var(--panel)] p-8 shadow-sm backdrop-blur-sm">
+        <div className="surface-panel p-8 backdrop-blur-sm">
           <div className="mb-6 space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
               Root Warrant Approval
@@ -676,7 +669,7 @@ export function DemoSurface({
         </div>
       </section>
 
-      <section className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-white p-8 shadow-sm lg:p-12">
+      <section className="surface-panel space-y-6 bg-white p-8 lg:p-12">
         <div className="space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
             Sensitive Action Approval
@@ -700,7 +693,7 @@ export function DemoSurface({
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <article className="rounded-[2rem] border border-[var(--panel-border)] bg-slate-50/60 p-6">
+          <article className="surface-card bg-slate-50/60 p-6">
             <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -710,12 +703,13 @@ export function DemoSurface({
                   {examples.commsSendApproval.title}
                 </h3>
               </div>
-              <StatusPill
+              <StatusChip
                 label={formatApprovalBadge(
                   examples.commsSendApproval.controlState,
                   examples.commsSendApproval.provider,
                 )}
                 tone={statusTone[examples.commsSendApproval.controlState]}
+                size="md"
               />
             </div>
 
@@ -748,7 +742,7 @@ export function DemoSurface({
                     {examples.commsSendApproval.preview.subject}
                   </h4>
                 </div>
-                <StatusPill label="gmail.send" tone="bg-slate-900 text-white" />
+                <StatusChip label="gmail.send" tone="bg-slate-900 text-white" size="md" />
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-xl border border-[var(--panel-border)] bg-slate-50/70 p-4">
@@ -797,9 +791,10 @@ export function DemoSurface({
                 What changes when approval changes
               </h3>
             </div>
-            <StatusPill
+            <StatusChip
               label={currentApprovalBadge}
               tone={commsBranchRevoked ? statusTone.revoked : statusTone[currentApprovalControlState]}
+              size="md"
             />
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -818,7 +813,7 @@ export function DemoSurface({
         </div>
       </section>
 
-      <section className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-white p-8 shadow-sm lg:p-12">
+      <section className="surface-panel space-y-6 bg-white p-8 lg:p-12">
         <div className="space-y-2">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
             End States
@@ -853,7 +848,7 @@ export function DemoSurface({
 
       <section
         id="timeline"
-        className="space-y-6 rounded-[2.5rem] border border-[var(--panel-border)] bg-slate-50/50 p-8 lg:p-12"
+        className="surface-panel space-y-6 bg-slate-50/50 p-8 lg:p-12"
       >
         <div className="mb-8 space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
@@ -871,11 +866,11 @@ export function DemoSurface({
           {timeline.map((event) => (
             <article
               key={event.id}
-              className="group flex flex-col gap-6 rounded-2xl border border-[var(--panel-border)] bg-white p-6 shadow-sm transition-all hover:border-[var(--muted)]/20 hover:shadow-md md:flex-row md:items-center"
+              className="surface-card group flex flex-col gap-6 p-6 transition-all hover:border-[var(--muted)]/20 hover:shadow-md md:flex-row md:items-center"
             >
               <div className="flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <StatusPill
+                  <StatusChip
                     label={formatStatusLabel(event.controlState)}
                     tone={statusTone[event.resultTone] || statusTone.active}
                   />
