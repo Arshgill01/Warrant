@@ -54,8 +54,21 @@ export function DelegationGraph({
 
   useEffect(() => {
     setIsMounted(true);
-    setSelectedWarrantId(null);
-  }, [edges, nodes, warrantSummaries]);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedWarrantId) {
+      return;
+    }
+
+    const warrantStillExists = warrantSummaries.some(
+      (summary) => summary.id === selectedWarrantId,
+    );
+
+    if (!warrantStillExists) {
+      setSelectedWarrantId(null);
+    }
+  }, [selectedWarrantId, warrantSummaries]);
 
   const onNodeClick = useCallback<NodeMouseHandler<AgentNode>>((_, node) => {
     setSelectedWarrantId(node.id);
@@ -94,13 +107,25 @@ export function DelegationGraph({
           nodes={nodes}
           edges={edges}
           onNodeClick={onNodeClick}
+          onPaneClick={() => setSelectedWarrantId(null)}
           nodeTypes={nodeTypes}
           fitView
+          fitViewOptions={{
+            padding: 0.24,
+            minZoom: 0.55,
+            maxZoom: 1,
+          }}
           className="bg-transparent"
+          minZoom={0.55}
+          maxZoom={1.15}
           zoomOnScroll={false}
           zoomOnPinch={false}
+          zoomOnDoubleClick={false}
           panOnScroll={false}
-          panOnDrag={true}
+          panOnDrag
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable
         >
           <Background color="rgba(203, 213, 225, 0.4)" gap={24} size={1} />
           <Controls showInteractive={false} className="!left-8 !bottom-8 !shadow-none !border-[var(--panel-border)]" />
