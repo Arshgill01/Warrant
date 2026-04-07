@@ -13,6 +13,19 @@ Warrant is a focused demo for the Auth0 Authorized to Act hackathon. It is not a
 - revoking one branch should invalidate descendants immediately
 - sensitive actions should require explicit approval
 
+## Judge Quickstart (3 Minutes)
+
+If you only have a few minutes, this is the fastest truthful evaluation path:
+
+1. `npm ci && npm run dev`
+2. Open `http://localhost:3000/demo`
+3. Follow the scenario sequence strip and verify:
+   - Planner delegates narrower Calendar + Comms warrants
+   - Comms overreach is policy-denied
+   - bounded send is approval-gated
+   - Comms branch revocation blocks later sends while Calendar remains active
+4. Inspect the graph and timeline to confirm lineage and state transitions are explicit.
+
 ## Why This Problem Matters
 
 Flat app-style OAuth consent is designed for one application acting as one principal. Multi-agent systems break that model:
@@ -21,7 +34,7 @@ Flat app-style OAuth consent is designed for one application acting as one princ
 - each sub-agent can have a different risk profile
 - an app-level token alone does not explain who delegated what, and why
 
-Warrant adds lineage-aware delegation and branch-level control so this is legible and enforceable.
+Warrant adds lineage-aware delegation and branch-level control so this fan-out remains legible and enforceable.
 
 ## What Auth0 Does Here
 
@@ -118,6 +131,12 @@ Open:
 - `http://localhost:3000` for Auth0/session and provider readiness surfaces
 - `http://localhost:3000/demo` for the canonical multi-agent delegation demo
 
+Quick validation before deeper checks:
+
+```bash
+npm run validate:quick
+```
+
 ### Production Start (Clean Sequence)
 
 Use a fresh production build before `next start`.
@@ -167,7 +186,7 @@ Canonical user request:
 
 `Prepare my investor update for tomorrow and coordinate follow-ups.`
 
-Current stable flow after Wave 4 hardening:
+Current stable flow:
 
 1. User signs in with Auth0 and links Google through `/auth/connect`.
 2. Planner receives a parent warrant.
@@ -178,6 +197,11 @@ Current stable flow after Wave 4 hardening:
 7. Sensitive send path shows approval boundary.
 8. User revokes Comms branch; descendants lose authority immediately.
 9. Post-revoke send attempt is blocked while Calendar branch remains active.
+
+Demo modes:
+
+- Deterministic fixture mode (`/demo` presets): fastest and repeatable for recording.
+- Live Auth0/Google readiness mode (`/demo` preflight card): checks real delegated provider path status.
 
 ## Architecture Overview
 
@@ -202,17 +226,19 @@ Request path, simplified:
 
 ## Demo Instructions
 
-1. Start the app with `npm run dev`.
-2. Open `http://localhost:3000/demo`.
-3. Confirm the scenario prompt is visible.
-4. Inspect the delegation graph and timeline for issue, deny, approval, and revoke states.
-5. Use rehearsal controls to switch to `Main scenario (pre-revoke)`.
-6. Use rehearsal controls to switch to `Comms revoked (post-revoke)`.
-7. From `main`, trigger Comms revocation and verify later Comms send is blocked.
-8. Verify Calendar branch remains active after Comms revoke.
-9. Run the live readiness preflight card in `/demo` before recording:
+1. Start the app with `npm run dev` and open `http://localhost:3000/demo`.
+2. Keep the preset at `Main scenario (pre-revoke)` and walk the sequence in order:
+   - planner delegation
+   - child actions
+   - denied overreach
+   - approval-required send
+3. Inspect `Canonical Proof Points` to confirm denial and approval are separate outcomes.
+4. Trigger Comms revocation (or switch to `Comms revoked (post-revoke)`).
+5. Confirm post-revoke Comms send is blocked and Calendar remains active.
+6. Use `Authorization Timeline` to confirm who acted, which warrant was used, and why each step was allowed/blocked.
+7. Before recording, run live preflight in `/demo`:
    - start with `token-only`
-   - run `live` when signed in and connected to Google through Auth0
+   - then run `live` only when signed in and connected to Google via Auth0
 
 For a scriptable sanity check of judge-visible markers:
 
