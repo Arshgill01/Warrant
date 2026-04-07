@@ -95,3 +95,119 @@ Expected in-app behavior when correct:
 - `/` shows sign-in and Google connection readiness without setup blockers.
 - `/auth/connect` can complete and return to app flow.
 - Google connection state becomes `connected` with delegated token availability.
+
+## 4. Ordered post-deploy verification checklist
+
+Run this sequence in order after production deploy and Auth0 URL updates.
+
+1. App boot:
+   - Open `https://<your-production-domain>/`.
+   - Confirm the page loads and renders `Auth0 Access Shell`.
+2. Login:
+   - Click `Continue with Auth0` or open `/auth/login`.
+   - Confirm Auth0 login completes and returns to `/`.
+3. Callback/session persistence:
+   - Confirm post-login state shows signed-in identity details.
+   - Refresh `/` and verify session remains signed in.
+4. Logout:
+   - Click `Log out` or open `/auth/logout`.
+   - Confirm return to signed-out shell state on `/`.
+5. Provider-connected state:
+   - While signed in, use `Connect Google with Auth0`.
+   - Confirm return to app and Google state becomes `connected` (not pending/unavailable).
+6. Planner/runtime invocation:
+   - Open `/demo`.
+   - Confirm canonical scenario content renders (`Prepare my investor update for tomorrow and coordinate follow-ups.`).
+7. Draft flow:
+   - Verify Comms draft path is represented as successful draft capability in the scenario proof/timeline.
+8. Denied overreach:
+   - Verify the overreach attempt is shown as policy-denied with `recipient_not_allowed`.
+9. Approval-required flow:
+   - Verify bounded send remains approval-gated (approval required/pending state is visible before execution).
+10. Revoke flow:
+    - Switch to or trigger revoked branch state and verify Comms post-revoke action is blocked.
+11. Graph/timeline coherence:
+    - Confirm graph node states and authorization timeline tell the same story (delegation, deny, approval, revoke) without contradictions.
+
+If any step fails, use troubleshooting below before recording.
+
+## 5. Troubleshooting (production-focused)
+
+### `/auth/login` or `/auth/connect` returns `503` JSON
+
+Cause:
+
+- server auth env is incomplete
+
+Fix:
+
+1. verify required env vars exist in Vercel Production:
+   - `APP_BASE_URL`
+   - `AUTH0_DOMAIN`
+   - `AUTH0_CLIENT_ID`
+   - `AUTH0_CLIENT_SECRET`
+   - `AUTH0_SECRET`
+2. redeploy after env fix
+
+### Login fails with callback/logout mismatch errors
+
+Cause:
+
+- Auth0 Allowed Callback/Logout/Web Origin values do not match deployed URL
+
+Fix:
+
+1. set Callback URL to `https://<domain>/auth/callback`
+2. set Logout URL to `https://<domain>`
+3. set Web Origin to `https://<domain>`
+4. retry login
+
+### Signed in, but Google stays `not-connected` or `unavailable`
+
+Cause:
+
+- connected-account flow not completed, wrong connection name, or tenant/provider setup mismatch
+
+Fix:
+
+1. verify `AUTH0_GOOGLE_CONNECTION_NAME` matches your Auth0 Google connection
+2. run `/auth/connect` again from a signed-in session
+3. verify Google connection has offline-access/refresh-token capability enabled
+
+### `/api/demo/live-preflight` returns 404
+
+Cause:
+
+- demo tools are disabled in production by default
+
+Fix:
+
+1. set `WARRANT_ENABLE_DEMO_TOOLS=true` in Vercel
+2. redeploy and re-run preflight
+3. remove/reset after rehearsal if you do not want demo tooling enabled
+
+### Live preflight blocked by runtime model config
+
+Cause:
+
+- missing or invalid runtime model env values (often `GOOGLE_API_KEY`)
+
+Fix:
+
+1. verify `GOOGLE_API_KEY` is set in Vercel
+2. verify optional runtime overrides are numeric and in range:
+   - `WARRANT_RUNTIME_MODEL_TEMPERATURE` between `0` and `1`
+   - `WARRANT_RUNTIME_MODEL_TOP_P` greater than `0` and at most `1`
+   - `WARRANT_RUNTIME_MODEL_MAX_OUTPUT_TOKENS` positive integer
+
+### Graph and timeline appear out of sync during verification
+
+Cause:
+
+- stale browser state or stale local rehearsal data when switching between preset/revoked states
+
+Fix:
+
+1. hard refresh `/demo`
+2. use rehearsal preset restore controls when enabled
+3. re-run the ordered verification sequence from step 6 onward
