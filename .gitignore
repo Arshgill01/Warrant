@@ -12,6 +12,8 @@
 .DS_Store
 *.pem
 *.tsbuildinfo
+.playwright-cli/
+.tmp-npm-cache-playwright/
 
 # debugging
 npm-debug.log*
