@@ -93,6 +93,7 @@ export function mapRuntimeControlStateToCanonicalState(
   switch (state) {
     case "proposal_created":
     case "executable":
+    case "executed":
       return "active";
     case "execution_failed":
       return "denied_policy";

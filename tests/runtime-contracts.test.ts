@@ -6,6 +6,7 @@ import {
   PLANNER_PLAN_VALIDATION_CODE_SET,
   PLANNER_PLAN_VALIDATION_STATUS_SET,
   PROPOSAL_CONTROL_DECISION_SET,
+  RUNTIME_CONTROL_STATE_SET,
   RUNTIME_EVENT_TYPE_SET,
 } from "@/contracts";
 
@@ -47,6 +48,21 @@ describe("runtime contract vocabulary", () => {
       "denied",
       "approval_required",
       "revoked",
+    ]);
+
+    expect(RUNTIME_CONTROL_STATE_SET).toEqual([
+      "proposal_created",
+      "denied_policy",
+      "approval_required",
+      "approval_pending",
+      "approval_approved",
+      "approval_denied",
+      "executable",
+      "executed",
+      "execution_failed",
+      "blocked_revoked",
+      "blocked_expired",
+      "provider_unavailable",
     ]);
   });
 

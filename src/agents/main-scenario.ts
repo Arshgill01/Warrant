@@ -28,7 +28,11 @@ import {
   issueRootWarrant,
   revokeWarrantBranch,
 } from "@/warrants";
-import { evaluateProposalControl } from "@/agents/runtime-control";
+import {
+  createExecutedDecision,
+  createRuntimeEventFromDecision,
+  evaluateProposalControl,
+} from "@/agents/runtime-control";
 import type {
   MainScenarioRunResult,
   MainScenarioStage,
@@ -556,6 +560,24 @@ export function runMainScenarioPlannerFlow(
     target: calendarProposal.target,
     adapter: adapters.calendar,
   });
+  const calendarExecutedDecision = createExecutedDecision({
+    proposal: calendarProposal,
+    warrant: calendarWarrant,
+    reason: calendarAction.attempt.outcomeReason,
+    authorization: calendarAction.attempt.authorization,
+    providerState: calendarAction.attempt.providerState ?? null,
+    metadata: {
+      actionKind: calendarAction.attempt.kind,
+      outcome: calendarAction.attempt.outcome,
+    },
+  });
+  controlDecisions.push(calendarExecutedDecision);
+  runtimeEvents.push(
+    createRuntimeEventFromDecision(
+      calendarExecutedDecision,
+      "Action executed",
+    ),
+  );
 
   const commsDraftProposal: ActionProposal = {
     id: "proposal-comms-draft-001",
@@ -601,6 +623,24 @@ export function runMainScenarioPlannerFlow(
     },
     adapter: adapters.comms,
   });
+  const commsDraftExecutedDecision = createExecutedDecision({
+    proposal: commsDraftProposal,
+    warrant: commsWarrant,
+    reason: commsAction.attempt.outcomeReason,
+    authorization: commsAction.attempt.authorization,
+    providerState: commsAction.attempt.providerState ?? null,
+    metadata: {
+      actionKind: commsAction.attempt.kind,
+      outcome: commsAction.attempt.outcome,
+    },
+  });
+  controlDecisions.push(commsDraftExecutedDecision);
+  runtimeEvents.push(
+    createRuntimeEventFromDecision(
+      commsDraftExecutedDecision,
+      "Action executed",
+    ),
+  );
 
   const commsOverreachProposal: ActionProposal = {
     id: "proposal-comms-send-overreach-001",
@@ -892,6 +932,25 @@ export function runMainScenarioPlannerFlow(
     approvalRequestId: commsSendApproved.id,
     adapter: adapters.gmailSend,
   });
+  const commsSendExecutedDecision = createExecutedDecision({
+    proposal: commsApprovedSendProposal,
+    warrant: commsWarrant,
+    reason: commsApprovedSend.attempt.outcomeReason,
+    authorization: commsApprovedSend.attempt.authorization,
+    approvalStatus: commsSendApproved.status,
+    providerState: commsApprovedSend.attempt.providerState ?? null,
+    metadata: {
+      actionKind: commsApprovedSend.attempt.kind,
+      outcome: commsApprovedSend.attempt.outcome,
+    },
+  });
+  controlDecisions.push(commsSendExecutedDecision);
+  runtimeEvents.push(
+    createRuntimeEventFromDecision(
+      commsSendExecutedDecision,
+      "Action executed",
+    ),
+  );
   const commsRevocation = revokeWarrantBranch({
     warrants,
     warrantId: commsWarrant.id,

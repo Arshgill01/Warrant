@@ -188,6 +188,22 @@ describe("main scenario planner flow", () => {
         (decision) => decision.controlState === "blocked_revoked",
       ),
     ).toBe(true);
+    expect(
+      run.scenario.controlDecisions.filter(
+        (decision) => decision.controlState === "executed",
+      ).map((decision) => decision.actionId),
+    ).toEqual([
+      "action-calendar-read-001",
+      "action-comms-draft-001",
+      "action-comms-send-approved-001",
+    ]);
+    expect(
+      run.scenario.controlDecisions.some(
+        (decision) =>
+          decision.actionId === "action-comms-send-001" &&
+          decision.controlState === "executed",
+      ),
+    ).toBe(false);
     expect(run.scenario.timeline.map((event) => event.kind)).toEqual([
       "scenario.loaded",
       "warrant.issued",
@@ -257,6 +273,14 @@ describe("main scenario planner flow", () => {
         (decision) => decision.controlState === "approval_approved",
       ),
     ).toBe(false);
+    expect(
+      run.scenario.controlDecisions.filter(
+        (decision) => decision.controlState === "executed",
+      ).map((decision) => decision.actionId),
+    ).toEqual([
+      "action-calendar-read-001",
+      "action-comms-draft-001",
+    ]);
     expect(run.scenario.revocations).toEqual([]);
     expect(run.scenario.timeline.map((event) => event.kind)).toEqual([
       "scenario.loaded",

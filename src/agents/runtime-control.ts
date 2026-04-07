@@ -324,6 +324,29 @@ export function createExecutionFailedDecision(input: {
   });
 }
 
+export function createExecutedDecision(input: {
+  proposal: RuntimeActionProposal;
+  warrant: WarrantContract;
+  reason: string;
+  authorization: ActionAuthorizationSnapshot;
+  approvalStatus?: ApprovalStatus | null;
+  providerState?: ProviderActionState | null;
+  metadata?: Record<string, string | number | boolean | null>;
+}): RuntimeProposalControlDecision {
+  return buildDecision({
+    proposal: input.proposal,
+    warrant: input.warrant,
+    controlState: "executed",
+    allowedToExecute: true,
+    reason: input.reason,
+    policyCode: input.authorization.code,
+    authorization: input.authorization,
+    approvalStatus: input.approvalStatus ?? null,
+    providerState: input.providerState ?? null,
+    metadata: input.metadata ?? {},
+  });
+}
+
 export function createRuntimeEventFromDecision(
   decision: RuntimeProposalControlDecision,
   title: string,

@@ -61,6 +61,36 @@ export interface DemoScenarioExamples {
   commsSendApprovalId: string;
 }
 
+export type DemoLivePreflightMode = "token-only" | "live";
+
+export type DemoLivePreflightState = "ready" | "blocked" | "error" | "skipped";
+
+export interface DemoLivePreflightCheck {
+  id:
+    | "runtime_model_config"
+    | "auth0_session"
+    | "google_connection"
+    | "calendar_read_path"
+    | "gmail_draft_path"
+    | "gmail_send_gate";
+  label: string;
+  state: DemoLivePreflightState;
+  headline: string;
+  detail: string;
+}
+
+export interface DemoLivePreflightSnapshot {
+  mode: DemoLivePreflightMode;
+  checkedAt: string;
+  overallState: "ready" | "blocked" | "error";
+  summary: string;
+  checks: DemoLivePreflightCheck[];
+  fatalError: {
+    code: string;
+    message: string;
+  } | null;
+}
+
 export interface DemoScenario {
   id: string;
   title: string;

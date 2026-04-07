@@ -11,6 +11,7 @@ import {
   buildSendApprovalBoundarySummary,
   buildSendApprovalStateMatrix,
 } from "@/approvals";
+import { DemoLivePreflightCard } from "@/components/demo/demo-live-preflight-card";
 import { DemoRehearsalControls } from "@/components/demo/demo-rehearsal-controls";
 import type {
   ActionPathSnapshot,
@@ -571,16 +572,19 @@ export function DemoSurface({
       </section>
 
       {controlsState?.controlsEnabled ? (
-        <DemoRehearsalControls
-          currentPreset={controlsState.preset}
-          currentKind={controlsState.kind}
-          currentLabel={controlsState.label}
-          currentDescription={controlsState.description}
-          updatedAt={controlsState.updatedAt}
-          recoveredFromInvalidState={controlsState.recoveredFromInvalidState}
-          recoveryReason={controlsState.recoveryReason}
-          presets={controlsState.presets}
-        />
+        <>
+          <DemoRehearsalControls
+            currentPreset={controlsState.preset}
+            currentKind={controlsState.kind}
+            currentLabel={controlsState.label}
+            currentDescription={controlsState.description}
+            updatedAt={controlsState.updatedAt}
+            recoveredFromInvalidState={controlsState.recoveredFromInvalidState}
+            recoveryReason={controlsState.recoveryReason}
+            presets={controlsState.presets}
+          />
+          <DemoLivePreflightCard />
+        </>
       ) : null}
 
       <section className="w-full">
