@@ -139,12 +139,12 @@ function ExampleCard({
 }) {
   return (
     <article className="surface-card group relative p-5 transition-all hover:shadow-md">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
             {eyebrow}
           </p>
-          <h3 className="break-words text-base font-semibold text-[var(--foreground)]">
+          <h3 className="text-base font-semibold leading-snug text-[var(--foreground)]">
             {title}
           </h3>
         </div>
