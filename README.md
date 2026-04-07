@@ -86,7 +86,7 @@ Create `.env.local` from `.env.example`.
 
 Required for live Auth0-backed flow (the app still boots without them, but provider actions stay unavailable):
 
-- `APP_BASE_URL` (or `NEXT_PUBLIC_APP_URL`)
+- `APP_BASE_URL` (absolute URL; required for production-safe Auth0 callback/logout behavior)
 - `AUTH0_DOMAIN`
 - `AUTH0_CLIENT_ID`
 - `AUTH0_CLIENT_SECRET`
@@ -130,6 +130,10 @@ Open:
 
 - `http://localhost:3000` for Auth0/session and provider readiness surfaces
 - `http://localhost:3000/demo` for the canonical multi-agent delegation demo
+
+Production deploy handoff:
+
+- `docs/deploy/vercel-auth0-production-handoff.md`
 
 Quick validation before deeper checks:
 
@@ -267,6 +271,7 @@ npm run smoke:demo
 - `docs/submission/screenshot-captions.md`: screenshot capture guidance and proof-oriented captions
 - `docs/blog/oauth-for-apps-ai-agents-need-warrants.md`: Auth0 community blog-prize draft
 - `docs/demo/final-3-minute-script.md`: beat-by-beat demo script and recording fallback notes
+- `docs/deploy/vercel-auth0-production-handoff.md`: Vercel deployment, Auth0 production setup, and post-deploy/demo preflight runbook
 - `src/graph`: graph view models and rendering integration
 - `src/audit`: lineage/timeline aggregation boundary
 - `src/demo-fixtures`: canonical seeded scenarios and local rehearsal state

@@ -44,24 +44,45 @@ function readConnectionStateOverride(value: string | undefined): ProviderConnect
     : null;
 }
 
+function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function readAuth0Environment(env: NodeJS.ProcessEnv = process.env): Auth0Environment {
   const domain = readValue(env.AUTH0_DOMAIN);
   const clientId = readValue(env.AUTH0_CLIENT_ID);
   const clientSecret = readValue(env.AUTH0_CLIENT_SECRET);
   const secret = readValue(env.AUTH0_SECRET);
-  const appBaseUrl = readValue(env.APP_BASE_URL) ?? readValue(env.NEXT_PUBLIC_APP_URL);
+  const appBaseUrl = readValue(env.APP_BASE_URL);
   const requiredValues: Array<[string, string | null]> = [
     ["AUTH0_DOMAIN", domain],
     ["AUTH0_CLIENT_ID", clientId],
     ["AUTH0_CLIENT_SECRET", clientSecret],
     ["AUTH0_SECRET", secret],
-    ["APP_BASE_URL or NEXT_PUBLIC_APP_URL", appBaseUrl],
+    ["APP_BASE_URL", appBaseUrl],
   ];
   const missingValues = requiredValues.flatMap(([key, value]) => (value ? [] : [key]));
   const invalidValues: string[] = [];
 
   if (secret && secret.length < 32) {
     invalidValues.push("AUTH0_SECRET must be at least 32 characters (64 hex characters recommended).");
+  }
+
+  if (domain?.includes("://")) {
+    invalidValues.push("AUTH0_DOMAIN must be a tenant host only (for example, tenant.us.auth0.com).");
+  }
+
+  if (appBaseUrl && !isAbsoluteHttpUrl(appBaseUrl)) {
+    invalidValues.push("APP_BASE_URL must be an absolute http(s) URL (for example, https://your-app.vercel.app).");
+  }
+
+  if (readValue(env.NODE_ENV) === "production" && !appBaseUrl) {
+    invalidValues.push("APP_BASE_URL is required in production so Auth0 can build callback and logout URLs correctly.");
   }
 
   const configurationIssues = [...missingValues, ...invalidValues];

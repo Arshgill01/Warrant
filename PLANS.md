@@ -3817,3 +3817,105 @@ Manual checks:
 - shared-class normalization can unintentionally alter hierarchy if token changes are too broad
 - overflow fixes in dense metadata rows may affect legibility if wrapping rules are too aggressive
 - graph-adjacent framing changes could visually imply graph-core changes; scope discipline is required
+
+## ExecPlan — Vercel Deployment + Auth0 Production Handoff (2026-04-07)
+
+### Objective
+
+Make the current stable app deployment-safe for Vercel and ship a complete, concrete production handoff covering env safety, startup/runtime guardrails, Auth0 production setup, post-deploy verification, troubleshooting, and demo preflight.
+
+### Demo relevance
+
+This plan reduces final demo risk by making production setup deterministic and reviewable:
+
+1. deploys do not fail silently from missing/unsafe env config
+2. Auth0 production URLs and connected-account expectations are explicit
+3. judges can verify the live flow quickly after deploy
+4. recording prep has a concrete preflight path
+
+### Scope
+
+In scope:
+
+- environment/secret audit and cleanup (`.env.example`, `.gitignore`, server/client env usage)
+- startup/runtime env checks for critical config with honest failure messages
+- Vercel deployment instructions aligned to actual routes and auth flow
+- Auth0 production checklist (callback/logout/origin/provider-connection details)
+- ordered post-deploy verification checklist for the canonical proof path
+- concise troubleshooting and demo-preflight checklists
+
+Out of scope:
+
+- product feature expansion
+- auth architecture redesign
+- unrelated UI polish
+- infra beyond Vercel/Auth0 setup guidance
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `.env.example`
+- `.gitignore` (if needed for local-only env files)
+- `README.md`
+- `docs/` deployment/handoff docs (new file(s) if clearer than README-only updates)
+- `src/auth/env.ts`
+- `src/agents/runtime/config.ts`
+- any startup/runtime entry points currently consuming critical env vars
+- targeted tests only if env guardrail behavior is codified by tests
+
+### Invariants to preserve
+
+- Auth0 stays visibly load-bearing for provider delegation.
+- Warrant policy and external delegated-access boundaries remain separate.
+- No real secrets are committed or copied into tracked examples.
+- Server-only secrets are never surfaced via `NEXT_PUBLIC_*` or client bundles.
+- Existing demo behavior remains unchanged except clearer failure/reporting around missing config.
+
+### Implementation steps
+
+1. Env + secret safety baseline:
+   - inventory all env-var reads and classify server-only vs safe-client
+   - verify `.env.local` (and equivalents) are ignored
+   - sanitize `.env.example` to placeholders only, aligned with actual code usage
+   - verify no committed secrets/tokens in repo text
+2. Startup/runtime guardrails:
+   - tighten auth/runtime env parsing and required checks for critical vars
+   - ensure error messages are explicit about missing key and expected next step
+   - preserve graceful degraded behavior where intended (demo fixtures vs live provider path)
+3. Deployment + Auth0 production handoff docs:
+   - document exact Vercel env variables and production base URL requirements
+   - document post-deploy Auth0 tenant updates (callback/logout/web origins/connect flow)
+   - keep routes/instructions aligned to real app behavior (`/`, `/demo`, `/auth/connect`, `/api/demo/live-preflight`)
+4. Post-deploy verification + troubleshooting:
+   - add ordered live verification checklist for boot/login/logout/callback/session/provider/runtime/draft/deny/approval/revoke/graph-timeline coherence
+   - add concise failure-mode troubleshooting with concrete fixes
+5. Demo-preflight handoff:
+   - add “after Vercel URL exists” checklist
+   - add recording readiness checklist tied to deterministic and live preflight modes
+6. Validate and commit in small slices:
+   - env/secret audit + `.env.example` cleanup
+   - startup/runtime guardrails
+   - deployment + Auth0 production docs
+   - post-deploy verification + troubleshooting
+   - demo-preflight checklist + final cleanup
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run smoke:demo` (after production build)
+
+Manual checks:
+
+- inspect env reads for server/client boundary correctness
+- verify missing-critical-env behavior is honest and actionable
+- verify README/docs commands match real scripts/routes
+- verify live handoff steps match Auth0 route and callback/logout behavior
+
+### Risks
+
+- Existing env behavior intentionally supports partial local demo mode; over-tightening could break intended degraded states.
+- Auth0 tenant UI wording can vary; checklist must describe exact values plus where to apply them, not rely on label drift.
+- Docs can drift from code quickly; route and env names must be cross-checked against current implementation before finalizing.

@@ -86,7 +86,6 @@ const providerResults: ProviderActionResult[] = [
 describe("auth shell environment", () => {
   it("requires Auth0 core environment values before enabling the shell", () => {
     const environment = readAuth0Environment({
-      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
       AUTH0_GOOGLE_CONNECTION_NAME: "google-oauth2",
     } as unknown as NodeJS.ProcessEnv);
 
@@ -96,6 +95,7 @@ describe("auth shell environment", () => {
       "AUTH0_CLIENT_ID",
       "AUTH0_CLIENT_SECRET",
       "AUTH0_SECRET",
+      "APP_BASE_URL",
     ]);
   });
 
@@ -153,6 +153,36 @@ describe("auth shell environment", () => {
     expect(environment.invalidValues).toEqual([
       "AUTH0_SECRET must be at least 32 characters (64 hex characters recommended).",
     ]);
+  });
+
+  it("marks Auth0 setup invalid when APP_BASE_URL is not an absolute URL", () => {
+    const environment = readAuth0Environment({
+      AUTH0_DOMAIN: "tenant.example.auth0.com",
+      AUTH0_CLIENT_ID: "client-id",
+      AUTH0_CLIENT_SECRET: "client-secret",
+      AUTH0_SECRET: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      APP_BASE_URL: "localhost:3000",
+    } as unknown as NodeJS.ProcessEnv);
+
+    expect(environment.isConfigured).toBe(false);
+    expect(environment.invalidValues).toContain(
+      "APP_BASE_URL must be an absolute http(s) URL (for example, https://your-app.vercel.app).",
+    );
+  });
+
+  it("marks Auth0 setup invalid when AUTH0_DOMAIN includes a URL scheme", () => {
+    const environment = readAuth0Environment({
+      AUTH0_DOMAIN: "https://tenant.example.auth0.com",
+      AUTH0_CLIENT_ID: "client-id",
+      AUTH0_CLIENT_SECRET: "client-secret",
+      AUTH0_SECRET: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      APP_BASE_URL: "https://warrant.example.com",
+    } as unknown as NodeJS.ProcessEnv);
+
+    expect(environment.isConfigured).toBe(false);
+    expect(environment.invalidValues).toContain(
+      "AUTH0_DOMAIN must be a tenant host only (for example, tenant.us.auth0.com).",
+    );
   });
 });
 
