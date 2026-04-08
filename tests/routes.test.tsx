@@ -88,7 +88,7 @@ describe("route rendering", () => {
 
   it("renders the auth shell route in the safe fallback state without Auth0 config", async () => {
     const { default: HomePage, dynamic } = await import("@/app/page");
-    const html = renderToStaticMarkup(await HomePage());
+    const html = renderToStaticMarkup(await HomePage({ searchParams: Promise.resolve({}) }));
 
     expect(dynamic).toBe("force-dynamic");
     expect(html).toContain("Auth0 Access Shell");

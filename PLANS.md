@@ -4098,3 +4098,112 @@ Manual checks:
 - Full provider-backed proof depends on live Auth0 session and Google connection state; local pass may prove honest unavailable states rather than full live execution.
 - Live model output can vary slightly; verification must rely on structural/runtime boundaries, not exact wording.
 - If observability is too console-only, the runbook may need small UI/readiness clarifications to remain operator-friendly.
+
+## ExecPlan — Live Connected-Account Flow Truthfulness Fix (2026-04-08)
+
+### Objective
+
+Fix the `Connect Google with Auth0` initiation path so it starts the real connected-account flow when possible and returns structured, user-visible failure context when bootstrap fails before Google handoff.
+
+### Demo relevance
+
+This directly hardens a core Milestone 1 beat:
+
+1. user signs in
+2. user connects Google through Auth0
+3. app truthfully shows whether delegated Google access is actually usable
+
+Without this pass, the app can dead-end on the generic bootstrap-token failure and can visually conflate identity labels with real delegated readiness.
+
+### Scope
+
+In scope:
+
+- inspect/fix connect initiation path used by `Connect Google with Auth0`
+- add a thin wrapper/diagnostic layer around connect start to capture bootstrap/connect failure context
+- preserve real `/auth/connect` handoff behavior when bootstrap succeeds
+- expand connection-state handling to distinguish:
+  - not connected
+  - connect flow not started
+  - connect flow started
+  - bootstrap token failure before Google handoff
+  - connected account identity visible but delegated access still unusable
+  - tenant/config issue
+  - callback/redirect issue
+- update auth setup + provider connection surfaces to reflect these states clearly and truthfully
+- integrate existing live-provider diagnostics cleanly (do not regress instrumentation value)
+- add targeted tests and validation
+
+Out of scope:
+
+- provider business logic expansion (calendar/gmail feature broadening)
+- warrant engine/policy semantics changes
+- fake “connected” fallbacks or suppressed errors without diagnosis
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/connection.ts`
+- `src/auth/live-provider-diagnostics.ts`
+- `src/connections/google.ts`
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/demo-fixtures/live-preflight.ts`
+- `src/app/page.tsx`
+- `src/app/api/connect/google/route.ts` (new wrapper route)
+- `tests/auth-shell.test.ts`
+- `tests/live-preflight-route.test.ts`
+- additional focused tests for wrapper/connection mapping as needed
+
+### Invariants to preserve
+
+- two-layer enforcement remains explicit (local warrant allowance != external delegated capability)
+- no fake provider readiness states
+- real Auth0 connected-account flow remains `/auth/connect`-backed
+- visible account identity is never treated as delegated-token proof
+- existing diagnostics stay machine-readable and useful for triage
+- no secrets exposed in UI/logs/tests/docs
+
+### Implementation steps
+
+1. Add this ExecPlan entry and verify baseline diagnostics/state mapping behavior in current code.
+2. Add a connect-start wrapper route that:
+   - builds the same real `/auth/connect` target with current scopes/params
+   - attempts initiation server-side with session cookies
+   - forwards redirect to Auth0/Google handoff on success
+   - classifies bootstrap/connect failures and redirects back with structured state markers
+3. Extend provider connection contracts/diagnostics to encode explicit connection lifecycle + failure classification (including tenant/config and callback/redirect buckets).
+4. Update `getGoogleConnectionSnapshot` to consume wrapper markers and produce truthful state/action/headline/detail copy that separates identity from delegated readiness.
+5. Update auth shell and preflight surfaces to render the expanded states clearly and preserve useful diagnostic lines.
+6. Add/update focused tests for wrapper route behavior, connection snapshot classification, and UI/preflight state visibility.
+7. Validate with lint/typecheck/tests/build plus local manual connect-flow exercise.
+8. Commit in small slices:
+   - connect-flow wrapper/path correction
+   - state model + UI separation improvements
+   - bootstrap/connect error clarity
+   - tests/final cleanup
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+
+Manual checks:
+
+- run `npm run dev`
+- sign in and click `Connect Google with Auth0`
+- verify successful path still forwards into real connected-account flow
+- verify bootstrap failure no longer dead-ends ambiguously
+- verify UI state distinction between:
+  - no connection yet
+  - connect started
+  - bootstrap failure
+  - account identity visible but delegated access unusable
+- verify preflight diagnostics still expose token exchange outcomes and now include clearer initiation/failure semantics
+
+### Risks
+
+- Wrapper route depends on stable redirect semantics from Auth0 SDK `/auth/connect`; SDK behavior changes could require adaptation.
+- Distinguishing callback/redirect misconfiguration may remain partly heuristic without full tenant introspection APIs.
+- Local terminal-only validation cannot fully prove browser-driven Auth0/Google handoff without an interactive signed-in session.

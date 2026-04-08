@@ -1,15 +1,29 @@
 import { executeSendEmail, prepareGmailDraft, readCalendarAvailability } from "@/actions";
 import { getAuthSessionSnapshot } from "@/auth";
 import { AuthShell } from "@/components/auth-shell/auth-shell";
-import { getGoogleConnectionSetupSnapshot, getGoogleConnectionSnapshot } from "@/connections";
+import {
+  getGoogleConnectionSetupSnapshot,
+  getGoogleConnectionSnapshot,
+  readGoogleConnectFlowContext,
+} from "@/connections";
 import { authShellProviderRequests } from "@/demo-fixtures";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+type PageSearchParams = Record<string, string | string[] | undefined>;
+
+interface HomeProps {
+  searchParams?: Promise<PageSearchParams>;
+}
+
+export default async function Home({ searchParams }: HomeProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const connectFlow = readGoogleConnectFlowContext(resolvedSearchParams);
   const session = await getAuthSessionSnapshot();
   const googleSetup = getGoogleConnectionSetupSnapshot();
-  const googleConnection = await getGoogleConnectionSnapshot(session);
+  const googleConnection = await getGoogleConnectionSnapshot(session, {
+    connectFlow,
+  });
 
   const [calendarAvailability, gmailDraft, gmailSend] = await Promise.all([
     readCalendarAvailability(authShellProviderRequests.calendarAvailability, {

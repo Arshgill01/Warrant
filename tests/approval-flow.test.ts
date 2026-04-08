@@ -65,6 +65,8 @@ describe("send approval flow", () => {
       connection: {
         provider: "google",
         state: "expired",
+        lifecycleState: "identity-visible-access-unusable",
+        lifecycleDetail: "Identity can be shown, but delegated token minting is still blocked.",
         headline: "Google delegated access has expired.",
         detail: "Auth0 needs to refresh delegated access.",
         actionLabel: "Refresh Auth0 session",

@@ -40,6 +40,8 @@ const signedInSession: AuthSessionSnapshot = {
 const connectedGoogle: ProviderConnectionSnapshot = {
   provider: "google",
   state: "connected",
+  lifecycleState: "delegated-ready",
+  lifecycleDetail: "Delegated Google access is usable in this session.",
   headline: "Google is connected through Auth0.",
   detail: "Delegated access is available.",
   actionLabel: null,
@@ -51,7 +53,12 @@ const connectedGoogle: ProviderConnectionSnapshot = {
     evaluatedAt: "2026-04-08T00:00:00.000Z",
     connectionName: "google-oauth2",
     connectHref: "/auth/connect?connection=google-oauth2",
+    connectStartHref: "/api/connect/google?returnTo=%2F",
     accountLabelSource: "session-email",
+    lifecycleState: "delegated-ready",
+    connectFlowState: "not-started",
+    connectFailureCode: null,
+    connectFailureDetail: null,
     tokenExchange: {
       attempted: true,
       outcome: "success",
@@ -217,10 +224,12 @@ describe("provider-backed action wrappers", () => {
       connection: {
         ...connectedGoogle,
         state: "not-connected",
+        lifecycleState: "connect-flow-not-started",
+        lifecycleDetail: "Connect flow has not been started from this shell state yet.",
         headline: "Google is not connected yet.",
         detail: "Connect Google through Auth0 before the Calendar Agent reads availability.",
         actionLabel: "Connect Google with Auth0",
-        actionHref: "/auth/connect",
+        actionHref: "/api/connect/google?returnTo=%2F",
       },
     });
 
@@ -235,6 +244,8 @@ describe("provider-backed action wrappers", () => {
       connection: {
         ...connectedGoogle,
         state: "expired",
+        lifecycleState: "identity-visible-access-unusable",
+        lifecycleDetail: "Identity can be shown, but delegated token minting is still blocked.",
         headline: "Google delegated access has expired.",
         detail: "Refresh Auth0 before retrying Calendar access.",
         actionLabel: "Refresh Auth0 session",
@@ -358,6 +369,8 @@ describe("auth shell rendering", () => {
         googleConnection: {
           ...connectedGoogle,
           state: "not-connected",
+          lifecycleState: "connect-flow-not-started",
+          lifecycleDetail: "Connect flow has not been started from this shell state yet.",
           headline: "Google is not connected yet.",
           detail: "Sign in and connect Google through Auth0.",
           actionLabel: "Sign in with Auth0",

@@ -102,9 +102,18 @@ function summarizeConnectionDiagnostics(connection: ProviderConnectionSnapshot):
   return [
     `connection_name=${diagnostics.connectionName}`,
     `connect_href=${diagnostics.connectHref ?? "n/a"}`,
+    `connect_start_href=${diagnostics.connectStartHref ?? "n/a"}`,
     `account_label_source=${diagnostics.accountLabelSource}`,
+    `lifecycle_state=${diagnostics.lifecycleState}`,
+    `connect_flow_state=${diagnostics.connectFlowState}`,
     `token_exchange_attempted=${String(diagnostics.tokenExchange.attempted)}`,
     `token_exchange_outcome=${diagnostics.tokenExchange.outcome}`,
+    diagnostics.connectFailureCode
+      ? `connect_failure_code=${diagnostics.connectFailureCode}`
+      : null,
+    diagnostics.connectFailureDetail
+      ? `connect_failure_detail=${diagnostics.connectFailureDetail}`
+      : null,
     diagnostics.tokenExchange.sdkErrorCode
       ? `token_exchange_auth0_code=${diagnostics.tokenExchange.sdkErrorCode}`
       : null,
