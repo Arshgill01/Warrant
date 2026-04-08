@@ -9,6 +9,11 @@ function printCheck(check) {
   console.log(`[${check.state}] ${check.label}`);
   console.log(`  ${check.headline}`);
   console.log(`  ${check.detail}`);
+  if (Array.isArray(check.diagnostics) && check.diagnostics.length > 0) {
+    check.diagnostics.forEach((line) => {
+      console.log(`  diagnostic: ${line}`);
+    });
+  }
 }
 
 async function main() {

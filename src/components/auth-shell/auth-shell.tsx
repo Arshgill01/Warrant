@@ -121,6 +121,14 @@ function SetupRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function formatOptionalBoolean(value: boolean | null): string {
+  if (value === null) {
+    return "unknown";
+  }
+
+  return value ? "true" : "false";
+}
+
 export function AuthShell({ session, googleConnection, providerResults, googleSetup }: AuthShellProps) {
   const sessionAction =
     session.state === "signed-in"
@@ -185,6 +193,23 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             <StatusChip label={session.state.replace("-", " ")} tone={sessionTone[session.state]} size="md" />
             <p>{session.headline}</p>
             <p>{session.detail}</p>
+            {session.diagnostics ? (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-white/80 px-4 py-3">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Live diagnostics
+                </p>
+                <p className="text-xs leading-relaxed text-[var(--muted)]">
+                  auth0_configured={String(session.diagnostics.auth0Configured)} | auth0_client_ready=
+                  {String(session.diagnostics.auth0ClientReady)} | has_session={String(session.diagnostics.hasSession)} | has_refresh_token=
+                  {formatOptionalBoolean(session.diagnostics.hasRefreshToken)}
+                </p>
+                {session.diagnostics.environmentIssues.length ? (
+                  <p className="mt-1 break-all text-xs leading-relaxed text-[var(--muted)]">
+                    environment_issues={session.diagnostics.environmentIssues.join(" | ")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <AuthAction href={sessionAction.href} label={sessionAction.label} />
           </div>
         </SectionCard>
@@ -203,6 +228,49 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
             ) : null}
             {tokenExpiry ? (
               <p className="text-sm font-medium text-[var(--foreground)]">Delegated token ready until: {tokenExpiry}</p>
+            ) : null}
+            {googleConnection.accountLabel && googleConnection.state !== "connected" ? (
+              <p className="rounded-2xl border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
+                Account label visibility does not prove delegated token usability. Rely on connection state and diagnostics.
+              </p>
+            ) : null}
+            {googleConnection.diagnostics ? (
+              <div className="rounded-2xl border border-[var(--panel-border)] bg-white/80 px-4 py-3">
+                <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Live diagnostics
+                </p>
+                <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                  connection_name={googleConnection.diagnostics.connectionName} | account_label_source=
+                  {googleConnection.diagnostics.accountLabelSource}
+                </p>
+                <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                  connect_href={googleConnection.diagnostics.connectHref ?? "n/a"}
+                </p>
+                <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                  token_exchange_attempted={String(googleConnection.diagnostics.tokenExchange.attempted)} | token_exchange_outcome=
+                  {googleConnection.diagnostics.tokenExchange.outcome}
+                </p>
+                {googleConnection.diagnostics.tokenExchange.sdkErrorCode ? (
+                  <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                    token_exchange_auth0_code={googleConnection.diagnostics.tokenExchange.sdkErrorCode}
+                  </p>
+                ) : null}
+                {googleConnection.diagnostics.tokenExchange.oauthErrorCode ? (
+                  <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                    token_exchange_oauth_code={googleConnection.diagnostics.tokenExchange.oauthErrorCode}
+                  </p>
+                ) : null}
+                {googleConnection.diagnostics.tokenExchange.oauthErrorMessage ? (
+                  <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                    token_exchange_oauth_message={googleConnection.diagnostics.tokenExchange.oauthErrorMessage}
+                  </p>
+                ) : null}
+                {googleConnection.diagnostics.tokenExchange.note ? (
+                  <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                    token_exchange_note={googleConnection.diagnostics.tokenExchange.note}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
             <AuthAction href={googleAction.href} label={googleAction.label} />
           </div>

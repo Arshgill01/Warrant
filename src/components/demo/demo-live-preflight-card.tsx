@@ -160,6 +160,21 @@ export function DemoLivePreflightCard() {
                 <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
                   {check.detail}
                 </p>
+                {check.diagnostics?.length ? (
+                  <div className="mt-3 rounded-xl border border-[var(--panel-border)] bg-white/80 px-3 py-2">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                      Diagnostics
+                    </p>
+                    {check.diagnostics.map((line) => (
+                      <p
+                        key={`${check.id}:${line}`}
+                        className="break-all text-xs leading-relaxed text-[var(--muted)]"
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
               </article>
             ))}
           </div>

@@ -3,6 +3,7 @@ import {
   prepareGmailDraft,
   readCalendarAvailability,
 } from "@/actions";
+import { logLiveProviderDiagnostic } from "@/auth/live-provider-diagnostics";
 import { getAuthSessionSnapshot } from "@/auth/session";
 import type {
   DemoLivePreflightCheck,
@@ -35,6 +36,7 @@ function blockedPrerequisiteCheck(input: {
   id: DemoLivePreflightCheck["id"];
   label: string;
   detail: string;
+  diagnostics?: string[];
 }): DemoLivePreflightCheck {
   return {
     id: input.id,
@@ -42,6 +44,7 @@ function blockedPrerequisiteCheck(input: {
     state: "blocked",
     headline: "Prerequisites are not ready yet.",
     detail: input.detail,
+    diagnostics: input.diagnostics,
   };
 }
 
@@ -59,6 +62,7 @@ function mapProviderResultToCheck(input: {
       state: "ready",
       headline: input.successHeadline,
       detail: input.successDetail,
+      diagnostics: summarizeProviderResultDiagnostics(input.result),
     };
   }
 
@@ -68,7 +72,64 @@ function mapProviderResultToCheck(input: {
     state: input.result.state === "failed" ? "error" : "blocked",
     headline: input.result.headline,
     detail: input.result.detail,
+    diagnostics: summarizeProviderResultDiagnostics(input.result),
   };
+}
+
+function summarizeSessionDiagnostics(session: Awaited<ReturnType<typeof getAuthSessionSnapshot>>): string[] {
+  if (!session.diagnostics) {
+    return [];
+  }
+
+  return [
+    `auth0_configured=${String(session.diagnostics.auth0Configured)}`,
+    `auth0_client_ready=${String(session.diagnostics.auth0ClientReady)}`,
+    `has_session=${String(session.diagnostics.hasSession)}`,
+    `has_refresh_token=${session.diagnostics.hasRefreshToken === null ? "unknown" : String(session.diagnostics.hasRefreshToken)}`,
+    session.diagnostics.environmentIssues.length
+      ? `environment_issues=${session.diagnostics.environmentIssues.join("|")}`
+      : null,
+  ].filter((entry): entry is string => Boolean(entry));
+}
+
+function summarizeConnectionDiagnostics(connection: ProviderConnectionSnapshot): string[] {
+  const diagnostics = connection.diagnostics;
+
+  if (!diagnostics) {
+    return [];
+  }
+
+  return [
+    `connection_name=${diagnostics.connectionName}`,
+    `connect_href=${diagnostics.connectHref ?? "n/a"}`,
+    `account_label_source=${diagnostics.accountLabelSource}`,
+    `token_exchange_attempted=${String(diagnostics.tokenExchange.attempted)}`,
+    `token_exchange_outcome=${diagnostics.tokenExchange.outcome}`,
+    diagnostics.tokenExchange.sdkErrorCode
+      ? `token_exchange_auth0_code=${diagnostics.tokenExchange.sdkErrorCode}`
+      : null,
+    diagnostics.tokenExchange.oauthErrorCode
+      ? `token_exchange_oauth_code=${diagnostics.tokenExchange.oauthErrorCode}`
+      : null,
+    diagnostics.tokenExchange.oauthErrorMessage
+      ? `token_exchange_oauth_message=${diagnostics.tokenExchange.oauthErrorMessage}`
+      : null,
+    diagnostics.tokenExchange.note
+      ? `token_exchange_note=${diagnostics.tokenExchange.note}`
+      : null,
+  ].filter((entry): entry is string => Boolean(entry));
+}
+
+function summarizeProviderResultDiagnostics(result: ProviderActionResult): string[] {
+  return [
+    `provider_state=${result.state}`,
+    result.failure?.code ? `provider_failure_code=${result.failure.code}` : null,
+    result.failure?.retryable !== undefined
+      ? `provider_failure_retryable=${String(result.failure.retryable)}`
+      : null,
+    `connection_state=${result.connection.state}`,
+    ...summarizeConnectionDiagnostics(result.connection),
+  ].filter((entry): entry is string => Boolean(entry));
 }
 
 function evaluateOverallState(
@@ -207,6 +268,11 @@ export async function runDemoLivePreflight(
   const mode = input.mode ?? DEFAULT_PREFLIGHT_MODE;
   const checks: DemoLivePreflightCheck[] = [];
 
+  logLiveProviderDiagnostic("preflight.run.start", {
+    mode,
+    checkedAt,
+  });
+
   const runtimeModelStartup = getRuntimeModelStartupValidation();
   checks.push({
     id: "runtime_model_config",
@@ -220,6 +286,12 @@ export async function runDemoLivePreflight(
       : runtimeModelStartup.issues
         .map((issue) => `${issue.field}: ${issue.message}`)
         .join(" | "),
+    diagnostics: [
+      `logical_model=${runtimeModelStartup.configuration.logicalModel}`,
+      `provider_model_id=${runtimeModelStartup.configuration.providerModelId}`,
+      `runtime_provider=${runtimeModelStartup.configuration.provider}`,
+      `runtime_config_valid=${String(runtimeModelStartup.ok)}`,
+    ],
   });
 
   const session = await getAuthSessionSnapshot();
@@ -229,6 +301,7 @@ export async function runDemoLivePreflight(
     state: session.state === "signed-in" ? "ready" : "blocked",
     headline: session.headline,
     detail: session.detail,
+    diagnostics: summarizeSessionDiagnostics(session),
   });
 
   let connection: ProviderConnectionSnapshot | null = null;
@@ -240,6 +313,7 @@ export async function runDemoLivePreflight(
       state: connection.state === "connected" ? "ready" : "blocked",
       headline: connection.headline,
       detail: connection.detail,
+      diagnostics: summarizeConnectionDiagnostics(connection),
     });
   } else {
     checks.push(
@@ -248,6 +322,10 @@ export async function runDemoLivePreflight(
         label: "Google connected-account path",
         detail:
           "Google delegated access cannot be evaluated before an active Auth0 session is present.",
+        diagnostics: [
+          `session_state=${session.state}`,
+          "google_connection_evaluation=skipped_no_signed_in_session",
+        ],
       }),
     );
   }
@@ -262,18 +340,33 @@ export async function runDemoLivePreflight(
         label: "Calendar read provider path",
         detail:
           "Calendar provider readiness requires a signed-in Auth0 session and connected Google delegated access.",
+        diagnostics: [
+          `session_state=${session.state}`,
+          `connection_state=${connection?.state ?? "none"}`,
+          "provider_checks_skipped=true",
+        ],
       }),
       blockedPrerequisiteCheck({
         id: "gmail_draft_path",
         label: "Gmail draft provider path",
         detail:
           "Gmail draft readiness requires a signed-in Auth0 session and connected Google delegated access.",
+        diagnostics: [
+          `session_state=${session.state}`,
+          `connection_state=${connection?.state ?? "none"}`,
+          "provider_checks_skipped=true",
+        ],
       }),
       blockedPrerequisiteCheck({
         id: "gmail_send_gate",
         label: "Gmail send execution gate",
         detail:
           "Send gate verification runs after Auth0 session and connected Google delegated access are confirmed.",
+        diagnostics: [
+          `session_state=${session.state}`,
+          `connection_state=${connection?.state ?? "none"}`,
+          "provider_checks_skipped=true",
+        ],
       }),
     );
   } else {
@@ -339,10 +432,25 @@ export async function runDemoLivePreflight(
       detail: sendGateReady
         ? "The provider send path stays blocked until an explicit execution release is supplied by an approval/control layer."
         : sendGateResult.detail,
+      diagnostics: [
+        `provider_state=${sendGateResult.state}`,
+        sendGateResult.failure?.code ? `provider_failure_code=${sendGateResult.failure.code}` : null,
+        `connection_state=${sendGateResult.connection.state}`,
+        ...summarizeConnectionDiagnostics(sendGateResult.connection),
+      ].filter((entry): entry is string => Boolean(entry)),
     });
   }
 
   const overallState = evaluateOverallState(checks);
+  logLiveProviderDiagnostic("preflight.run.complete", {
+    mode,
+    checkedAt,
+    overallState,
+    checks: checks.map((check) => ({
+      id: check.id,
+      state: check.state,
+    })),
+  });
 
   return {
     mode,

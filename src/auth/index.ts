@@ -12,4 +12,5 @@ export const authBoundary: WorktreeBoundary = {
 
 export * from "@/auth/auth0";
 export * from "@/auth/env";
+export * from "@/auth/live-provider-diagnostics";
 export * from "@/auth/session";

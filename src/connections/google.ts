@@ -1,11 +1,19 @@
 import type {
   AuthSessionSnapshot,
+  ProviderConnectionDiagnostics,
   ProviderConnectionSetupSnapshot,
   ProviderConnectionSnapshot,
   ProviderConnectionState,
 } from "@/contracts";
 import { AccessTokenForConnectionError, AccessTokenForConnectionErrorCode, auth0 } from "@/auth";
 import { getAuth0Environment } from "@/auth/env";
+import {
+  createTokenExchangeErrorDiagnostics,
+  createTokenExchangeNotAttemptedDiagnostics,
+  createTokenExchangeSuccessDiagnostics,
+  formatTokenExchangeDiagnostics,
+  logLiveProviderDiagnostic,
+} from "@/auth/live-provider-diagnostics";
 
 export const googleDelegatedScopes = [
   "openid",
@@ -51,6 +59,10 @@ export const googleConnectionStateLegend: Array<{
     detail: "The shell is missing config or the delegated token path cannot be used right now.",
   },
 ];
+
+function nowIsoString(): string {
+  return new Date().toISOString();
+}
 
 export function buildGoogleConnectHref(connectionName: string, returnTo = "/"): string {
   const searchParams = new URLSearchParams({
@@ -103,15 +115,62 @@ export function getGoogleConnectionSetupSnapshot(): ProviderConnectionSetupSnaps
   };
 }
 
-function getConnectedAccountLabel(session: AuthSessionSnapshot): string | null {
+function resolveConnectedAccountLabel(session: AuthSessionSnapshot): {
+  label: string | null;
+  source: ProviderConnectionDiagnostics["accountLabelSource"];
+} {
   const authEnv = getAuth0Environment();
-  return authEnv.googleConnectionEmailOverride ?? session.user?.email ?? null;
+
+  if (authEnv.googleConnectionEmailOverride) {
+    return {
+      label: authEnv.googleConnectionEmailOverride,
+      source: "override",
+    };
+  }
+
+  if (session.user?.email) {
+    return {
+      label: session.user.email,
+      source: "session-email",
+    };
+  }
+
+  return {
+    label: null,
+    source: "none",
+  };
 }
 
-function buildOverrideSnapshot(state: ProviderConnectionState, session: AuthSessionSnapshot): ProviderConnectionSnapshot {
+function buildConnectionDiagnostics(input: {
+  connectionName: string;
+  connectHref: string | null;
+  accountLabelSource: ProviderConnectionDiagnostics["accountLabelSource"];
+  tokenExchange: ProviderConnectionDiagnostics["tokenExchange"];
+}): ProviderConnectionDiagnostics {
+  return {
+    evaluatedAt: nowIsoString(),
+    connectionName: input.connectionName,
+    connectHref: input.connectHref,
+    accountLabelSource: input.accountLabelSource,
+    tokenExchange: input.tokenExchange,
+  };
+}
+
+function buildOverrideSnapshot(
+  state: ProviderConnectionState,
+  session: AuthSessionSnapshot,
+  connectHref: string,
+): ProviderConnectionSnapshot {
   const authEnv = getAuth0Environment();
-  const connectHref = buildGoogleConnectHref(authEnv.googleConnectionName);
-  const accountLabel = getConnectedAccountLabel(session);
+  const account = resolveConnectedAccountLabel(session);
+  const diagnostics = buildConnectionDiagnostics({
+    connectionName: authEnv.googleConnectionName,
+    connectHref,
+    accountLabelSource: account.source,
+    tokenExchange: createTokenExchangeNotAttemptedDiagnostics(
+      "Shell override is active, so no live token exchange was attempted.",
+    ),
+  });
 
   switch (state) {
     case "connected":
@@ -122,9 +181,10 @@ function buildOverrideSnapshot(state: ProviderConnectionState, session: AuthSess
         detail: "The shell override marks delegated Google access as ready until the real Token Vault callback is wired.",
         actionLabel: null,
         actionHref: null,
-        accountLabel,
+        accountLabel: account.label,
         tokenExpiresAt: null,
         via: "shell-override",
+        diagnostics,
       };
     case "pending":
       return {
@@ -134,9 +194,10 @@ function buildOverrideSnapshot(state: ProviderConnectionState, session: AuthSess
         detail: "Auth0 has started the provider handoff, but the delegated access path is not ready yet.",
         actionLabel: null,
         actionHref: null,
-        accountLabel,
+        accountLabel: account.label,
         tokenExpiresAt: null,
         via: "shell-override",
+        diagnostics,
       };
     case "not-connected":
       return {
@@ -146,9 +207,10 @@ function buildOverrideSnapshot(state: ProviderConnectionState, session: AuthSess
         detail: "This shell override keeps the provider disconnected until you link Google through Auth0.",
         actionLabel: session.state === "signed-in" ? "Connect Google with Auth0" : session.loginHref ? "Sign in with Auth0" : null,
         actionHref: session.state === "signed-in" ? connectHref : session.loginHref,
-        accountLabel,
+        accountLabel: account.label,
         tokenExpiresAt: null,
         via: "shell-override",
+        diagnostics,
       };
     case "expired":
       return {
@@ -158,9 +220,10 @@ function buildOverrideSnapshot(state: ProviderConnectionState, session: AuthSess
         detail: "The shell override marks the previous delegated path as expired until Auth0 re-establishes it.",
         actionLabel: session.logoutHref ? "Refresh Auth0 session" : session.loginHref ? "Sign in with Auth0" : null,
         actionHref: session.logoutHref ?? session.loginHref,
-        accountLabel,
+        accountLabel: account.label,
         tokenExpiresAt: null,
         via: "shell-override",
+        diagnostics,
       };
     case "unavailable":
     default:
@@ -171,42 +234,92 @@ function buildOverrideSnapshot(state: ProviderConnectionState, session: AuthSess
         detail: "The shell override leaves delegated Google access unavailable until the real Auth0 provider path is ready.",
         actionLabel: null,
         actionHref: null,
-        accountLabel,
+        accountLabel: account.label,
         tokenExpiresAt: null,
         via: "shell-override",
+        diagnostics,
       };
   }
 }
 
-function buildAuthUnavailableSnapshot(detail: string): ProviderConnectionSnapshot {
+function buildAuthUnavailableSnapshot(input: {
+  detail: string;
+  connectionName: string;
+  connectHref: string | null;
+  accountLabelSource: ProviderConnectionDiagnostics["accountLabelSource"];
+}): ProviderConnectionSnapshot {
   return {
     provider: "google",
     state: "unavailable",
     headline: "Google connection is unavailable.",
-    detail,
+    detail: input.detail,
     actionLabel: null,
     actionHref: null,
     accountLabel: null,
     tokenExpiresAt: null,
     via: "missing-config",
+    diagnostics: buildConnectionDiagnostics({
+      connectionName: input.connectionName,
+      connectHref: input.connectHref,
+      accountLabelSource: input.accountLabelSource,
+      tokenExchange: createTokenExchangeNotAttemptedDiagnostics(
+        "Auth0 is not fully configured, so no token exchange attempt was made.",
+      ),
+    }),
   };
 }
 
 export async function getGoogleConnectionSnapshot(session: AuthSessionSnapshot): Promise<ProviderConnectionSnapshot> {
   const authEnv = getAuth0Environment();
+  const connectHref = buildGoogleConnectHref(authEnv.googleConnectionName);
+  const account = resolveConnectedAccountLabel(session);
+
+  logLiveProviderDiagnostic("google.connection.evaluate.start", {
+    sessionState: session.state,
+    authConfigured: authEnv.isConfigured,
+    connectionName: authEnv.googleConnectionName,
+    hasConnectionOverride: Boolean(authEnv.googleConnectionStateOverride),
+    connectHref,
+  });
 
   if (authEnv.googleConnectionStateOverride) {
-    return buildOverrideSnapshot(authEnv.googleConnectionStateOverride, session);
+    const snapshot = buildOverrideSnapshot(
+      authEnv.googleConnectionStateOverride,
+      session,
+      connectHref,
+    );
+
+    logLiveProviderDiagnostic("google.connection.evaluate.complete", {
+      state: snapshot.state,
+      via: snapshot.via,
+      tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
+    });
+
+    return snapshot;
   }
 
   if (!authEnv.isConfigured || !auth0) {
-    return buildAuthUnavailableSnapshot(
-      "Auth0 is not fully configured, so the shell cannot start or inspect delegated Google access yet.",
-    );
+    const snapshot = buildAuthUnavailableSnapshot({
+      detail:
+        "Auth0 is not fully configured, so the shell cannot start or inspect delegated Google access yet.",
+      connectionName: authEnv.googleConnectionName,
+      connectHref,
+      accountLabelSource: account.source,
+    });
+
+    logLiveProviderDiagnostic("google.connection.evaluate.complete", {
+      state: snapshot.state,
+      via: snapshot.via,
+      tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
+    });
+
+    return snapshot;
   }
 
   if (session.state !== "signed-in") {
-    return {
+    const snapshot: ProviderConnectionSnapshot = {
       provider: "google",
       state: "not-connected",
       headline: "Google is not connected yet.",
@@ -216,28 +329,75 @@ export async function getGoogleConnectionSnapshot(session: AuthSessionSnapshot):
       accountLabel: null,
       tokenExpiresAt: null,
       via: "auth0-token-vault",
+      diagnostics: buildConnectionDiagnostics({
+        connectionName: authEnv.googleConnectionName,
+        connectHref,
+        accountLabelSource: account.source,
+        tokenExchange: createTokenExchangeNotAttemptedDiagnostics(
+          "Connection evaluation requires an active Auth0 session first.",
+        ),
+      }),
     };
+
+    logLiveProviderDiagnostic("google.connection.evaluate.complete", {
+      state: snapshot.state,
+      via: snapshot.via,
+      tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
+    });
+
+    return snapshot;
   }
 
   try {
+    logLiveProviderDiagnostic("google.connection.token_exchange.attempt", {
+      connectionName: authEnv.googleConnectionName,
+      loginHintPresent: Boolean(session.user?.email),
+    });
+
     const accessToken = await auth0.getAccessTokenForConnection({
       connection: authEnv.googleConnectionName,
       login_hint: session.user?.email ?? undefined,
     });
 
-    return {
+    const snapshot: ProviderConnectionSnapshot = {
       provider: "google",
       state: "connected",
       headline: "Google is connected through Auth0.",
       detail: "Auth0 can mint delegated Google access for Calendar reads and Gmail actions in this session.",
       actionLabel: null,
       actionHref: null,
-      accountLabel: getConnectedAccountLabel(session),
+      accountLabel: account.label,
       tokenExpiresAt: new Date(accessToken.expiresAt * 1000).toISOString(),
       via: "auth0-token-vault",
+      diagnostics: buildConnectionDiagnostics({
+        connectionName: authEnv.googleConnectionName,
+        connectHref,
+        accountLabelSource: account.source,
+        tokenExchange: createTokenExchangeSuccessDiagnostics(
+          "Connected-account access token retrieval succeeded.",
+        ),
+      }),
     };
+
+    logLiveProviderDiagnostic("google.connection.evaluate.complete", {
+      state: snapshot.state,
+      via: snapshot.via,
+      tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
+    });
+
+    return snapshot;
   } catch (error) {
-    const connectHref = buildGoogleConnectHref(authEnv.googleConnectionName);
+    const tokenExchangeDiagnostics = createTokenExchangeErrorDiagnostics(error);
+
+    logLiveProviderDiagnostic("google.connection.token_exchange.failed", {
+      connectionName: authEnv.googleConnectionName,
+      outcome: tokenExchangeDiagnostics.outcome,
+      sdkErrorCode: tokenExchangeDiagnostics.sdkErrorCode,
+      oauthErrorCode: tokenExchangeDiagnostics.oauthErrorCode,
+      oauthErrorMessage: tokenExchangeDiagnostics.oauthErrorMessage,
+    });
 
     if (error instanceof AccessTokenForConnectionError) {
       switch (error.code) {
@@ -246,36 +406,60 @@ export async function getGoogleConnectionSnapshot(session: AuthSessionSnapshot):
             provider: "google",
             state: "not-connected",
             headline: "Google is not connected yet.",
-            detail: "There is no active Auth0 session for delegated access. Sign in again before linking Google.",
+            detail:
+              "There is no active Auth0 session for delegated access. Sign in again before linking Google." +
+              formatTokenExchangeDiagnostics(tokenExchangeDiagnostics),
             actionLabel: "Sign in with Auth0",
             actionHref: session.loginHref ?? "/auth/login",
-            accountLabel: getConnectedAccountLabel(session),
+            accountLabel: account.label,
             tokenExpiresAt: null,
             via: "auth0-token-vault",
+            diagnostics: buildConnectionDiagnostics({
+              connectionName: authEnv.googleConnectionName,
+              connectHref,
+              accountLabelSource: account.source,
+              tokenExchange: tokenExchangeDiagnostics,
+            }),
           };
         case AccessTokenForConnectionErrorCode.MISSING_REFRESH_TOKEN:
           return {
             provider: "google",
             state: "expired",
             headline: "Google delegated access has expired.",
-            detail: "Auth0 could not refresh the delegated token path. Sign in again to restore Google access cleanly.",
+            detail:
+              "Auth0 could not refresh the delegated token path. Sign in again to restore Google access cleanly." +
+              formatTokenExchangeDiagnostics(tokenExchangeDiagnostics),
             actionLabel: session.logoutHref ? "Refresh Auth0 session" : session.loginHref ? "Sign in with Auth0" : null,
             actionHref: session.logoutHref ?? session.loginHref,
-            accountLabel: getConnectedAccountLabel(session),
+            accountLabel: account.label,
             tokenExpiresAt: null,
             via: "auth0-token-vault",
+            diagnostics: buildConnectionDiagnostics({
+              connectionName: authEnv.googleConnectionName,
+              connectHref,
+              accountLabelSource: account.source,
+              tokenExchange: tokenExchangeDiagnostics,
+            }),
           };
         case AccessTokenForConnectionErrorCode.FAILED_TO_EXCHANGE:
           return {
             provider: "google",
             state: "not-connected",
             headline: "Google still needs to be linked through Auth0.",
-            detail: "Auth0 could not exchange the session for delegated Google access yet. Connect the Google account before agents use Calendar or Gmail.",
+            detail:
+              "Auth0 could not exchange the session for delegated Google access yet. Connect the Google account before agents use Calendar or Gmail." +
+              formatTokenExchangeDiagnostics(tokenExchangeDiagnostics),
             actionLabel: "Connect Google with Auth0",
             actionHref: connectHref,
-            accountLabel: getConnectedAccountLabel(session),
+            accountLabel: account.label,
             tokenExpiresAt: null,
             via: "auth0-token-vault",
+            diagnostics: buildConnectionDiagnostics({
+              connectionName: authEnv.googleConnectionName,
+              connectHref,
+              accountLabelSource: account.source,
+              tokenExchange: tokenExchangeDiagnostics,
+            }),
           };
       }
     }
@@ -284,12 +468,20 @@ export async function getGoogleConnectionSnapshot(session: AuthSessionSnapshot):
       provider: "google",
       state: "unavailable",
       headline: "Google access is unavailable.",
-      detail: "Auth0 could not confirm delegated Google access right now. Check the provider connection or session setup and try again.",
+      detail:
+        "Auth0 could not confirm delegated Google access right now. Check the provider connection or session setup and try again." +
+        formatTokenExchangeDiagnostics(tokenExchangeDiagnostics),
       actionLabel: "Connect Google with Auth0",
       actionHref: connectHref,
-      accountLabel: getConnectedAccountLabel(session),
+      accountLabel: account.label,
       tokenExpiresAt: null,
       via: "auth0-token-vault",
+      diagnostics: buildConnectionDiagnostics({
+        connectionName: authEnv.googleConnectionName,
+        connectHref,
+        accountLabelSource: account.source,
+        tokenExchange: tokenExchangeDiagnostics,
+      }),
     };
   }
 }

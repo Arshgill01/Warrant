@@ -16,6 +16,11 @@ import type {
 } from "@/contracts";
 import { AccessTokenForConnectionError, AccessTokenForConnectionErrorCode, auth0 } from "@/auth";
 import { getAuth0Environment } from "@/auth/env";
+import {
+  createTokenExchangeErrorDiagnostics,
+  formatTokenExchangeDiagnostics,
+  logLiveProviderDiagnostic,
+} from "@/auth/live-provider-diagnostics";
 import { getGoogleConnectionSnapshot } from "@/connections/google";
 
 type SupportedGoogleAction = CalendarAvailabilityResult | GmailDraftResult | GmailSendResult;
@@ -197,6 +202,11 @@ function buildTokenUnavailableResult<Kind extends GoogleActionKind, Input, Paylo
   });
 }
 
+function withTokenExchangeDetail(baseDetail: string, error: unknown): string {
+  const diagnostics = createTokenExchangeErrorDiagnostics(error);
+  return `${baseDetail}${formatTokenExchangeDiagnostics(diagnostics)}`;
+}
+
 function buildProviderFailureResult<Kind extends GoogleActionKind, Input, Payload>(
   kind: Kind,
   label: string,
@@ -272,9 +282,22 @@ async function resolveGoogleAccess<Kind extends GoogleActionKind, Input, Payload
   }
 
   try {
+    logLiveProviderDiagnostic("google.action.token_exchange.attempt", {
+      actionKind: kind,
+      connectionName: authEnv.googleConnectionName,
+      sessionState: context.session.state,
+      loginHintPresent: Boolean(context.session.user?.email),
+      connectionState: connection.state,
+    });
+
     const accessToken = await auth0.getAccessTokenForConnection({
       connection: authEnv.googleConnectionName,
       login_hint: context.session.user?.email ?? undefined,
+    });
+
+    logLiveProviderDiagnostic("google.action.token_exchange.success", {
+      actionKind: kind,
+      connectionName: authEnv.googleConnectionName,
     });
 
     return {
@@ -285,6 +308,17 @@ async function resolveGoogleAccess<Kind extends GoogleActionKind, Input, Payload
       },
     };
   } catch (error) {
+    const diagnostics = createTokenExchangeErrorDiagnostics(error);
+
+    logLiveProviderDiagnostic("google.action.token_exchange.failed", {
+      actionKind: kind,
+      connectionName: authEnv.googleConnectionName,
+      outcome: diagnostics.outcome,
+      sdkErrorCode: diagnostics.sdkErrorCode,
+      oauthErrorCode: diagnostics.oauthErrorCode,
+      oauthErrorMessage: diagnostics.oauthErrorMessage,
+    });
+
     if (error instanceof AccessTokenForConnectionError) {
       switch (error.code) {
         case AccessTokenForConnectionErrorCode.MISSING_SESSION:
@@ -294,7 +328,10 @@ async function resolveGoogleAccess<Kind extends GoogleActionKind, Input, Payload
               label,
               request,
               connection,
-              "The Auth0 session is missing, so delegated Google access cannot be issued for this action.",
+              withTokenExchangeDetail(
+                "The Auth0 session is missing, so delegated Google access cannot be issued for this action.",
+                error,
+              ),
             ),
           };
         case AccessTokenForConnectionErrorCode.MISSING_REFRESH_TOKEN:
@@ -304,7 +341,10 @@ async function resolveGoogleAccess<Kind extends GoogleActionKind, Input, Payload
               label,
               request,
               connection,
-              "Auth0 could not refresh delegated Google access. Sign in again to restore the provider path.",
+              withTokenExchangeDetail(
+                "Auth0 could not refresh delegated Google access. Sign in again to restore the provider path.",
+                error,
+              ),
             ),
           };
         case AccessTokenForConnectionErrorCode.FAILED_TO_EXCHANGE:
@@ -314,7 +354,10 @@ async function resolveGoogleAccess<Kind extends GoogleActionKind, Input, Payload
               label,
               request,
               connection,
-              "Google is linked, but Auth0 could not exchange the connection into a delegated token for this action.",
+              withTokenExchangeDetail(
+                "Google is linked, but Auth0 could not exchange the connection into a delegated token for this action.",
+                error,
+              ),
             ),
           };
       }
@@ -326,7 +369,10 @@ async function resolveGoogleAccess<Kind extends GoogleActionKind, Input, Payload
         label,
         request,
         connection,
-        "Auth0 could not provide delegated Google access right now. Check the provider connection and try again.",
+        withTokenExchangeDetail(
+          "Auth0 could not provide delegated Google access right now. Check the provider connection and try again.",
+          error,
+        ),
       ),
     };
   }

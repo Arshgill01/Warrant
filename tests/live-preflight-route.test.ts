@@ -47,7 +47,9 @@ describe("demo live preflight route", () => {
     expect(payload.mode).toBe("token-only");
     expect(payload.overallState).toBe("blocked");
     expect(Array.isArray(payload.checks)).toBe(true);
-    expect(payload.checks.find((check: { id: string }) => check.id === "auth0_session")).toBeTruthy();
+    const authCheck = payload.checks.find((check: { id: string }) => check.id === "auth0_session");
+    expect(authCheck).toBeTruthy();
+    expect(Array.isArray(authCheck?.diagnostics)).toBe(true);
   });
 
   it("parses live mode from query params", async () => {
