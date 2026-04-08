@@ -1,5 +1,22 @@
 export type ProviderConnectionState = "connected" | "not-connected" | "pending" | "expired" | "unavailable";
 
+export type ProviderConnectFlowState =
+  | "not-started"
+  | "started"
+  | "bootstrap-token-failure"
+  | "tenant-config-issue"
+  | "callback-redirect-issue";
+
+export type ProviderConnectionLifecycleState =
+  | "delegated-ready"
+  | "not-connected"
+  | "connect-flow-not-started"
+  | "connect-flow-started"
+  | "bootstrap-token-failure"
+  | "identity-visible-access-unusable"
+  | "tenant-config-issue"
+  | "callback-redirect-issue";
+
 export type ProviderTokenExchangeOutcome =
   | "not-attempted"
   | "success"
@@ -22,13 +39,20 @@ export interface ProviderConnectionDiagnostics {
   evaluatedAt: string;
   connectionName: string;
   connectHref: string | null;
+  connectStartHref: string | null;
   accountLabelSource: "override" | "session-email" | "none";
+  lifecycleState: ProviderConnectionLifecycleState;
+  connectFlowState: ProviderConnectFlowState;
+  connectFailureCode: string | null;
+  connectFailureDetail: string | null;
   tokenExchange: ProviderConnectionTokenExchangeDiagnostics;
 }
 
 export interface ProviderConnectionSnapshot {
   provider: "google";
   state: ProviderConnectionState;
+  lifecycleState: ProviderConnectionLifecycleState;
+  lifecycleDetail: string;
   headline: string;
   detail: string;
   actionLabel: string | null;

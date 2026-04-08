@@ -11,3 +11,4 @@ export const connectionsBoundary: WorktreeBoundary = {
 };
 
 export * from "@/connections/google";
+export * from "@/connections/google-connect-flow";
