@@ -12,7 +12,9 @@ npm run dev
 - `token only` -> `Run preflight`
 - `live provider` -> `Run preflight`
 
-Pass condition: overall state `ready` in live provider mode.
+Pass condition:
+- `token only`: overall `ready` for runtime/model lane (Auth0/Google checks can be skipped).
+- `live provider`: overall `ready` for full Auth0 + Google delegated/provider path.
 
 3. Verify live Gemma path:
 

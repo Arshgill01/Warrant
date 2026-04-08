@@ -26,10 +26,9 @@ Date: 2026-04-07
 
 ## Blocking preflight findings
 
-- `runtime_model_config`: blocked (`GOOGLE_API_KEY` missing)
-- `auth0_session`: blocked (signed out)
-- `google_connection`: blocked (cannot evaluate before sign-in)
-- provider path checks (`calendar_read_path`, `gmail_draft_path`, `gmail_send_gate`): blocked by prerequisites
+- `runtime_model_readiness`: blocked (`GOOGLE_API_KEY` missing)
+- in `live` mode: `auth0_session_readiness`, `connected_account_bootstrap`, and `delegated_google_access` remain blocked when signed out
+- provider checks (`calendar_provider_readiness`, `gmail_draft_readiness`, `gmail_send_readiness`) remain blocked until delegated Google access is ready
 
 ## Recommended next local action
 

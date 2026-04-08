@@ -4098,3 +4098,119 @@ Manual checks:
 - Full provider-backed proof depends on live Auth0 session and Google connection state; local pass may prove honest unavailable states rather than full live execution.
 - Live model output can vary slightly; verification must rely on structural/runtime boundaries, not exact wording.
 - If observability is too console-only, the runbook may need small UI/readiness clarifications to remain operator-friendly.
+
+## ExecPlan — Live Token Exchange + Preflight Semantics Fix (2026-04-08)
+
+### Objective
+
+Fix delegated Google token exchange behavior and live readiness preflight semantics so the app reports exactly what is ready, what is blocked, and why, without conflating bootstrap/connect failures, token-exchange failures, provider unavailability, and runtime-model readiness.
+
+### Demo relevance
+
+This directly hardens the first live demo beats and rehearsal truthfulness:
+
+1. user signs in
+2. user links Google through Auth0
+3. readiness checks distinguish session/bootstrap/exchange/provider edges
+4. token-only mode can validate the live runtime lane independently when provider execution is not the target
+5. live-provider mode stays honestly gated on true delegated Google readiness
+
+### Scope
+
+In scope:
+
+- inspect and harden server-side delegated token exchange path and error mapping
+- separate connected-account bootstrap/connect readiness from delegated token-exchange readiness in diagnostics
+- refine preflight checks into explicit readiness dimensions:
+  - runtime model readiness
+  - Auth0 session readiness
+  - connected-account bootstrap/connect readiness
+  - delegated Google access readiness
+  - Calendar provider readiness
+  - Gmail draft readiness
+  - Gmail send gate readiness
+- make token-only preflight behavior mode-aware so unrelated Google/provider prerequisites do not incorrectly block model/runtime validation
+- keep live-provider mode dependent on actual delegated Google capability
+- improve UI/diagnostic messaging to avoid generic blocked states
+- add/update targeted tests for new semantics and reason precision
+
+Out of scope:
+
+- auth architecture redesign
+- replacing real Auth0 provider requirements with mock success in live-provider mode
+- broad UI restyling unrelated to readiness semantics
+- changes to core warrant policy or agent delegation logic
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/connection.ts`
+- `src/contracts/demo.ts`
+- `src/auth/live-provider-diagnostics.ts`
+- `src/auth/session.ts`
+- `src/connections/google.ts`
+- `src/actions/google.ts`
+- `src/demo-fixtures/live-preflight.ts`
+- `src/components/demo/demo-live-preflight-card.tsx`
+- `src/components/auth-shell/auth-shell.tsx`
+- `scripts/smoke-auth0-live.mjs`
+- `tests/live-preflight-route.test.ts`
+- `tests/auth-shell.test.ts`
+- additional targeted tests under `tests/*` for exchange and preflight semantics as needed
+- `README.md` and/or focused docs where mode semantics are user-facing
+
+### Invariants to preserve
+
+- Two-layer enforcement remains explicit: local warrant policy does not imply external delegated capability.
+- Child warrants remain narrowing-only and unaffected by this track.
+- Live-provider mode must not report ready unless delegated Google readiness is truly proven.
+- Token-only mode must not be blocked by Google/provider prerequisites when validating runtime/model lane intent.
+- Diagnostics must stay safe (no secrets/tokens) while becoming more specific and actionable.
+- Tenant/setup/config problems must remain visible and not hidden behind generic error copy.
+
+### Implementation steps
+
+1. Exchange-path hardening and taxonomy:
+   - add explicit bootstrap/connect-stage diagnostics alongside token-exchange diagnostics
+   - align error mapping with actual Auth0 session/token architecture (session + refresh-token prerequisites vs exchange failures)
+   - ensure repeated checks can reuse resolved delegated token within one preflight run when appropriate
+2. Preflight state-model refinement:
+   - expand/rename checks to cover all required readiness dimensions
+   - replace coarse prerequisite-blocked messaging with precise check-level reasons and diagnostics
+   - keep overall-state computation truthful while respecting per-mode requirements
+3. Mode-aware gating separation:
+   - token-only mode: keep runtime/model lane executable without forcing Google/provider readiness
+   - live-provider mode: retain strict dependency on bootstrap + delegated access + provider-path readiness
+4. UI + tests + docs alignment:
+   - update preflight/auth surfaces to render refined states/reasons
+   - add/update tests for bootstrap vs exchange vs provider distinctions and mode-specific readiness behavior
+   - update docs/scripts copy where preflight semantics changed
+5. Final validation and cleanup:
+   - run lint/typecheck/tests/build
+   - run local preflight route checks for both modes and record observed semantics
+
+### Commit slices
+
+1. token-exchange diagnostics/path cleanup
+2. preflight state-model refinement
+3. token-only vs live-provider gating separation
+4. tests and final cleanup/docs alignment
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- route-level/manual checks (local server running):
+  - `curl -sS "http://127.0.0.1:3000/api/demo/live-preflight?mode=token-only"`
+  - `curl -sS "http://127.0.0.1:3000/api/demo/live-preflight?mode=live"`
+- optional script checks when server/session context exists:
+  - `LIVE_PREFLIGHT_MODE=token-only npm run smoke:auth0-live`
+  - `LIVE_PREFLIGHT_MODE=live npm run smoke:auth0-live`
+
+### Risks
+
+- Auth0 SDK error surfaces may not expose enough metadata to perfectly classify every FAILED_TO_EXCHANGE edge; some cases may still require inference.
+- Token-only semantics depend on intended product meaning; UI/docs must clearly communicate that token-only is runtime-lane validation rather than full provider readiness.
+- Local verification of fully ready live-provider mode requires tenant/session/account prerequisites that may be unavailable during coding.
