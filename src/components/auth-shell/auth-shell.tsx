@@ -247,8 +247,18 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
                   connect_href={googleConnection.diagnostics.connectHref ?? "n/a"}
                 </p>
                 <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                  bootstrap_outcome={googleConnection.diagnostics.bootstrap.outcome} | bootstrap_attempted=
+                  {String(googleConnection.diagnostics.bootstrap.attempted)}
+                </p>
+                {googleConnection.diagnostics.bootstrap.note ? (
+                  <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                    bootstrap_note={googleConnection.diagnostics.bootstrap.note}
+                  </p>
+                ) : null}
+                <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
                   token_exchange_attempted={String(googleConnection.diagnostics.tokenExchange.attempted)} | token_exchange_outcome=
-                  {googleConnection.diagnostics.tokenExchange.outcome}
+                  {googleConnection.diagnostics.tokenExchange.outcome} | token_exchange_failure_edge=
+                  {googleConnection.diagnostics.tokenExchange.failureEdge}
                 </p>
                 {googleConnection.diagnostics.tokenExchange.sdkErrorCode ? (
                   <p className="break-all text-xs leading-relaxed text-[var(--muted)]">

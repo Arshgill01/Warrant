@@ -8,9 +8,30 @@ export type ProviderTokenExchangeOutcome =
   | "failed-to-exchange"
   | "unexpected-error";
 
+export type ProviderTokenExchangeFailureEdge =
+  | "none"
+  | "bootstrap-token"
+  | "delegated-token-exchange"
+  | "unknown";
+
+export type ProviderConnectionBootstrapOutcome =
+  | "not-attempted"
+  | "ready"
+  | "missing-session"
+  | "missing-refresh-token"
+  | "auth0-not-configured"
+  | "shell-override";
+
+export interface ProviderConnectionBootstrapDiagnostics {
+  attempted: boolean;
+  outcome: ProviderConnectionBootstrapOutcome;
+  note: string | null;
+}
+
 export interface ProviderConnectionTokenExchangeDiagnostics {
   attempted: boolean;
   outcome: ProviderTokenExchangeOutcome;
+  failureEdge: ProviderTokenExchangeFailureEdge;
   sdkErrorCode: string | null;
   sdkErrorMessage: string | null;
   oauthErrorCode: string | null;
@@ -23,6 +44,7 @@ export interface ProviderConnectionDiagnostics {
   connectionName: string;
   connectHref: string | null;
   accountLabelSource: "override" | "session-email" | "none";
+  bootstrap: ProviderConnectionBootstrapDiagnostics;
   tokenExchange: ProviderConnectionTokenExchangeDiagnostics;
 }
 

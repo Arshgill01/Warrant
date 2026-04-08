@@ -52,9 +52,15 @@ const connectedGoogle: ProviderConnectionSnapshot = {
     connectionName: "google-oauth2",
     connectHref: "/auth/connect?connection=google-oauth2",
     accountLabelSource: "session-email",
+    bootstrap: {
+      attempted: true,
+      outcome: "ready",
+      note: "Connected-account bootstrap prerequisites are satisfied.",
+    },
     tokenExchange: {
       attempted: true,
       outcome: "success",
+      failureEdge: "none",
       sdkErrorCode: null,
       sdkErrorMessage: null,
       oauthErrorCode: null,
@@ -386,6 +392,7 @@ describe("auth shell rendering", () => {
     expect(html).toContain("Log out");
     expect(html).toContain("Token Vault connection id");
     expect(html).toContain("has_refresh_token=true");
+    expect(html).toContain("bootstrap_outcome=ready");
     expect(html).toContain("token_exchange_outcome=success");
   });
 });

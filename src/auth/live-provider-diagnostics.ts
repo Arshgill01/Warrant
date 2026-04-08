@@ -61,6 +61,7 @@ export function createTokenExchangeNotAttemptedDiagnostics(
   return {
     attempted: false,
     outcome: "not-attempted",
+    failureEdge: "none",
     sdkErrorCode: null,
     sdkErrorMessage: null,
     oauthErrorCode: null,
@@ -75,12 +76,41 @@ export function createTokenExchangeSuccessDiagnostics(
   return {
     attempted: true,
     outcome: "success",
+    failureEdge: "none",
     sdkErrorCode: null,
     sdkErrorMessage: null,
     oauthErrorCode: null,
     oauthErrorMessage: null,
     note,
   };
+}
+
+function inferFailedExchangeEdge(input: {
+  sdkErrorMessage: string | null;
+  oauthErrorCode: string | null;
+  oauthErrorMessage: string | null;
+}): ProviderConnectionTokenExchangeDiagnostics["failureEdge"] {
+  const haystack = [
+    input.sdkErrorMessage,
+    input.oauthErrorCode,
+    input.oauthErrorMessage,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    haystack.includes("connected account access token") ||
+    haystack.includes("create:me:connected_accounts")
+  ) {
+    return "bootstrap-token";
+  }
+
+  if (haystack.length > 0) {
+    return "delegated-token-exchange";
+  }
+
+  return "unknown";
 }
 
 export function createTokenExchangeErrorDiagnostics(
@@ -103,9 +133,22 @@ export function createTokenExchangeErrorDiagnostics(
             ? "failed-to-exchange"
             : "unexpected-error";
 
+    const failureEdge: ProviderConnectionTokenExchangeDiagnostics["failureEdge"] =
+      error.code === AccessTokenForConnectionErrorCode.MISSING_SESSION ||
+      error.code === AccessTokenForConnectionErrorCode.MISSING_REFRESH_TOKEN
+        ? "bootstrap-token"
+        : error.code === AccessTokenForConnectionErrorCode.FAILED_TO_EXCHANGE
+          ? inferFailedExchangeEdge({
+              sdkErrorMessage: error.message,
+              oauthErrorCode,
+              oauthErrorMessage,
+            })
+          : "unknown";
+
     return {
       attempted: true,
       outcome,
+      failureEdge,
       sdkErrorCode: error.code,
       sdkErrorMessage: error.message,
       oauthErrorCode,
@@ -117,6 +160,7 @@ export function createTokenExchangeErrorDiagnostics(
   return {
     attempted: true,
     outcome: "unexpected-error",
+    failureEdge: "unknown",
     sdkErrorCode: readString(errorRecord?.code),
     sdkErrorMessage: readString(errorRecord?.message) ?? "Unexpected token exchange failure.",
     oauthErrorCode: null,
@@ -129,6 +173,9 @@ export function formatTokenExchangeDiagnostics(
   diagnostics: ProviderConnectionTokenExchangeDiagnostics,
 ): string {
   const details = [
+    diagnostics.failureEdge !== "none"
+      ? `failure_edge=${diagnostics.failureEdge}`
+      : null,
     diagnostics.sdkErrorCode
       ? `auth0_code=${diagnostics.sdkErrorCode}`
       : null,
