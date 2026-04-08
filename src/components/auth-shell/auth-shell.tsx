@@ -7,7 +7,7 @@ import type {
 } from "@/contracts";
 import { SectionCard } from "@/components/foundation/section-card";
 import { StatusChip } from "@/components/foundation/status-chip";
-import { googleConnectionStateLegend } from "@/connections";
+import { googleConnectionLifecycleLegend, googleConnectionStateLegend } from "@/connections";
 
 type AuthShellProps = {
   session: AuthSessionSnapshot;
@@ -28,6 +28,17 @@ const connectionTone: Record<ProviderConnectionSnapshot["state"], string> = {
   pending: "bg-[#8a5b1f] text-white",
   expired: "bg-[#7b3a3a] text-white",
   unavailable: "bg-[#7d2e2c] text-white",
+};
+
+const lifecycleTone: Record<ProviderConnectionSnapshot["lifecycleState"], string> = {
+  "delegated-ready": "bg-[var(--accent)] text-white",
+  "not-connected": "bg-[var(--foreground)] text-white",
+  "connect-flow-not-started": "bg-[#254a72] text-white",
+  "connect-flow-started": "bg-[#8a5b1f] text-white",
+  "bootstrap-token-failure": "bg-[#7d2e2c] text-white",
+  "identity-visible-access-unusable": "bg-[#7b3a3a] text-white",
+  "tenant-config-issue": "bg-[#7d2e2c] text-white",
+  "callback-redirect-issue": "bg-[#7d2e2c] text-white",
 };
 
 const providerResultTone: Record<ProviderActionResult["state"], string> = {
@@ -72,6 +83,10 @@ function AuthAction({ href, label }: { href: string | null; label: string | null
 }
 
 function formatProviderStateLabel(value: ProviderActionResult["state"]): string {
+  return value.replaceAll("-", " ");
+}
+
+function formatLifecycleLabel(value: ProviderConnectionSnapshot["lifecycleState"]): string {
   return value.replaceAll("-", " ");
 }
 
@@ -221,17 +236,30 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
               tone={connectionTone[googleConnection.state]}
               size="md"
             />
+            <StatusChip
+              label={formatLifecycleLabel(googleConnection.lifecycleState)}
+              tone={lifecycleTone[googleConnection.lifecycleState]}
+              size="md"
+            />
             <p>{googleConnection.headline}</p>
             <p>{googleConnection.detail}</p>
+            <p className="rounded-2xl border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
+              Delegated lifecycle: {googleConnection.lifecycleDetail}
+            </p>
             {googleConnection.accountLabel ? (
-              <p className="text-sm font-medium text-[var(--foreground)]">Connected account: {googleConnection.accountLabel}</p>
+              <p className="text-sm font-medium text-[var(--foreground)]">
+                {googleConnection.state === "connected"
+                  ? "Connected account"
+                  : "Observed account identity (not delegated readiness proof)"}
+                : {googleConnection.accountLabel}
+              </p>
             ) : null}
             {tokenExpiry ? (
               <p className="text-sm font-medium text-[var(--foreground)]">Delegated token ready until: {tokenExpiry}</p>
             ) : null}
-            {googleConnection.accountLabel && googleConnection.state !== "connected" ? (
+            {googleConnection.accountLabel && googleConnection.lifecycleState !== "delegated-ready" ? (
               <p className="rounded-2xl border border-[var(--panel-border)] bg-white/80 px-3 py-2 text-xs leading-relaxed text-[var(--muted)]">
-                Account label visibility does not prove delegated token usability. Rely on connection state and diagnostics.
+                Account identity can be visible even when delegated Google token minting is blocked. Use lifecycle and token diagnostics as truth.
               </p>
             ) : null}
             {googleConnection.diagnostics ? (
@@ -247,9 +275,26 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
                   connect_href={googleConnection.diagnostics.connectHref ?? "n/a"}
                 </p>
                 <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                  connect_start_href={googleConnection.diagnostics.connectStartHref ?? "n/a"}
+                </p>
+                <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                  lifecycle_state={googleConnection.diagnostics.lifecycleState} | connect_flow_state=
+                  {googleConnection.diagnostics.connectFlowState}
+                </p>
+                <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
                   token_exchange_attempted={String(googleConnection.diagnostics.tokenExchange.attempted)} | token_exchange_outcome=
                   {googleConnection.diagnostics.tokenExchange.outcome}
                 </p>
+                {googleConnection.diagnostics.connectFailureCode ? (
+                  <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                    connect_failure_code={googleConnection.diagnostics.connectFailureCode}
+                  </p>
+                ) : null}
+                {googleConnection.diagnostics.connectFailureDetail ? (
+                  <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                    connect_failure_detail={googleConnection.diagnostics.connectFailureDetail}
+                  </p>
+                ) : null}
                 {googleConnection.diagnostics.tokenExchange.sdkErrorCode ? (
                   <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
                     token_exchange_auth0_code={googleConnection.diagnostics.tokenExchange.sdkErrorCode}
@@ -365,12 +410,29 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
         ))}
       </section>
 
-      <SectionCard title="Google states" eyebrow="Visible outcomes">
+      <SectionCard title="Google connection states" eyebrow="Visible outcomes">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {googleConnectionStateLegend.map((state) => (
             <div key={state.state} className="rounded-2xl border border-[var(--panel-border)] bg-white/80 p-4">
               <div className="mb-3">
                 <StatusChip label={state.label} tone={connectionTone[state.state]} size="md" />
+              </div>
+              <p>{state.detail}</p>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Connect lifecycle states" eyebrow="Truthful readiness">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {googleConnectionLifecycleLegend.map((state) => (
+            <div key={state.state} className="rounded-2xl border border-[var(--panel-border)] bg-white/80 p-4">
+              <div className="mb-3">
+                <StatusChip
+                  label={state.label}
+                  tone={lifecycleTone[state.state]}
+                  size="md"
+                />
               </div>
               <p>{state.detail}</p>
             </div>
