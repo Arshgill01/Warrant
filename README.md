@@ -177,8 +177,8 @@ Validation scripts:
 Live preflight notes:
 
 - `/api/demo/live-preflight` is demo-tools-gated (enabled in development, or set `WARRANT_ENABLE_DEMO_TOOLS=true`).
-- `token-only` mode validates Auth0 delegated-token readiness without live provider writes.
-- `live` mode performs real provider checks; Gmail draft readiness can create a live draft artifact in the demo account.
+- `token-only` mode validates only the runtime/model lane and intentionally skips Auth0/Google provider prerequisites.
+- `live` mode performs full Auth0 + Google delegated-access and provider readiness checks; Gmail draft readiness can create a live draft artifact in the demo account.
 - `smoke:auth0-live` expects a running server. Optional env:
   - `LIVE_PREFLIGHT_BASE_URL` (default `http://127.0.0.1:3000`)
   - `LIVE_PREFLIGHT_MODE` (`token-only` or `live`, default `live`)
