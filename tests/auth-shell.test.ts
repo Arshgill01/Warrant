@@ -26,6 +26,15 @@ const signedInSession: AuthSessionSnapshot = {
     email: "demo@example.com",
     pictureUrl: null,
   },
+  diagnostics: {
+    checkedAt: "2026-04-08T00:00:00.000Z",
+    auth0Configured: true,
+    auth0ClientReady: true,
+    environmentIssues: [],
+    hasSession: true,
+    hasRefreshToken: true,
+    userSub: "auth0|demo",
+  },
 };
 
 const connectedGoogle: ProviderConnectionSnapshot = {
@@ -38,6 +47,21 @@ const connectedGoogle: ProviderConnectionSnapshot = {
   accountLabel: "demo@example.com",
   tokenExpiresAt: null,
   via: "auth0-token-vault",
+  diagnostics: {
+    evaluatedAt: "2026-04-08T00:00:00.000Z",
+    connectionName: "google-oauth2",
+    connectHref: "/auth/connect?connection=google-oauth2",
+    accountLabelSource: "session-email",
+    tokenExchange: {
+      attempted: true,
+      outcome: "success",
+      sdkErrorCode: null,
+      sdkErrorMessage: null,
+      oauthErrorCode: null,
+      oauthErrorMessage: null,
+      note: "Connected-account access token retrieval succeeded.",
+    },
+  },
 };
 
 const googleSetup: ProviderConnectionSetupSnapshot = {
@@ -361,5 +385,7 @@ describe("auth shell rendering", () => {
     expect(html).toContain("Signed-in email: demo@example.com");
     expect(html).toContain("Log out");
     expect(html).toContain("Token Vault connection id");
+    expect(html).toContain("has_refresh_token=true");
+    expect(html).toContain("token_exchange_outcome=success");
   });
 });
