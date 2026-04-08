@@ -45,10 +45,17 @@ describe("demo live preflight route", () => {
 
     expect(response.status).toBe(200);
     expect(payload.mode).toBe("token-only");
-    expect(payload.overallState).toBe("blocked");
+    expect(["blocked", "ready"]).toContain(payload.overallState);
     expect(Array.isArray(payload.checks)).toBe(true);
-    const authCheck = payload.checks.find((check: { id: string }) => check.id === "auth0_session");
+    const runtimeCheck = payload.checks.find((check: { id: string }) => check.id === "runtime_model_readiness");
+    const authCheck = payload.checks.find((check: { id: string }) => check.id === "auth0_session_readiness");
+    const delegatedAccessCheck = payload.checks.find((check: { id: string }) => check.id === "delegated_google_access");
+    const calendarCheck = payload.checks.find((check: { id: string }) => check.id === "calendar_provider_readiness");
+    expect(runtimeCheck).toBeTruthy();
     expect(authCheck).toBeTruthy();
+    expect(authCheck?.state).toBe("skipped");
+    expect(delegatedAccessCheck?.state).toBe("skipped");
+    expect(calendarCheck?.state).toBe("skipped");
     expect(Array.isArray(authCheck?.diagnostics)).toBe(true);
   });
 
@@ -67,6 +74,14 @@ describe("demo live preflight route", () => {
 
     expect(response.status).toBe(200);
     expect(payload.mode).toBe("live");
+    const authCheck = payload.checks.find((check: { id: string }) => check.id === "auth0_session_readiness");
+    const bootstrapCheck = payload.checks.find((check: { id: string }) => check.id === "connected_account_bootstrap");
+    const delegatedCheck = payload.checks.find((check: { id: string }) => check.id === "delegated_google_access");
+    expect(authCheck).toBeTruthy();
+    expect(bootstrapCheck).toBeTruthy();
+    expect(delegatedCheck).toBeTruthy();
+    expect(bootstrapCheck?.state).toBe("blocked");
+    expect(delegatedCheck?.state).toBe("blocked");
   });
 
   it("returns a structured fatal-error envelope when preflight execution throws", async () => {

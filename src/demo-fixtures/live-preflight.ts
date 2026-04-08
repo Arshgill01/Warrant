@@ -3,8 +3,9 @@ import {
   prepareGmailDraft,
   readCalendarAvailability,
 } from "@/actions";
-import { logLiveProviderDiagnostic } from "@/auth/live-provider-diagnostics";
 import { getAuthSessionSnapshot } from "@/auth/session";
+import { logLiveProviderDiagnostic } from "@/auth/live-provider-diagnostics";
+import { getGoogleConnectionSnapshotWithToken } from "@/connections/google";
 import type {
   DemoLivePreflightCheck,
   DemoLivePreflightMode,
@@ -12,11 +13,24 @@ import type {
   ProviderActionResult,
   ProviderConnectionSnapshot,
 } from "@/contracts";
-import { getGoogleConnectionSnapshot } from "@/connections/google";
 import { authShellProviderRequests } from "@/demo-fixtures/auth-shell";
 import { getRuntimeModelStartupValidation } from "@/agents/runtime";
 
 const DEFAULT_PREFLIGHT_MODE: DemoLivePreflightMode = "token-only";
+
+const LIVE_REQUIRED_CHECKS = new Set<DemoLivePreflightCheck["id"]>([
+  "runtime_model_readiness",
+  "auth0_session_readiness",
+  "connected_account_bootstrap",
+  "delegated_google_access",
+  "calendar_provider_readiness",
+  "gmail_draft_readiness",
+  "gmail_send_readiness",
+]);
+
+const TOKEN_ONLY_REQUIRED_CHECKS = new Set<DemoLivePreflightCheck["id"]>([
+  "runtime_model_readiness",
+]);
 
 function nowIsoString(): string {
   return new Date().toISOString();
@@ -32,20 +46,42 @@ export function resolveDemoLivePreflightMode(
   return DEFAULT_PREFLIGHT_MODE;
 }
 
-function blockedPrerequisiteCheck(input: {
+function createCheck(input: DemoLivePreflightCheck): DemoLivePreflightCheck {
+  return input;
+}
+
+function blockedCheck(input: {
   id: DemoLivePreflightCheck["id"];
   label: string;
+  headline: string;
   detail: string;
   diagnostics?: string[];
 }): DemoLivePreflightCheck {
-  return {
+  return createCheck({
     id: input.id,
     label: input.label,
     state: "blocked",
-    headline: "Prerequisites are not ready yet.",
+    headline: input.headline,
     detail: input.detail,
     diagnostics: input.diagnostics,
-  };
+  });
+}
+
+function skippedCheck(input: {
+  id: DemoLivePreflightCheck["id"];
+  label: string;
+  headline: string;
+  detail: string;
+  diagnostics?: string[];
+}): DemoLivePreflightCheck {
+  return createCheck({
+    id: input.id,
+    label: input.label,
+    state: "skipped",
+    headline: input.headline,
+    detail: input.detail,
+    diagnostics: input.diagnostics,
+  });
 }
 
 function mapProviderResultToCheck(input: {
@@ -56,32 +92,35 @@ function mapProviderResultToCheck(input: {
   result: ProviderActionResult;
 }): DemoLivePreflightCheck {
   if (input.result.state === "success") {
-    return {
+    return createCheck({
       id: input.id,
       label: input.label,
       state: "ready",
       headline: input.successHeadline,
       detail: input.successDetail,
       diagnostics: summarizeProviderResultDiagnostics(input.result),
-    };
+    });
   }
 
-  return {
+  return createCheck({
     id: input.id,
     label: input.label,
     state: input.result.state === "failed" ? "error" : "blocked",
     headline: input.result.headline,
     detail: input.result.detail,
     diagnostics: summarizeProviderResultDiagnostics(input.result),
-  };
+  });
 }
 
-function summarizeSessionDiagnostics(session: Awaited<ReturnType<typeof getAuthSessionSnapshot>>): string[] {
+function summarizeSessionDiagnostics(
+  session: Awaited<ReturnType<typeof getAuthSessionSnapshot>>,
+): string[] {
   if (!session.diagnostics) {
     return [];
   }
 
   return [
+    `session_state=${session.state}`,
     `auth0_configured=${String(session.diagnostics.auth0Configured)}`,
     `auth0_client_ready=${String(session.diagnostics.auth0ClientReady)}`,
     `has_session=${String(session.diagnostics.hasSession)}`,
@@ -103,8 +142,12 @@ function summarizeConnectionDiagnostics(connection: ProviderConnectionSnapshot):
     `connection_name=${diagnostics.connectionName}`,
     `connect_href=${diagnostics.connectHref ?? "n/a"}`,
     `account_label_source=${diagnostics.accountLabelSource}`,
+    `bootstrap_attempted=${String(diagnostics.bootstrap.attempted)}`,
+    `bootstrap_outcome=${diagnostics.bootstrap.outcome}`,
+    diagnostics.bootstrap.note ? `bootstrap_note=${diagnostics.bootstrap.note}` : null,
     `token_exchange_attempted=${String(diagnostics.tokenExchange.attempted)}`,
     `token_exchange_outcome=${diagnostics.tokenExchange.outcome}`,
+    `token_exchange_failure_edge=${diagnostics.tokenExchange.failureEdge}`,
     diagnostics.tokenExchange.sdkErrorCode
       ? `token_exchange_auth0_code=${diagnostics.tokenExchange.sdkErrorCode}`
       : null,
@@ -133,127 +176,53 @@ function summarizeProviderResultDiagnostics(result: ProviderActionResult): strin
 }
 
 function evaluateOverallState(
+  mode: DemoLivePreflightMode,
   checks: DemoLivePreflightCheck[],
 ): DemoLivePreflightSnapshot["overallState"] {
-  if (checks.some((check) => check.state === "error")) {
+  const requiredIds =
+    mode === "live" ? LIVE_REQUIRED_CHECKS : TOKEN_ONLY_REQUIRED_CHECKS;
+  const requiredChecks = checks.filter((check) => requiredIds.has(check.id));
+
+  if (requiredChecks.length !== requiredIds.size) {
+    return "blocked";
+  }
+
+  if (requiredChecks.some((check) => check.state === "error")) {
     return "error";
   }
 
-  if (checks.every((check) => check.state === "ready")) {
+  if (requiredChecks.every((check) => check.state === "ready")) {
     return "ready";
   }
 
   return "blocked";
 }
 
-function buildSummary(overallState: DemoLivePreflightSnapshot["overallState"]): string {
+function buildSummary(
+  mode: DemoLivePreflightMode,
+  overallState: DemoLivePreflightSnapshot["overallState"],
+): string {
+  if (mode === "token-only") {
+    switch (overallState) {
+      case "ready":
+        return "Token-only preflight passed: runtime/model lane is ready.";
+      case "error":
+        return "Token-only preflight hit a runtime/model execution error.";
+      case "blocked":
+      default:
+        return "Token-only preflight is blocked by runtime/model readiness.";
+    }
+  }
+
   switch (overallState) {
     case "ready":
-      return "Live Auth0 + Google readiness checks passed.";
+      return "Live provider preflight passed: Auth0 + Google delegated path is ready.";
     case "error":
-      return "Live preflight encountered an execution error. Inspect failing checks.";
+      return "Live provider preflight encountered an execution error. Inspect failing checks.";
     case "blocked":
     default:
-      return "Live preflight is blocked by missing, expired, or unavailable prerequisites.";
+      return "Live provider preflight is blocked by unresolved Auth0, delegated-access, or provider prerequisites.";
   }
-}
-
-function createCalendarReadFetchStub(): typeof fetch {
-  function resolveRequestUrl(input: Parameters<typeof fetch>[0]): string {
-    if (typeof input === "string") {
-      return input;
-    }
-
-    if (input instanceof URL) {
-      return input.toString();
-    }
-
-    return input.url;
-  }
-
-  return async (input) => {
-    const requestUrl = resolveRequestUrl(input);
-
-    if (!requestUrl.includes("googleapis.com/calendar")) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            message: "Unexpected endpoint for calendar preflight stub.",
-          },
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        summary: "Primary",
-        timeZone: authShellProviderRequests.calendarAvailability.timeZone,
-        items: [],
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
-  };
-}
-
-function createGmailDraftFetchStub(): typeof fetch {
-  function resolveRequestUrl(input: Parameters<typeof fetch>[0]): string {
-    if (typeof input === "string") {
-      return input;
-    }
-
-    if (input instanceof URL) {
-      return input.toString();
-    }
-
-    return input.url;
-  }
-
-  return async (input) => {
-    const requestUrl = resolveRequestUrl(input);
-
-    if (!requestUrl.includes("gmail.googleapis.com/gmail/v1/users/me/drafts")) {
-      return new Response(
-        JSON.stringify({
-          error: {
-            message: "Unexpected endpoint for Gmail draft preflight stub.",
-          },
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        id: "preflight-draft-simulated",
-        message: {
-          id: "preflight-message-simulated",
-          threadId: "preflight-thread-simulated",
-        },
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
-  };
 }
 
 interface RunDemoLivePreflightInput {
@@ -274,174 +243,269 @@ export async function runDemoLivePreflight(
   });
 
   const runtimeModelStartup = getRuntimeModelStartupValidation();
-  checks.push({
-    id: "runtime_model_config",
-    label: "Runtime model configuration",
-    state: runtimeModelStartup.ok ? "ready" : "blocked",
-    headline: runtimeModelStartup.ok
-      ? "Gemma runtime model config is valid."
-      : "Gemma runtime model config is invalid.",
-    detail: runtimeModelStartup.ok
-      ? `Logical model ${runtimeModelStartup.configuration.logicalModel} maps to provider id ${runtimeModelStartup.configuration.providerModelId}.`
-      : runtimeModelStartup.issues
-        .map((issue) => `${issue.field}: ${issue.message}`)
-        .join(" | "),
-    diagnostics: [
-      `logical_model=${runtimeModelStartup.configuration.logicalModel}`,
-      `provider_model_id=${runtimeModelStartup.configuration.providerModelId}`,
-      `runtime_provider=${runtimeModelStartup.configuration.provider}`,
-      `runtime_config_valid=${String(runtimeModelStartup.ok)}`,
-    ],
-  });
+  checks.push(
+    createCheck({
+      id: "runtime_model_readiness",
+      label: "Runtime model readiness",
+      state: runtimeModelStartup.ok ? "ready" : "blocked",
+      headline: runtimeModelStartup.ok
+        ? "Runtime model configuration is valid."
+        : "Runtime model configuration is invalid.",
+      detail: runtimeModelStartup.ok
+        ? `Logical model ${runtimeModelStartup.configuration.logicalModel} maps to provider id ${runtimeModelStartup.configuration.providerModelId}.`
+        : runtimeModelStartup.issues
+            .map((issue) => `${issue.field}: ${issue.message}`)
+            .join(" | "),
+      diagnostics: [
+        `logical_model=${runtimeModelStartup.configuration.logicalModel}`,
+        `provider_model_id=${runtimeModelStartup.configuration.providerModelId}`,
+        `runtime_provider=${runtimeModelStartup.configuration.provider}`,
+        `runtime_config_valid=${String(runtimeModelStartup.ok)}`,
+      ],
+    }),
+  );
 
   const session = await getAuthSessionSnapshot();
-  checks.push({
-    id: "auth0_session",
-    label: "Auth0 session",
-    state: session.state === "signed-in" ? "ready" : "blocked",
-    headline: session.headline,
-    detail: session.detail,
-    diagnostics: summarizeSessionDiagnostics(session),
-  });
 
-  let connection: ProviderConnectionSnapshot | null = null;
-  if (session.state === "signed-in") {
-    connection = await getGoogleConnectionSnapshot(session);
-    checks.push({
-      id: "google_connection",
-      label: "Google connected-account path",
-      state: connection.state === "connected" ? "ready" : "blocked",
-      headline: connection.headline,
-      detail: connection.detail,
-      diagnostics: summarizeConnectionDiagnostics(connection),
-    });
-  } else {
+  if (mode === "token-only") {
+    const tokenOnlySessionDiagnostics = summarizeSessionDiagnostics(session);
     checks.push(
-      blockedPrerequisiteCheck({
-        id: "google_connection",
-        label: "Google connected-account path",
+      skippedCheck({
+        id: "auth0_session_readiness",
+        label: "Auth0 session readiness",
+        headline: "Skipped in token-only mode.",
         detail:
-          "Google delegated access cannot be evaluated before an active Auth0 session is present.",
-        diagnostics: [
-          `session_state=${session.state}`,
-          "google_connection_evaluation=skipped_no_signed_in_session",
-        ],
+          "Token-only mode validates the live runtime/model lane and does not gate on Auth0 session state.",
+        diagnostics: tokenOnlySessionDiagnostics,
       }),
-    );
-  }
-
-  const canRunProviderChecks =
-    session.state === "signed-in" && connection?.state === "connected";
-
-  if (!canRunProviderChecks || !connection) {
-    checks.push(
-      blockedPrerequisiteCheck({
-        id: "calendar_read_path",
-        label: "Calendar read provider path",
+      skippedCheck({
+        id: "connected_account_bootstrap",
+        label: "Connected-account bootstrap readiness",
+        headline: "Skipped in token-only mode.",
         detail:
-          "Calendar provider readiness requires a signed-in Auth0 session and connected Google delegated access.",
-        diagnostics: [
-          `session_state=${session.state}`,
-          `connection_state=${connection?.state ?? "none"}`,
-          "provider_checks_skipped=true",
-        ],
+          "Connected-account bootstrap checks run only in live-provider mode because they are Google/Auth0 provider prerequisites.",
+        diagnostics: tokenOnlySessionDiagnostics,
       }),
-      blockedPrerequisiteCheck({
-        id: "gmail_draft_path",
-        label: "Gmail draft provider path",
+      skippedCheck({
+        id: "delegated_google_access",
+        label: "Delegated Google access readiness",
+        headline: "Skipped in token-only mode.",
         detail:
-          "Gmail draft readiness requires a signed-in Auth0 session and connected Google delegated access.",
-        diagnostics: [
-          `session_state=${session.state}`,
-          `connection_state=${connection?.state ?? "none"}`,
-          "provider_checks_skipped=true",
-        ],
+          "Delegated Google token exchange checks run only in live-provider mode.",
       }),
-      blockedPrerequisiteCheck({
-        id: "gmail_send_gate",
-        label: "Gmail send execution gate",
+      skippedCheck({
+        id: "calendar_provider_readiness",
+        label: "Calendar provider readiness",
+        headline: "Skipped in token-only mode.",
         detail:
-          "Send gate verification runs after Auth0 session and connected Google delegated access are confirmed.",
-        diagnostics: [
-          `session_state=${session.state}`,
-          `connection_state=${connection?.state ?? "none"}`,
-          "provider_checks_skipped=true",
-        ],
+          "Calendar provider probes are skipped in token-only mode to keep runtime/model readiness independent from Google provider state.",
+      }),
+      skippedCheck({
+        id: "gmail_draft_readiness",
+        label: "Gmail draft readiness",
+        headline: "Skipped in token-only mode.",
+        detail:
+          "Gmail draft provider probes are skipped in token-only mode to avoid unrelated provider gating.",
+      }),
+      skippedCheck({
+        id: "gmail_send_readiness",
+        label: "Gmail send readiness",
+        headline: "Skipped in token-only mode.",
+        detail:
+          "Gmail send gate/provider checks are skipped in token-only mode.",
       }),
     );
   } else {
-    const calendarResult = await readCalendarAvailability(
-      authShellProviderRequests.calendarAvailability,
-      {
+    checks.push(
+      createCheck({
+        id: "auth0_session_readiness",
+        label: "Auth0 session readiness",
+        state: session.state === "signed-in" ? "ready" : "blocked",
+        headline: session.headline,
+        detail: session.detail,
+        diagnostics: summarizeSessionDiagnostics(session),
+      }),
+    );
+
+    const bootstrapDiagnostics = summarizeSessionDiagnostics(session);
+    const bootstrapReady =
+      session.state === "signed-in" &&
+      session.diagnostics?.hasRefreshToken !== false;
+
+    if (!bootstrapReady) {
+      checks.push(
+        blockedCheck({
+          id: "connected_account_bootstrap",
+          label: "Connected-account bootstrap readiness",
+          headline:
+            session.state !== "signed-in"
+              ? "Connected-account bootstrap is blocked: no signed-in Auth0 session."
+              : "Connected-account bootstrap is blocked: session refresh token is missing.",
+          detail:
+            session.state !== "signed-in"
+              ? "Auth0 must establish an active signed-in session before connected-account bootstrap can run."
+              : "Auth0 needs a session refresh token to mint the bootstrap token used before Google handoff.",
+          diagnostics: bootstrapDiagnostics,
+        }),
+      );
+
+      checks.push(
+        blockedCheck({
+          id: "delegated_google_access",
+          label: "Delegated Google access readiness",
+          headline:
+            "Delegated Google access check was skipped because bootstrap prerequisites are blocked.",
+          detail:
+            "Fix Auth0 session/bootstrap readiness first, then retry delegated token exchange checks.",
+          diagnostics: [
+            ...bootstrapDiagnostics,
+            "delegated_access_evaluation=skipped_bootstrap_not_ready",
+          ],
+        }),
+      );
+    } else {
+      checks.push(
+        createCheck({
+          id: "connected_account_bootstrap",
+          label: "Connected-account bootstrap readiness",
+          state: "ready",
+          headline:
+            "Connected-account bootstrap prerequisites are ready.",
+          detail:
+            "Auth0 session state and refresh-token prerequisites allow the connected-account bootstrap stage to run.",
+          diagnostics: bootstrapDiagnostics,
+        }),
+      );
+    }
+
+    let delegatedConnection: ProviderConnectionSnapshot | null = null;
+    let delegatedAccessToken: string | null = null;
+    let delegatedReady = false;
+
+    if (bootstrapReady) {
+      const delegatedAccess = await getGoogleConnectionSnapshotWithToken(session);
+      delegatedConnection = delegatedAccess.snapshot;
+      delegatedAccessToken = delegatedAccess.delegatedAccessToken;
+      delegatedReady =
+        delegatedAccess.snapshot.state === "connected" &&
+        Boolean(delegatedAccess.delegatedAccessToken);
+
+      checks.push(
+        createCheck({
+          id: "delegated_google_access",
+          label: "Delegated Google access readiness",
+          state: delegatedReady ? "ready" : "blocked",
+          headline: delegatedAccess.snapshot.headline,
+          detail: delegatedAccess.snapshot.detail,
+          diagnostics: summarizeConnectionDiagnostics(delegatedAccess.snapshot),
+        }),
+      );
+    }
+
+    if (!delegatedReady || !delegatedConnection || !delegatedAccessToken) {
+      const delegatedDiagnostics = delegatedConnection
+        ? summarizeConnectionDiagnostics(delegatedConnection)
+        : ["delegated_access_state=not_ready"];
+
+      checks.push(
+        blockedCheck({
+          id: "calendar_provider_readiness",
+          label: "Calendar provider readiness",
+          headline:
+            "Calendar provider readiness is blocked by delegated-access prerequisites.",
+          detail:
+            "Calendar provider probes run only after delegated Google access is truly ready.",
+          diagnostics: delegatedDiagnostics,
+        }),
+        blockedCheck({
+          id: "gmail_draft_readiness",
+          label: "Gmail draft readiness",
+          headline:
+            "Gmail draft readiness is blocked by delegated-access prerequisites.",
+          detail:
+            "Gmail draft provider probes run only after delegated Google access is truly ready.",
+          diagnostics: delegatedDiagnostics,
+        }),
+        blockedCheck({
+          id: "gmail_send_readiness",
+          label: "Gmail send readiness",
+          headline:
+            "Gmail send readiness is blocked by delegated-access prerequisites.",
+          detail:
+            "Gmail send gate checks run only after delegated Google access is truly ready.",
+          diagnostics: delegatedDiagnostics,
+        }),
+      );
+    } else {
+      const calendarResult = await readCalendarAvailability(
+        authShellProviderRequests.calendarAvailability,
+        {
+          session,
+          connection: delegatedConnection,
+          accessToken: delegatedAccessToken,
+        },
+      );
+      checks.push(
+        mapProviderResultToCheck({
+          id: "calendar_provider_readiness",
+          label: "Calendar provider readiness",
+          result: calendarResult,
+          successHeadline: "Calendar provider path is live-ready.",
+          successDetail:
+            "Calendar read succeeded through Auth0-backed delegated Google access.",
+        }),
+      );
+
+      const draftResult = await prepareGmailDraft(authShellProviderRequests.gmailDraft, {
         session,
-        connection,
-        fetchFn: mode === "token-only" ? createCalendarReadFetchStub() : undefined,
-      },
-    );
-    checks.push(
-      mapProviderResultToCheck({
-        id: "calendar_read_path",
-        label: "Calendar read provider path",
-        result: calendarResult,
-        successHeadline:
-          mode === "live"
-            ? "Calendar provider path is live-ready."
-            : "Calendar provider path is token-ready (stubbed provider call).",
-        successDetail:
-          mode === "live"
-            ? "Calendar read succeeded through Auth0-backed delegated Google access."
-            : "Auth0 delegated token flow and calendar wrapper path are ready; provider response was stubbed to avoid external dependency in token-only mode.",
-      }),
-    );
+        connection: delegatedConnection,
+        accessToken: delegatedAccessToken,
+      });
+      checks.push(
+        mapProviderResultToCheck({
+          id: "gmail_draft_readiness",
+          label: "Gmail draft readiness",
+          result: draftResult,
+          successHeadline: "Gmail draft provider path is live-ready.",
+          successDetail:
+            "Gmail draft preparation succeeded through Auth0-backed delegated Google access.",
+        }),
+      );
 
-    const draftResult = await prepareGmailDraft(authShellProviderRequests.gmailDraft, {
-      session,
-      connection,
-      fetchFn: mode === "token-only" ? createGmailDraftFetchStub() : undefined,
-    });
-    checks.push(
-      mapProviderResultToCheck({
-        id: "gmail_draft_path",
-        label: "Gmail draft provider path",
-        result: draftResult,
-        successHeadline:
-          mode === "live"
-            ? "Gmail draft provider path is live-ready."
-            : "Gmail draft provider path is token-ready (stubbed provider call).",
-        successDetail:
-          mode === "live"
-            ? "Gmail draft preparation succeeded through Auth0-backed delegated Google access."
-            : "Auth0 delegated token flow and Gmail draft wrapper path are ready; provider response was stubbed to avoid creating live drafts in token-only mode.",
-      }),
-    );
-
-    const sendGateResult = await executeSendEmail(authShellProviderRequests.gmailSend, {
-      session,
-      connection,
-    });
-    const sendGateReady =
-      sendGateResult.state === "execution-blocked" &&
-      sendGateResult.failure?.code === "execution-release-required";
-    checks.push({
-      id: "gmail_send_gate",
-      label: "Gmail send execution gate",
-      state: sendGateReady ? "ready" : sendGateResult.state === "failed" ? "error" : "blocked",
-      headline: sendGateReady
-        ? "Send remains correctly gated without explicit release."
-        : sendGateResult.headline,
-      detail: sendGateReady
-        ? "The provider send path stays blocked until an explicit execution release is supplied by an approval/control layer."
-        : sendGateResult.detail,
-      diagnostics: [
-        `provider_state=${sendGateResult.state}`,
-        sendGateResult.failure?.code ? `provider_failure_code=${sendGateResult.failure.code}` : null,
-        `connection_state=${sendGateResult.connection.state}`,
-        ...summarizeConnectionDiagnostics(sendGateResult.connection),
-      ].filter((entry): entry is string => Boolean(entry)),
-    });
+      const sendGateResult = await executeSendEmail(authShellProviderRequests.gmailSend, {
+        session,
+        connection: delegatedConnection,
+      });
+      const sendGateReady =
+        sendGateResult.state === "execution-blocked" &&
+        sendGateResult.failure?.code === "execution-release-required";
+      checks.push(
+        createCheck({
+          id: "gmail_send_readiness",
+          label: "Gmail send readiness",
+          state: sendGateReady
+            ? "ready"
+            : sendGateResult.state === "failed"
+              ? "error"
+              : "blocked",
+          headline: sendGateReady
+            ? "Send stays correctly gated until explicit release."
+            : sendGateResult.headline,
+          detail: sendGateReady
+            ? "The live send path is available but remains blocked until an explicit execution release is supplied by approval/control."
+            : sendGateResult.detail,
+          diagnostics: [
+            `provider_state=${sendGateResult.state}`,
+            sendGateResult.failure?.code ? `provider_failure_code=${sendGateResult.failure.code}` : null,
+            `connection_state=${sendGateResult.connection.state}`,
+            ...summarizeConnectionDiagnostics(sendGateResult.connection),
+          ].filter((entry): entry is string => Boolean(entry)),
+        }),
+      );
+    }
   }
 
-  const overallState = evaluateOverallState(checks);
+  const overallState = evaluateOverallState(mode, checks);
   logLiveProviderDiagnostic("preflight.run.complete", {
     mode,
     checkedAt,
@@ -456,7 +520,7 @@ export async function runDemoLivePreflight(
     mode,
     checkedAt,
     overallState,
-    summary: buildSummary(overallState),
+    summary: buildSummary(mode, overallState),
     checks,
     fatalError: null,
   };
