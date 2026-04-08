@@ -13,4 +13,15 @@ export interface AuthSessionSnapshot {
   loginHref: string | null;
   logoutHref: string | null;
   user: AuthenticatedUser | null;
+  diagnostics?: AuthSessionDiagnostics;
+}
+
+export interface AuthSessionDiagnostics {
+  checkedAt: string;
+  auth0Configured: boolean;
+  auth0ClientReady: boolean;
+  environmentIssues: string[];
+  hasSession: boolean;
+  hasRefreshToken: boolean | null;
+  userSub: string | null;
 }

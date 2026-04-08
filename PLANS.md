@@ -618,6 +618,89 @@ Implement real Calendar Agent and Comms Agent runtime actors with distinct ident
 
 This strengthens Milestone 3 (Useful agent flow) and supports Milestones 4-5 by making child-agent reasoning inspectable, constrained, and non-magical while preserving the rule that privileged actions are still controlled outside runtime/model calls.
 
+## ExecPlan — Live Provider Root-Cause Audit (2026-04-08)
+
+### Objective
+
+Identify the exact local failure edge blocking the live Auth0 + Google + Token Vault provider path, and add diagnostics that make tenant/setup vs code-integration causes explicit.
+
+### Demo relevance
+
+This work targets Milestone 1 (foundation/connection flow) and directly hardens the live readiness preflight beat:
+
+1. user signs in
+2. user connects Google through Auth0 Token Vault
+3. provider readiness is proven with evidence instead of inferred UI state
+
+Without this, demo rehearsals can report contradictory states (`connected` email shown while live provider path remains blocked).
+
+### Scope
+
+In scope:
+
+- inspect and instrument `/auth/connect` initiation surface (link construction + traceability)
+- instrument Auth0 session snapshot and Google connection snapshot evaluation
+- instrument delegated token exchange attempts and capture structured error details where available
+- instrument preflight provider-readiness evaluation path and include concise diagnostics in the preflight output
+- inspect provider action wrappers and server-side token exchange path for ambiguous or conflated states
+- produce a concise findings/checklist note with likely tenant/setup blockers, likely code blockers, and recommended follow-up fixes
+
+Out of scope:
+
+- broad auth architecture refactors
+- “fake success” fallbacks that mask provider failures
+- full remediation of all detected blockers
+- changing warrant-engine behavior or demo scenario semantics
+
+### Files/modules likely affected
+
+- `src/contracts/auth.ts`
+- `src/contracts/connection.ts`
+- `src/contracts/demo.ts`
+- `src/auth/session.ts`
+- `src/connections/google.ts`
+- `src/actions/google.ts`
+- `src/demo-fixtures/live-preflight.ts`
+- `src/components/demo/demo-live-preflight-card.tsx`
+- `src/components/auth-shell/auth-shell.tsx`
+- `tests/auth-shell.test.ts`
+- `tests/live-preflight-route.test.ts`
+- `docs/*` (new findings/checklist note)
+
+### Invariants to preserve
+
+- Keep two-layer enforcement explicit: local warrant allowance does not imply external delegated capability.
+- Do not treat displayed account email as proof of delegated token usability.
+- Keep Google connected-account flow real (`/auth/connect`) and do not replace with mock states.
+- Preserve deterministic demo surfaces while adding truthful live diagnostics.
+- Do not claim provider readiness unless delegated token and action path checks actually succeed.
+
+### Implementation steps
+
+1. Add structured diagnostics fields for session, connection evaluation, token exchange attempts, and preflight check evaluation.
+2. Instrument `getAuthSessionSnapshot`, `getGoogleConnectionSnapshot`, and Google provider action access resolution with traceable diagnostics and safe error metadata.
+3. Surface high-value diagnostics in preflight/auth UI (without exposing secrets) so blocked states include actionable root-cause evidence.
+4. Add/update targeted tests for new diagnostics fields and blocked-path behavior.
+5. Run validation and a local broken-flow exercise to capture evidence.
+6. Write a concise findings/checklist note for follow-up branches.
+
+### Validation steps
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- manual local reproduction:
+  - run `npm run dev`
+  - sign in, trigger `Connect Google with Auth0`, run `/demo` preflight in `live` mode
+  - capture improved diagnostics for session, connection, token exchange, and provider-readiness checks
+
+### Known risks
+
+- Auth0 SDK may not expose full low-level provider error payloads; diagnostics may still rely on normalized error codes/messages.
+- Connect initiation occurs via SDK-managed `/auth/connect`; instrumentation is limited to link construction and post-return evidence unless an explicit wrapper route is introduced later.
+- Local tenant/account state can be nondeterministic across retries, so repeated manual checks may be needed to confirm the exact failure edge.
+
 ### Scope
 
 In scope:

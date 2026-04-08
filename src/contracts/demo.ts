@@ -77,6 +77,7 @@ export interface DemoLivePreflightCheck {
   state: DemoLivePreflightState;
   headline: string;
   detail: string;
+  diagnostics?: string[];
 }
 
 export interface DemoLivePreflightSnapshot {
