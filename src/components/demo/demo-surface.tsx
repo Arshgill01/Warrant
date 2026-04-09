@@ -16,6 +16,7 @@ import { DemoRehearsalControls } from "@/components/demo/demo-rehearsal-controls
 import { StatusChip } from "@/components/foundation/status-chip";
 import type {
   ActionPathSnapshot,
+  DemoRuntimeMode,
   DemoScenario,
   SendApprovalState,
 } from "@/contracts";
@@ -90,6 +91,38 @@ function formatStatusLabel(value: string): string {
       return value.replaceAll("_", " ").replaceAll("-", " ").replaceAll(".", " ");
   }
 }
+
+function formatRuntimeModeLabel(mode: DemoRuntimeMode): string {
+  switch (mode) {
+    case "live":
+      return "live provider";
+    case "token-only":
+      return "token only";
+    case "seeded":
+      return "seeded";
+    default:
+      return mode;
+  }
+}
+
+function formatRuntimeLaneLabel(lane: DemoScenario["runtimeExecution"]["lane"]): string {
+  switch (lane) {
+    case "live-provider":
+      return "live runtime + provider";
+    case "live-token-only":
+      return "live runtime (token-only)";
+    case "seeded-fallback":
+      return "seeded fallback";
+    default:
+      return lane;
+  }
+}
+
+const runtimeLaneTone: Record<DemoScenario["runtimeExecution"]["lane"], string> = {
+  "live-provider": "bg-[var(--status-allowed-bg)] text-[var(--status-allowed-text)]",
+  "live-token-only": "bg-sky-50 text-sky-700",
+  "seeded-fallback": "bg-amber-50 text-amber-700",
+};
 
 function formatApprovalBadge(status: string, provider: string): string {
   if (status === "approval_pending") {
@@ -465,10 +498,12 @@ export function DemoSurface({
   initialScenario,
   authConfigured,
   rehearsal,
+  requestedRuntimeMode,
 }: {
   initialScenario: DemoScenario;
   authConfigured: boolean;
   rehearsal?: DemoRehearsalSnapshot | null;
+  requestedRuntimeMode: DemoRuntimeMode;
 }) {
   const [scenario, setScenario] = useState(initialScenario);
 
@@ -577,6 +612,7 @@ export function DemoSurface({
   const currentApprovalBadge = commsBranchRevoked
     ? "current: branch revoked"
     : `current: ${formatStatusLabel(currentApprovalControlState)}`;
+  const runtimeExecution = scenario.runtimeExecution;
 
   return (
     <main className="page-shell">
@@ -598,8 +634,8 @@ export function DemoSurface({
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <StatusChip
-              label="fixture-backed demo"
-              tone="bg-[var(--accent)] text-white"
+              label={formatRuntimeLaneLabel(runtimeExecution.lane)}
+              tone={runtimeLaneTone[runtimeExecution.lane]}
               size="md"
             />
             <StatusChip
@@ -611,6 +647,31 @@ export function DemoSurface({
               }
               size="md"
             />
+            <StatusChip
+              label={`requested: ${formatRuntimeModeLabel(requestedRuntimeMode)}`}
+              tone="bg-slate-100 text-slate-700"
+              size="md"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+            <Link
+              href="/demo?runtimeMode=token-only"
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1 transition hover:bg-white"
+            >
+              token only
+            </Link>
+            <Link
+              href="/demo?runtimeMode=live"
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1 transition hover:bg-white"
+            >
+              live provider
+            </Link>
+            <Link
+              href="/demo?runtimeMode=seeded"
+              className="rounded-full border border-[var(--panel-border)] px-3 py-1 transition hover:bg-white"
+            >
+              seeded
+            </Link>
           </div>
         </div>
 
@@ -689,6 +750,45 @@ export function DemoSurface({
           <DemoLivePreflightCard />
         </>
       ) : null}
+
+      <section className="surface-panel space-y-4 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)]">
+              Runtime Lane
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {formatRuntimeLaneLabel(runtimeExecution.lane)}
+            </h2>
+          </div>
+          <StatusChip
+            label={runtimeExecution.providerSource.replaceAll("-", " ")}
+            tone="bg-slate-100 text-slate-700"
+            size="md"
+          />
+        </div>
+        <p className="text-sm leading-relaxed text-[var(--muted)]">
+          Model source: {runtimeExecution.modelSource.replaceAll("-", " ")} | Provider source:{" "}
+          {runtimeExecution.providerSource.replaceAll("-", " ")}
+        </p>
+        {runtimeExecution.fallbackReason ? (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            {runtimeExecution.fallbackReason}
+          </p>
+        ) : null}
+        {runtimeExecution.diagnostics.length > 0 ? (
+          <div className="rounded-xl border border-[var(--panel-border)] bg-white/80 px-3 py-2">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              Runtime diagnostics
+            </p>
+            {runtimeExecution.diagnostics.slice(0, 8).map((line, index) => (
+              <p key={`${index}:${line}`} className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </section>
 
       <section className="surface-panel space-y-5 p-6 lg:p-8">
         <div className="space-y-1">
