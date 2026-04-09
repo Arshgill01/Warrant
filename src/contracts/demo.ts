@@ -67,12 +67,13 @@ export type DemoLivePreflightState = "ready" | "blocked" | "error" | "skipped";
 
 export interface DemoLivePreflightCheck {
   id:
-    | "runtime_model_config"
-    | "auth0_session"
-    | "google_connection"
-    | "calendar_read_path"
-    | "gmail_draft_path"
-    | "gmail_send_gate";
+    | "runtime_model_readiness"
+    | "auth0_session_readiness"
+    | "connected_account_bootstrap"
+    | "delegated_google_access"
+    | "calendar_provider_readiness"
+    | "gmail_draft_readiness"
+    | "gmail_send_readiness";
   label: string;
   state: DemoLivePreflightState;
   headline: string;

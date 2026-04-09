@@ -348,6 +348,21 @@ async function resolveGoogleAccess<Kind extends GoogleActionKind, Input, Payload
             ),
           };
         case AccessTokenForConnectionErrorCode.FAILED_TO_EXCHANGE:
+          if (diagnostics.failureEdge === "bootstrap-token") {
+            return {
+              result: buildTokenUnavailableResult<Kind, Input, Payload>(
+                kind,
+                label,
+                request,
+                connection,
+                withTokenExchangeDetail(
+                  "Auth0 failed at the connected-account bootstrap token stage before delegated Google access could be issued for this action.",
+                  error,
+                ),
+              ),
+            };
+          }
+
           return {
             result: buildTokenUnavailableResult<Kind, Input, Payload>(
               kind,

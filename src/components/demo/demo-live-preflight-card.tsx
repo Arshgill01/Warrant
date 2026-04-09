@@ -73,7 +73,7 @@ export function DemoLivePreflightCard() {
           Verify Auth0 + Google path before recording.
         </h2>
         <p className="max-w-3xl text-sm leading-relaxed text-[var(--muted)]">
-          This check reports whether runtime config, Auth0 session, connected-account state, and provider paths are ready right now.
+          Token-only mode checks runtime/model readiness only. Live-provider mode checks Auth0 session, connected-account bootstrap, delegated access, and Calendar/Gmail provider paths.
         </p>
       </div>
 
@@ -132,6 +132,11 @@ export function DemoLivePreflightCard() {
             <p className="text-xs text-[var(--muted)]">
               Mode: {formatModeLabel(snapshot.mode)} | Checked: {formatCheckedAt(snapshot.checkedAt)}
             </p>
+            {snapshot.mode === "token-only" ? (
+              <p className="mt-2 text-xs text-[var(--muted)]">
+                Token-only mode intentionally skips Google/provider checks so runtime readiness is not overblocked by external prerequisites.
+              </p>
+            ) : null}
             {snapshot.fatalError ? (
               <p className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
                 {snapshot.fatalError.code}: {snapshot.fatalError.message}

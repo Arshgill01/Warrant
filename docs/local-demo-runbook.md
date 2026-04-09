@@ -83,15 +83,16 @@ Startup success signals:
 
 Good state:
 
-- Overall preflight state is `ready`.
-- `Runtime model configuration` is `ready`.
+- `token only` mode: overall preflight state is `ready` (runtime/model lane only; Auth0/Google checks can be skipped).
+- `live provider` mode: overall preflight state is `ready` (full Auth0 + Google delegated/provider path).
+- `Runtime model readiness` is `ready`.
 - In `ready` detail, verify logical model `gemma-4-31b` maps to provider id `gemma-4-31b-it`.
 
 Common bad states:
 
-- `Runtime model configuration: blocked` with missing `GOOGLE_API_KEY`.
-- `Auth0 session: blocked` (not signed in).
-- `Google connected-account path: blocked` (not connected through Auth0).
+- `Runtime model readiness: blocked` with missing `GOOGLE_API_KEY`.
+- `Auth0 session readiness: blocked` (not signed in).
+- `Connected-account bootstrap readiness` or `Delegated Google access readiness: blocked`.
 
 ### B. Confirm planner/calendar/comms use live Gemma path
 
@@ -175,17 +176,17 @@ Use this exact scenario text where required:
 
 ### Missing model readiness
 
-- Symptom: preflight `Runtime model configuration` is blocked.
+- Symptom: preflight `Runtime model readiness` is blocked.
 - Fix: add `GOOGLE_API_KEY` to `.env.local`; rerun `npm run verify:live-model`.
 
 ### Missing Auth0 session
 
-- Symptom: preflight `Auth0 session` blocked.
+- Symptom: preflight `Auth0 session readiness` blocked.
 - Fix: from `/`, click `Continue with Auth0` and complete login.
 
 ### Missing Google provider connection
 
-- Symptom: `Google connected-account path` blocked.
+- Symptom: `Connected-account bootstrap readiness` or `Delegated Google access readiness` blocked.
 - Fix: from `/`, use `Connect Google with Auth0` flow (`/auth/connect`).
 
 ### Graph/timeline not updating

@@ -239,8 +239,8 @@ Use this checklist immediately before recording the 3-minute demo.
    - in `/demo`, restore `Main scenario (pre-revoke)` preset (if tools enabled)
    - confirm overreach denied + approval-required + revoke outcomes are visible
 5. Live readiness preflight:
-   - run `/api/demo/live-preflight?mode=token-only`
-   - if ready, run `/api/demo/live-preflight?mode=live`
+   - run `/api/demo/live-preflight?mode=token-only` (runtime/model lane only)
+   - then run `/api/demo/live-preflight?mode=live` (full Auth0 + Google delegated/provider path)
 6. CLI smoke checks (optional but recommended):
    - `npm run build`
    - `npm run smoke:demo`

@@ -1,6 +1,7 @@
 import type {
   AuthSessionSnapshot,
   ProviderConnectFlowState,
+  ProviderConnectionBootstrapDiagnostics,
   ProviderConnectionDiagnostics,
   ProviderConnectionLifecycleState,
   ProviderConnectionSetupSnapshot,
@@ -259,6 +260,89 @@ function resolveConnectedAccountLabel(session: AuthSessionSnapshot): {
   };
 }
 
+function hideSessionFallbackAccountLabel(
+  account: {
+    label: string | null;
+    source: ProviderConnectionDiagnostics["accountLabelSource"];
+  },
+  includeSessionFallback: boolean,
+): string | null {
+  if (account.source === "session-email" && !includeSessionFallback) {
+    return null;
+  }
+
+  return account.label;
+}
+
+function resolveBootstrapDiagnostics(input: {
+  lifecycleState: ProviderConnectionLifecycleState;
+  connectFlowState: ProviderConnectFlowState;
+  tokenExchange: ProviderConnectionDiagnostics["tokenExchange"];
+}): ProviderConnectionBootstrapDiagnostics {
+  const tokenExchange = input.tokenExchange;
+
+  if (tokenExchange.note?.toLowerCase().includes("shell override")) {
+    return {
+      attempted: false,
+      outcome: "shell-override",
+      note: "Shell override is active, so bootstrap readiness is controlled by override state.",
+    };
+  }
+
+  if (tokenExchange.outcome === "missing-session") {
+    return {
+      attempted: true,
+      outcome: "missing-session",
+      note: "Connected-account bootstrap failed because no active Auth0 session was available.",
+    };
+  }
+
+  if (tokenExchange.outcome === "missing-refresh-token") {
+    return {
+      attempted: true,
+      outcome: "missing-refresh-token",
+      note: "Connected-account bootstrap failed because the session was missing a refresh token.",
+    };
+  }
+
+  if (input.connectFlowState === "tenant-config-issue") {
+    return {
+      attempted: false,
+      outcome: "auth0-not-configured",
+      note: "Auth0 tenant/app setup appears to block bootstrap token retrieval.",
+    };
+  }
+
+  if (
+    tokenExchange.outcome === "success" ||
+    tokenExchange.outcome === "failed-to-exchange" ||
+    tokenExchange.outcome === "unexpected-error"
+  ) {
+    return {
+      attempted: true,
+      outcome: "ready",
+      note: "Connected-account bootstrap prerequisites were satisfied for token exchange.",
+    };
+  }
+
+  if (
+    tokenExchange.outcome === "not-attempted" &&
+    input.lifecycleState === "not-connected"
+  ) {
+    return {
+      attempted: false,
+      outcome: "missing-session",
+      note: "Bootstrap cannot run until an Auth0 session is active.",
+    };
+  }
+
+  return {
+    attempted: false,
+    outcome: "not-attempted",
+    note: "Connected-account bootstrap was not attempted during this evaluation.",
+  };
+}
+
 function buildConnectionDiagnostics(input: {
   connectionName: string;
   connectHref: string | null;
@@ -280,6 +364,11 @@ function buildConnectionDiagnostics(input: {
     connectFlowState: input.connectFlowState,
     connectFailureCode: input.connectFailureCode,
     connectFailureDetail: input.connectFailureDetail,
+    bootstrap: resolveBootstrapDiagnostics({
+      lifecycleState: input.lifecycleState,
+      connectFlowState: input.connectFlowState,
+      tokenExchange: input.tokenExchange,
+    }),
     tokenExchange: input.tokenExchange,
   };
 }
@@ -328,7 +417,7 @@ function buildOverrideSnapshot(input: {
         detail: "The shell override marks delegated Google access as ready until the real Token Vault callback is wired.",
         actionLabel: null,
         actionHref: null,
-        accountLabel: account.label,
+        accountLabel: hideSessionFallbackAccountLabel(account, true),
         tokenExpiresAt: null,
         via: "shell-override",
         diagnostics,
@@ -343,7 +432,7 @@ function buildOverrideSnapshot(input: {
         detail: "Auth0 has started the provider handoff, but the delegated access path is not ready yet.",
         actionLabel: "Continue Google connect with Auth0",
         actionHref: input.connectStartHref,
-        accountLabel: account.label,
+        accountLabel: hideSessionFallbackAccountLabel(account, false),
         tokenExpiresAt: null,
         via: "shell-override",
         diagnostics,
@@ -358,7 +447,7 @@ function buildOverrideSnapshot(input: {
         detail: "This shell override keeps the provider disconnected until you link Google through Auth0.",
         actionLabel: input.session.state === "signed-in" ? "Connect Google with Auth0" : input.session.loginHref ? "Sign in with Auth0" : null,
         actionHref: input.session.state === "signed-in" ? input.connectStartHref : input.session.loginHref,
-        accountLabel: account.label,
+        accountLabel: hideSessionFallbackAccountLabel(account, false),
         tokenExpiresAt: null,
         via: "shell-override",
         diagnostics,
@@ -373,7 +462,7 @@ function buildOverrideSnapshot(input: {
         detail: "The shell override marks the previous delegated path as expired until Auth0 re-establishes it.",
         actionLabel: input.session.logoutHref ? "Refresh Auth0 session" : input.session.loginHref ? "Sign in with Auth0" : null,
         actionHref: input.session.logoutHref ?? input.session.loginHref,
-        accountLabel: account.label,
+        accountLabel: hideSessionFallbackAccountLabel(account, false),
         tokenExpiresAt: null,
         via: "shell-override",
         diagnostics,
@@ -389,7 +478,7 @@ function buildOverrideSnapshot(input: {
         detail: "The shell override leaves delegated Google access unavailable until the real Auth0 provider path is ready.",
         actionLabel: "Retry Google connect with Auth0",
         actionHref: input.connectStartHref,
-        accountLabel: account.label,
+        accountLabel: hideSessionFallbackAccountLabel(account, false),
         tokenExpiresAt: null,
         via: "shell-override",
         diagnostics,
@@ -439,6 +528,11 @@ function buildAuthUnavailableSnapshot(input: {
 
 export interface GoogleConnectionSnapshotOptions {
   connectFlow?: GoogleConnectFlowContext | null;
+}
+
+export interface GoogleConnectionSnapshotWithToken {
+  snapshot: ProviderConnectionSnapshot;
+  delegatedAccessToken: string | null;
 }
 
 export function buildGoogleConnectHref(connectionName: string, returnTo = "/"): string {
@@ -527,7 +621,9 @@ export async function getGoogleConnectionSnapshot(
       state: snapshot.state,
       lifecycleState: snapshot.lifecycleState,
       via: snapshot.via,
+      bootstrapOutcome: snapshot.diagnostics?.bootstrap.outcome ?? null,
       tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeFailureEdge: snapshot.diagnostics?.tokenExchange.failureEdge ?? null,
       tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
     });
 
@@ -551,7 +647,9 @@ export async function getGoogleConnectionSnapshot(
       state: snapshot.state,
       lifecycleState: snapshot.lifecycleState,
       via: snapshot.via,
+      bootstrapOutcome: snapshot.diagnostics?.bootstrap.outcome ?? null,
       tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeFailureEdge: snapshot.diagnostics?.tokenExchange.failureEdge ?? null,
       tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
     });
 
@@ -591,7 +689,9 @@ export async function getGoogleConnectionSnapshot(
       state: snapshot.state,
       lifecycleState: snapshot.lifecycleState,
       via: snapshot.via,
+      bootstrapOutcome: snapshot.diagnostics?.bootstrap.outcome ?? null,
       tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeFailureEdge: snapshot.diagnostics?.tokenExchange.failureEdge ?? null,
       tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
     });
 
@@ -619,7 +719,7 @@ export async function getGoogleConnectionSnapshot(
       detail: "Auth0 can mint delegated Google access for Calendar reads and Gmail actions in this session.",
       actionLabel: null,
       actionHref: null,
-      accountLabel: account.label,
+      accountLabel: hideSessionFallbackAccountLabel(account, true),
       tokenExpiresAt: new Date(accessToken.expiresAt * 1000).toISOString(),
       via: "auth0-token-vault",
       diagnostics: buildConnectionDiagnostics({
@@ -641,7 +741,9 @@ export async function getGoogleConnectionSnapshot(
       state: snapshot.state,
       lifecycleState: snapshot.lifecycleState,
       via: snapshot.via,
+      bootstrapOutcome: snapshot.diagnostics?.bootstrap.outcome ?? null,
       tokenExchangeOutcome: snapshot.diagnostics?.tokenExchange.outcome ?? null,
+      tokenExchangeFailureEdge: snapshot.diagnostics?.tokenExchange.failureEdge ?? null,
       tokenExchangeAttempted: snapshot.diagnostics?.tokenExchange.attempted ?? false,
     });
 
@@ -652,6 +754,7 @@ export async function getGoogleConnectionSnapshot(
     logLiveProviderDiagnostic("google.connection.token_exchange.failed", {
       connectionName: authEnv.googleConnectionName,
       outcome: tokenExchangeDiagnostics.outcome,
+      failureEdge: tokenExchangeDiagnostics.failureEdge,
       sdkErrorCode: tokenExchangeDiagnostics.sdkErrorCode,
       oauthErrorCode: tokenExchangeDiagnostics.oauthErrorCode,
       oauthErrorMessage: tokenExchangeDiagnostics.oauthErrorMessage,
@@ -675,7 +778,7 @@ export async function getGoogleConnectionSnapshot(
               formatTokenExchangeDiagnostics(tokenExchangeDiagnostics),
             actionLabel: "Sign in with Auth0",
             actionHref: session.loginHref ?? "/auth/login",
-            accountLabel: account.label,
+            accountLabel: hideSessionFallbackAccountLabel(account, false),
             tokenExpiresAt: null,
             via: "auth0-token-vault",
             diagnostics: buildConnectionDiagnostics({
@@ -705,7 +808,7 @@ export async function getGoogleConnectionSnapshot(
               formatTokenExchangeDiagnostics(tokenExchangeDiagnostics),
             actionLabel: session.logoutHref ? "Refresh Auth0 session" : session.loginHref ? "Sign in with Auth0" : null,
             actionHref: session.logoutHref ?? session.loginHref,
-            accountLabel: account.label,
+            accountLabel: hideSessionFallbackAccountLabel(account, false),
             tokenExpiresAt: null,
             via: "auth0-token-vault",
             diagnostics: buildConnectionDiagnostics({
@@ -722,10 +825,13 @@ export async function getGoogleConnectionSnapshot(
           };
         }
         case AccessTokenForConnectionErrorCode.FAILED_TO_EXCHANGE: {
-          const lifecycleState = resolveFailedExchangeLifecycle({
-            flowState: connectFlowState,
-            accountLabel: account.label,
-          });
+          const lifecycleState =
+            tokenExchangeDiagnostics.failureEdge === "bootstrap-token"
+              ? "bootstrap-token-failure"
+              : resolveFailedExchangeLifecycle({
+                  flowState: connectFlowState,
+                  accountLabel: hideSessionFallbackAccountLabel(account, false),
+                });
 
           return {
             provider: "google",
@@ -737,7 +843,7 @@ export async function getGoogleConnectionSnapshot(
               `${buildFailedExchangeDetail(lifecycleState)}${formatTokenExchangeDiagnostics(tokenExchangeDiagnostics)}`,
             actionLabel: "Connect Google with Auth0",
             actionHref: connectStartHref,
-            accountLabel: account.label,
+            accountLabel: hideSessionFallbackAccountLabel(account, false),
             tokenExpiresAt: null,
             via: "auth0-token-vault",
             diagnostics: buildConnectionDiagnostics({
@@ -771,7 +877,7 @@ export async function getGoogleConnectionSnapshot(
         formatTokenExchangeDiagnostics(tokenExchangeDiagnostics),
       actionLabel: "Connect Google with Auth0",
       actionHref: connectStartHref,
-      accountLabel: account.label,
+      accountLabel: hideSessionFallbackAccountLabel(account, false),
       tokenExpiresAt: null,
       via: "auth0-token-vault",
       diagnostics: buildConnectionDiagnostics({
@@ -785,6 +891,56 @@ export async function getGoogleConnectionSnapshot(
         connectFailureDetail,
         tokenExchange: tokenExchangeDiagnostics,
       }),
+    };
+  }
+}
+
+export async function getGoogleConnectionSnapshotWithToken(
+  session: AuthSessionSnapshot,
+  options: GoogleConnectionSnapshotOptions = {},
+): Promise<GoogleConnectionSnapshotWithToken> {
+  const snapshot = await getGoogleConnectionSnapshot(session, options);
+
+  if (snapshot.state !== "connected") {
+    return {
+      snapshot,
+      delegatedAccessToken: null,
+    };
+  }
+
+  const authEnv = getAuth0Environment();
+
+  if (!authEnv.isConfigured || !auth0) {
+    return {
+      snapshot,
+      delegatedAccessToken: null,
+    };
+  }
+
+  try {
+    const accessToken = await auth0.getAccessTokenForConnection({
+      connection: authEnv.googleConnectionName,
+      login_hint: session.user?.email ?? undefined,
+    });
+
+    return {
+      snapshot,
+      delegatedAccessToken: accessToken.token,
+    };
+  } catch (error) {
+    const diagnostics = createTokenExchangeErrorDiagnostics(error);
+
+    logLiveProviderDiagnostic("google.connection.token_exchange.reuse_failed", {
+      connectionName: authEnv.googleConnectionName,
+      outcome: diagnostics.outcome,
+      failureEdge: diagnostics.failureEdge,
+      sdkErrorCode: diagnostics.sdkErrorCode,
+      oauthErrorCode: diagnostics.oauthErrorCode,
+    });
+
+    return {
+      snapshot,
+      delegatedAccessToken: null,
     };
   }
 }
