@@ -142,3 +142,71 @@ export function createDeterministicScenarioActionAdapters(): ScenarioActionAdapt
     },
   };
 }
+
+export function createTokenOnlyRuntimeScenarioActionAdapters(): ScenarioActionAdapters {
+  return {
+    calendar: {
+      readAvailability(input) {
+        return {
+          providerState: "success",
+          providerHeadline:
+            "Token-only mode kept provider execution out of lane.",
+          providerDetail:
+            "Planner/Calendar/Comms reasoning ran on live Gemma, but this calendar action used a local token-only simulation because delegated Google execution was not required for this run.",
+          summary:
+            "Reviewed tomorrow's availability from the token-only runtime lane before drafting.",
+          resource: `Token-only calendar window for ${input.targetDate}`,
+          outcomeReason:
+            "Token-only lane preserves control checks while treating provider execution as an explicit simulation step.",
+          timelineTitle: "Calendar window reviewed (token-only lane)",
+          timelineDescription:
+            "Calendar Agent used live runtime reasoning and a token-only simulation for the bounded April 18 window.",
+          busySlots: ["2026-04-18T09:00:00.000Z/2026-04-18T10:00:00.000Z"],
+          recommendedFollowUpTime: "2026-04-18T10:30:00.000Z",
+        };
+      },
+    },
+    comms: {
+      createFollowUpDrafts(input) {
+        return {
+          providerState: "success",
+          providerHeadline:
+            "Token-only mode kept provider execution out of lane.",
+          providerDetail:
+            "Comms reasoning ran on live Gemma, but Gmail draft creation was simulated in token-only mode instead of running delegated provider execution.",
+          summary:
+            "Prepared token-only follow-up drafts for approved internal recipients.",
+          resource: `Token-only drafts for ${input.recipients.join(" and ")}`,
+          outcomeReason:
+            "Token-only mode keeps runtime behavior live while leaving external provider execution to the live-provider lane.",
+          timelineTitle: "Follow-up drafts prepared (token-only lane)",
+          timelineDescription:
+            "Comms Agent produced live runtime draft content, then recorded token-only simulated draft artifacts without delegated Gmail execution.",
+          draftIds: ["token-only-draft-001", "token-only-draft-002"],
+          preview:
+            "Subject: Investor update for tomorrow\n\nToken-only lane prepared this draft from live runtime output. Sending remains approval-gated and provider-backed in live-provider mode.",
+        };
+      },
+    },
+    gmailSend: {
+      sendApprovedFollowUp(input) {
+        return {
+          providerState: "success",
+          providerHeadline:
+            "Token-only mode kept provider execution out of lane.",
+          providerDetail:
+            "This send outcome is a token-only simulation marker. Real delegated Gmail sends execute only in live-provider mode.",
+          summary:
+            "Recorded one token-only send simulation after approval for bounded recipients.",
+          resource: `Token-only simulated send to ${input.recipients.join(" and ")}`,
+          outcomeReason:
+            "Approval/revoke controls were exercised without delegated provider execution in token-only mode.",
+          timelineTitle: "Approved send simulated (token-only lane)",
+          timelineDescription:
+            "Comms Agent cleared policy and approval gates, then recorded a token-only simulated send outcome rather than executing delegated Gmail delivery.",
+          messageId: "token-only-send-001",
+        };
+      },
+    },
+  };
+}

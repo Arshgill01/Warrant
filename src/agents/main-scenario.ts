@@ -1,6 +1,7 @@
 import type {
   ActionAttempt,
   DemoAgent,
+  DemoRuntimeExecutionSnapshot,
   DemoScenario,
   DemoUser,
   LedgerEvent,
@@ -252,6 +253,29 @@ interface MainScenarioRunOptions {
   stage?: MainScenarioStage;
   plannerModelAdapter?: SharedModelAdapter;
   childRuntimeModelAdapter?: RuntimeModelAdapter;
+  runtimeExecution?: DemoRuntimeExecutionSnapshot;
+}
+
+function createSeededRuntimeExecutionSnapshot(input: {
+  requestedMode?: DemoRuntimeExecutionSnapshot["requestedMode"];
+  diagnostics?: string[];
+  fallbackReason?: string | null;
+} = {}): DemoRuntimeExecutionSnapshot {
+  return {
+    requestedMode: input.requestedMode ?? "seeded",
+    lane: "seeded-fallback",
+    modelSource: "seeded-deterministic",
+    providerSource: "seeded-simulated",
+    seededFallbackUsed: true,
+    fallbackReason: input.fallbackReason ?? "Running canonical deterministic seeded scenario.",
+    diagnostics: input.diagnostics ?? [
+      "planner_runtime=deterministic",
+      "calendar_runtime=deterministic",
+      "comms_runtime=deterministic",
+      "provider_execution=seeded-simulated",
+    ],
+    checkedAt: REFERENCE_TIME,
+  };
 }
 
 function requireDelegationDraft(
@@ -302,6 +326,8 @@ export function runMainScenarioPlannerFlow(
   options: MainScenarioRunOptions = {},
 ): MainScenarioRunResult {
   const stage = options.stage ?? "comms-revoked";
+  const runtimeExecution =
+    options.runtimeExecution ?? createSeededRuntimeExecutionSnapshot();
   const plannerAgent = buildPlannerAgent();
   const calendarAgent = buildCalendarAgent();
   const commsAgent = buildCommsAgent();
@@ -856,6 +882,7 @@ export function runMainScenarioPlannerFlow(
       ],
       controlDecisions,
       runtimeEvents,
+      runtimeExecution,
       examples: {
         calendarChildWarrantId: calendarWarrant.id,
         commsChildWarrantId: commsWarrant.id,
@@ -1134,6 +1161,7 @@ export function runMainScenarioPlannerFlow(
     ],
     controlDecisions,
     runtimeEvents,
+    runtimeExecution,
     examples: {
       calendarChildWarrantId: calendarWarrant.id,
       commsChildWarrantId: commsWarrant.id,

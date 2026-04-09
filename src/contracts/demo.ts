@@ -62,6 +62,19 @@ export interface DemoScenarioExamples {
 }
 
 export type DemoLivePreflightMode = "token-only" | "live";
+export type DemoRuntimeMode = DemoLivePreflightMode | "seeded";
+export type DemoRuntimeLane = "live-token-only" | "live-provider" | "seeded-fallback";
+
+export interface DemoRuntimeExecutionSnapshot {
+  requestedMode: DemoRuntimeMode;
+  lane: DemoRuntimeLane;
+  modelSource: "live-gemma" | "seeded-deterministic";
+  providerSource: "provider-backed" | "token-only-simulated" | "seeded-simulated";
+  seededFallbackUsed: boolean;
+  fallbackReason: string | null;
+  diagnostics: string[];
+  checkedAt: string;
+}
 
 export type DemoLivePreflightState = "ready" | "blocked" | "error" | "skipped";
 
@@ -110,5 +123,6 @@ export interface DemoScenario {
   timeline: LedgerEvent[];
   controlDecisions: RuntimeProposalControlDecision[];
   runtimeEvents: RuntimeControlEvent[];
+  runtimeExecution: DemoRuntimeExecutionSnapshot;
   examples: DemoScenarioExamples;
 }

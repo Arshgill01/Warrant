@@ -12,6 +12,7 @@ export const commsRuntimeIdentity: RuntimeIdentity = {
   role: "comms",
   label: "Comms Runtime",
 };
+export const COMMS_RUNTIME_SCHEMA_NAME = "comms_runtime_output";
 
 const COMMS_ALLOWED_CAPABILITIES = new Set(["gmail.draft", "gmail.send"]);
 
@@ -96,7 +97,14 @@ function validateCommsOutput(value: unknown, input: CommsReasoningInput): value 
   return isCommsRuntimeOutput(value) && outputRespectsCommsRole(value, input);
 }
 
-function buildCommsPrompt(input: CommsReasoningInput): string {
+export function validateCommsRuntimeOutput(
+  value: unknown,
+  input: CommsReasoningInput,
+): value is CommsRuntimeOutput {
+  return validateCommsOutput(value, input);
+}
+
+export function buildCommsPrompt(input: CommsReasoningInput): string {
   return [
     "You are the Comms Agent runtime for Warrant.",
     "Your role is drafting communication content.",
@@ -118,7 +126,7 @@ export function runCommsRuntime(input: {
 }): RuntimeExecutionResult<CommsRuntimeOutput> {
   return invokeWithValidationAndRepair({
     runtime: commsRuntimeIdentity,
-    schemaName: "comms_runtime_output",
+    schemaName: COMMS_RUNTIME_SCHEMA_NAME,
     prompt: buildCommsPrompt(input.runtimeInput),
     runtimeInput: input.runtimeInput,
     now: input.runtimeInput.now,

@@ -13,6 +13,7 @@ export const calendarRuntimeIdentity: RuntimeIdentity = {
   role: "calendar",
   label: "Calendar Runtime",
 };
+export const CALENDAR_RUNTIME_SCHEMA_NAME = "calendar_runtime_output";
 
 const CALENDAR_ALLOWED_CAPABILITIES = new Set(["calendar.read", "calendar.schedule"]);
 
@@ -88,7 +89,14 @@ function validateCalendarOutput(value: unknown, input: CalendarReasoningInput): 
   return isCalendarRuntimeOutput(value) && outputRespectsCalendarRole(value, input);
 }
 
-function buildCalendarPrompt(input: CalendarReasoningInput): string {
+export function validateCalendarRuntimeOutput(
+  value: unknown,
+  input: CalendarReasoningInput,
+): value is CalendarRuntimeOutput {
+  return validateCalendarOutput(value, input);
+}
+
+export function buildCalendarPrompt(input: CalendarReasoningInput): string {
   return [
     "You are the Calendar Agent runtime for Warrant.",
     "Only reason about scheduling context.",
@@ -109,7 +117,7 @@ export function runCalendarRuntime(input: {
 }): RuntimeExecutionResult<CalendarRuntimeOutput> {
   return invokeWithValidationAndRepair({
     runtime: calendarRuntimeIdentity,
-    schemaName: "calendar_runtime_output",
+    schemaName: CALENDAR_RUNTIME_SCHEMA_NAME,
     prompt: buildCalendarPrompt(input.runtimeInput),
     runtimeInput: input.runtimeInput,
     now: input.runtimeInput.now,
