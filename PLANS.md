@@ -4323,3 +4323,108 @@ Out of scope:
 - Auth0 SDK error surfaces may not expose enough metadata to perfectly classify every FAILED_TO_EXCHANGE edge; some cases may still require inference.
 - Token-only semantics depend on intended product meaning; UI/docs must clearly communicate that token-only is runtime-lane validation rather than full provider readiness.
 - Local verification of fully ready live-provider mode requires tenant/session/account prerequisites that may be unavailable during coding.
+
+## ExecPlan — Live Gemma Runtime Activation For `/demo` (2026-04-09)
+
+### Objective
+
+Activate `/demo` so it executes real Gemma-backed Planner/Calendar/Comms runtime behavior in both token-only and live-provider lanes, while preserving control-bridge enforcement and keeping seeded state only as explicit fallback.
+
+### Demo relevance
+
+This restores credibility for the core thesis path by making the demo visibly run a real runtime lane instead of only replaying seeded fixtures:
+
+1. Planner/Calendar/Comms reasoning runs through live Gemma in token-only mode.
+2. Live-provider mode uses the same live runtime plus real delegated Google action paths when ready.
+3. Deny/approval/revoke proof points remain intact under live execution.
+4. The UI clearly labels live runtime vs provider-backed vs seeded fallback.
+
+### Scope
+
+In scope:
+
+- add a live runtime orchestration path for `/demo` that can execute in:
+  - `token-only` (live model runtime, provider path not required)
+  - `live` (live model runtime + real provider-backed actions when readiness is satisfied)
+- preserve existing control bridge checks and states (`denied_policy`, approval states, revocation/expiry blocks)
+- add explicit runtime lane metadata and labeling on `/demo`
+- keep deterministic seeded scenario as explicit fallback only, never implicit/silent
+- keep existing rehearsal preset support
+
+Out of scope:
+
+- redesigning warrant policy semantics
+- adding new providers or actions beyond current Calendar/Gmail scope
+- changing Auth0 tenant setup requirements or bypassing delegated-access checks
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/contracts/demo.ts`
+- `src/agents/runtime/calendar-runtime.ts`
+- `src/agents/runtime/comms-runtime.ts`
+- `src/agents/runtime/adapter.ts`
+- `src/agents/main-scenario.ts`
+- `src/demo-fixtures/scenario.ts`
+- `src/app/demo/page.tsx`
+- `src/components/demo/demo-surface.tsx`
+- `src/actions/provider-adapters.ts` (or new live adapter mapping module)
+- `tests/*` focused on demo/runtime orchestration + surface behavior
+- `README.md` / local demo docs if runtime mode semantics shift
+
+### Invariants to preserve
+
+- two-layer enforcement: local warrant policy and external delegated provider path remain distinct
+- child delegation narrowing and branch revoke behavior must not regress
+- control bridge remains the execution gate (no runtime bypass)
+- token-only lane must not be mislabeled as provider-backed execution
+- seeded fallback must be explicit, visible, and reasoned
+
+### Implementation steps
+
+1. Add runtime-lane contract surface:
+   - introduce explicit demo runtime lane metadata (live token-only, live provider-backed, seeded fallback)
+   - include explicit fallback reason when seeded path is used
+2. Build live runtime prefetch/orchestration layer:
+   - call live Gemma structured outputs for planner/calendar/comms
+   - feed those outputs into existing scenario/control-bridge flow without bypassing current enforcement
+   - if live runtime calls fail, switch to seeded fallback with explicit lane metadata
+3. Wire token-only lane:
+   - `/demo` token-only mode must execute live Gemma runtime path even when provider prerequisites are absent
+   - keep provider execution non-required and clearly labeled as non-provider-backed
+4. Wire live-provider lane:
+   - when Auth0 + delegated Google prerequisites are ready, run provider-backed Calendar/Gmail paths
+   - map provider results into action records while preserving deny/approval/revoke transitions
+   - when prerequisites are not ready, fall back explicitly with clear labeling
+5. Surface runtime visibility in `/demo`:
+   - add lane/status indicators and concise runtime diagnostics
+   - remove ambiguous “fixture-backed” labeling when live lane is active
+6. Test + validate:
+   - add/update targeted tests for lane selection, explicit fallback labeling, and control-surface preservation
+   - run lint/typecheck/tests/build and local mode exercises
+
+### Commit slices
+
+1. token-only live runtime activation
+2. live-provider runtime activation hooks
+3. runtime-state visibility and seeded-fallback labeling
+4. tests/docs cleanup and final validation
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- `npm run verify:live-model`
+- `npm run dev` then manual `/demo` checks:
+  - token-only lane shows live runtime active and non-provider-backed labeling
+  - live lane shows provider-backed execution only when prerequisites are ready
+  - fallback lane (if triggered) is explicitly labeled with reason
+  - deny/approval/revoke proof points still present and coherent
+
+### Risks
+
+- live model output variability can produce semantically invalid plans; fallback handling must remain explicit and truthful.
+- live-provider verification depends on local Auth0 session + connected-account readiness and may remain blocked in non-configured environments.
+- preserving deterministic rehearsal presets while enabling live-by-default behavior can create UX confusion unless lane labeling is unambiguous.
