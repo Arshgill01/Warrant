@@ -115,6 +115,7 @@ function renderSurface(scenario: DemoScenario): string {
     React.createElement(DemoSurface, {
       initialScenario: scenario,
       authConfigured: false,
+      requestedRuntimeMode: "seeded",
     }),
   );
 }

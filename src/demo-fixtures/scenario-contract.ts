@@ -116,6 +116,7 @@ export function validateDemoScenarioContract(
   profile: DemoScenarioProfile = "generic",
 ): DemoScenarioValidationResult {
   const issues: string[] = [];
+  const runtimeExecution = (scenario as Partial<DemoScenario>).runtimeExecution;
   const warrantsById = new Map(scenario.warrants.map((warrant) => [warrant.id, warrant]));
   const actionsById = new Map(scenario.actionAttempts.map((action) => [action.id, action]));
   const approvalsById = new Map(scenario.approvals.map((approval) => [approval.id, approval]));
@@ -143,6 +144,25 @@ export function validateDemoScenarioContract(
     issues,
     `Root warrant ${scenario.rootWarrantId} is missing from scenario.warrants.`,
   );
+
+  pushIfMissing(
+    Boolean(runtimeExecution),
+    issues,
+    "Scenario is missing runtimeExecution metadata.",
+  );
+
+  if (runtimeExecution) {
+    pushIfMissing(
+      runtimeExecution.checkedAt.length > 0,
+      issues,
+      "runtimeExecution.checkedAt must be a non-empty timestamp string.",
+    );
+    pushIfMissing(
+      runtimeExecution.diagnostics.length > 0,
+      issues,
+      "runtimeExecution.diagnostics must include at least one line.",
+    );
+  }
 
   scenario.warrants.forEach((warrant) => {
     if (warrant.parentId && !warrantsById.has(warrant.parentId)) {

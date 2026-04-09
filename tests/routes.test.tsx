@@ -44,7 +44,13 @@ describe("route rendering", () => {
 
   it("renders the demo route with the canonical seeded scenario", async () => {
     const { default: DemoPage, dynamic: demoDynamic, metadata: demoMetadata } = await import("@/app/demo/page");
-    const html = renderToStaticMarkup(React.createElement(DemoPage));
+    const html = renderToStaticMarkup(
+      await DemoPage({
+        searchParams: Promise.resolve({
+          runtimeMode: "seeded",
+        }),
+      }),
+    );
 
     expect(demoDynamic).toBe("force-dynamic");
     expect(demoMetadata.title).toBe("Warrant | Delegated Authority Demo");
@@ -78,7 +84,13 @@ describe("route rendering", () => {
     process.env.WARRANT_ENABLE_DEMO_TOOLS = "true";
 
     const { default: DemoPage } = await import("@/app/demo/page");
-    const html = renderToStaticMarkup(React.createElement(DemoPage));
+    const html = renderToStaticMarkup(
+      await DemoPage({
+        searchParams: Promise.resolve({
+          runtimeMode: "seeded",
+        }),
+      }),
+    );
 
     expect(html).toContain("Demo-only rehearsal tools");
     expect(html).toContain("Restore a known-good state before each take.");
