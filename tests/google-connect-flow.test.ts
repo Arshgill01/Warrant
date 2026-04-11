@@ -59,4 +59,24 @@ describe("google connect flow helpers", () => {
       }),
     ).toBe("bootstrap-token-failure");
   });
+
+  it("classifies failed connect initiation http_400 as tenant/config issue", () => {
+    expect(
+      classifyGoogleConnectStartFailure({
+        status: 400,
+        errorCode: "failed_to_initiate",
+        errorMessage: "The request to initiate the connect account flow failed with status 400.",
+      }),
+    ).toBe("tenant-config-issue");
+  });
+
+  it("prioritizes callback/redirect issues over generic tenant failures", () => {
+    expect(
+      classifyGoogleConnectStartFailure({
+        status: 400,
+        errorCode: "invalid_request",
+        errorMessage: "Callback URL mismatch for redirect URI.",
+      }),
+    ).toBe("callback-redirect-issue");
+  });
 });

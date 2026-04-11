@@ -1,6 +1,12 @@
+import { ConnectAccountError } from "@auth0/nextjs-auth0/errors";
 import { NextResponse } from "next/server";
+import { auth0 } from "@/auth";
 import { logLiveProviderDiagnostic } from "@/auth/live-provider-diagnostics";
-import { buildGoogleConnectHref } from "@/connections/google";
+import {
+  buildGoogleConnectHref,
+  googleConnectAuthorizationParams,
+  googleDelegatedScopes,
+} from "@/connections/google";
 import {
   appendGoogleConnectFlowContext,
   classifyGoogleConnectStartFailure,
@@ -16,6 +22,18 @@ function nowIsoString(): string {
 
 function readString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function normalizeErrorCode(value: string | null): string | null {
@@ -50,6 +68,7 @@ function appendSetCookieHeaders(source: Headers, target: Headers): void {
 }
 
 async function readConnectStartError(response: Response): Promise<{
+  status: number;
   errorCode: string | null;
   errorMessage: string | null;
 }> {
@@ -58,6 +77,7 @@ async function readConnectStartError(response: Response): Promise<{
   if (!contentType.includes("application/json")) {
     const textBody = await response.text();
     return {
+      status: response.status,
       errorCode: null,
       errorMessage: readString(textBody),
     };
@@ -66,11 +86,56 @@ async function readConnectStartError(response: Response): Promise<{
   const body = (await response.json()) as Record<string, unknown>;
 
   return {
+    status: response.status,
     errorCode: readString(body.code) ?? readString(body.error),
     errorMessage:
       readString(body.message) ??
       readString(body.error_description) ??
       readString(body.detail),
+  };
+}
+
+function readValidationErrorDetail(value: unknown): string | null {
+  const record = readRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  return readString(record.detail) ?? readString(record.message);
+}
+
+function readConnectStartErrorFromException(error: unknown): {
+  status: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+} {
+  if (error instanceof ConnectAccountError) {
+    const cause = readRecord(error.cause);
+    const causeStatus = readNumber(cause?.status) ?? 400;
+    const causeDetail = readString(cause?.detail);
+    const causeTitle = readString(cause?.title);
+    const validationErrors = Array.isArray(cause?.validationErrors)
+      ? cause.validationErrors
+      : [];
+    const validationDetail = validationErrors
+      .map((entry) => readValidationErrorDetail(entry))
+      .find((value): value is string => Boolean(value));
+    const detailParts = [causeDetail, validationDetail, causeTitle, readString(error.message)]
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 3);
+
+    return {
+      status: causeStatus,
+      errorCode: readString(error.code) ?? readString(cause?.type),
+      errorMessage: detailParts.length ? detailParts.join(" | ") : null,
+    };
+  }
+
+  const record = readRecord(error);
+  return {
+    status: readNumber(record?.status) ?? 500,
+    errorCode: readString(record?.code) ?? null,
+    errorMessage: readString(record?.message) ?? null,
   };
 }
 
@@ -95,6 +160,60 @@ export async function GET(request: Request): Promise<NextResponse> {
     connectHref,
     returnTo: connectReturnTo,
   });
+
+  if (auth0) {
+    try {
+      const connectResponse = await auth0.connectAccount({
+        connection: authEnv.googleConnectionName,
+        scopes: [...googleDelegatedScopes],
+        authorizationParams: {
+          ...googleConnectAuthorizationParams,
+        },
+        returnTo: connectReturnTo,
+      });
+
+      logLiveProviderDiagnostic("google.connect.start.forward_redirect", {
+        attemptId,
+        status: connectResponse.status,
+        hasRedirectLocation: Boolean(connectResponse.headers.get("location")),
+        via: "auth0-client",
+      });
+
+      return connectResponse;
+    } catch (error) {
+      const connectError = readConnectStartErrorFromException(error);
+      const flowState = classifyGoogleConnectStartFailure({
+        status: connectError.status,
+        errorCode: connectError.errorCode,
+        errorMessage: connectError.errorMessage,
+      });
+      const errorCode = normalizeErrorCode(connectError.errorCode) ?? `http_${connectError.status}`;
+      const errorDetail =
+        connectError.errorMessage ??
+        (normalizeErrorCode(connectError.errorCode) ? null : connectError.errorCode) ??
+        "Auth0 could not start the connected-account flow before provider handoff.";
+      const failureReturnTo = appendGoogleConnectFlowContext(returnTo, {
+        state: flowState,
+        attemptId,
+        checkedAt,
+        errorCode,
+        errorDetail,
+      });
+
+      logLiveProviderDiagnostic("google.connect.start.failed", {
+        attemptId,
+        status: connectError.status,
+        flowState,
+        errorCode,
+        errorDetail,
+        via: "auth0-client",
+      });
+
+      return NextResponse.redirect(new URL(failureReturnTo, requestUrl.origin), {
+        status: 302,
+      });
+    }
+  }
 
   const connectResponse = await fetch(connectTarget.toString(), {
     method: "GET",
@@ -129,11 +248,11 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const connectError = await readConnectStartError(connectResponse);
   const flowState = classifyGoogleConnectStartFailure({
-    status: connectResponse.status,
+    status: connectError.status,
     errorCode: connectError.errorCode,
     errorMessage: connectError.errorMessage,
   });
-  const errorCode = normalizeErrorCode(connectError.errorCode) ?? `http_${connectResponse.status}`;
+  const errorCode = normalizeErrorCode(connectError.errorCode) ?? `http_${connectError.status}`;
   const errorDetail =
     connectError.errorMessage ??
     (normalizeErrorCode(connectError.errorCode) ? null : connectError.errorCode) ??
@@ -148,10 +267,11 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   logLiveProviderDiagnostic("google.connect.start.failed", {
     attemptId,
-    status: connectResponse.status,
+    status: connectError.status,
     flowState,
     errorCode,
     errorDetail,
+    via: "fetch-fallback",
   });
 
   const response = NextResponse.redirect(new URL(failureReturnTo, requestUrl.origin), {

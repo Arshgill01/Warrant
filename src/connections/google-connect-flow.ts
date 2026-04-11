@@ -211,22 +211,6 @@ export function classifyGoogleConnectStartFailure(input: {
   const combined = `${input.errorCode ?? ""} ${input.errorMessage ?? ""}`.toLowerCase();
 
   if (
-    input.status === 401 &&
-    combined.includes("connected account access token")
-  ) {
-    return "bootstrap-token-failure";
-  }
-
-  if (
-    input.status === 503 ||
-    combined.includes("configuration") ||
-    combined.includes("setup") ||
-    combined.includes("tenant")
-  ) {
-    return "tenant-config-issue";
-  }
-
-  if (
     combined.includes("callback") ||
     combined.includes("redirect") ||
     combined.includes("returnto")
@@ -234,5 +218,31 @@ export function classifyGoogleConnectStartFailure(input: {
     return "callback-redirect-issue";
   }
 
-  return "bootstrap-token-failure";
+  if (
+    input.status === 401 &&
+    combined.includes("connected account access token")
+  ) {
+    return "bootstrap-token-failure";
+  }
+
+  if (
+    input.status === 400 ||
+    input.status === 403 ||
+    input.status === 404 ||
+    input.status === 422 ||
+    input.status === 429 ||
+    input.status === 503 ||
+    input.status >= 500 ||
+    combined.includes("failed_to_initiate") ||
+    combined.includes("initiate the connect account flow") ||
+    combined.includes("my account api") ||
+    combined.includes("configuration") ||
+    combined.includes("setup") ||
+    combined.includes("tenant") ||
+    combined.includes("connected account")
+  ) {
+    return "tenant-config-issue";
+  }
+
+  return "tenant-config-issue";
 }
