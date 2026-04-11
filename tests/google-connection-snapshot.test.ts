@@ -120,4 +120,23 @@ describe("google connection snapshot gating", () => {
     expect(snapshot.diagnostics?.connectedAccountEvidence).toBe("none");
     expect(snapshot.diagnostics?.tokenExchange.outcome).toBe("failed-to-exchange");
   });
+
+  it("marks bootstrap as attempted when connect-start already failed before handoff", async () => {
+    const { getGoogleConnectionSnapshot } = await import("@/connections/google");
+    const snapshot = await getGoogleConnectionSnapshot(signedInSession, {
+      connectFlow: {
+        state: "bootstrap-token-failure",
+        attemptId: "attempt-2",
+        checkedAt: "2026-04-11T00:00:00.000Z",
+        errorCode: "http_401",
+        errorDetail: "Failed to retrieve a connected account access token.",
+        source: "query",
+      },
+    });
+
+    expect(snapshot.lifecycleState).toBe("bootstrap-token-failure");
+    expect(snapshot.diagnostics?.bootstrap.attempted).toBe(true);
+    expect(snapshot.diagnostics?.bootstrap.outcome).toBe("failed");
+    expect(snapshot.diagnostics?.connectFailureCode).toBe("http_401");
+  });
 });

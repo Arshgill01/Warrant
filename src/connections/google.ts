@@ -329,6 +329,15 @@ function resolveBootstrapDiagnostics(input: {
     };
   }
 
+  if (input.connectFlowState === "bootstrap-token-failure") {
+    return {
+      attempted: true,
+      outcome: "failed",
+      note:
+        "Connected-account bootstrap was attempted during connect start and failed before Google handoff. See connect_failure_code/detail.",
+    };
+  }
+
   if (
     tokenExchange.outcome === "success" ||
     tokenExchange.outcome === "failed-to-exchange" ||

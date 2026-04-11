@@ -33,6 +33,7 @@ export type ProviderTokenExchangeFailureEdge =
 
 export type ProviderConnectionBootstrapOutcome =
   | "not-attempted"
+  | "failed"
   | "ready"
   | "missing-session"
   | "missing-refresh-token"
