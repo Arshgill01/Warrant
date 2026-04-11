@@ -18,6 +18,7 @@ describe("google connect-start route", () => {
         status: 302,
         headers: {
           location: "https://example.auth0.com/continue-connect",
+          "set-cookie": "auth_verification=txn123; Path=/; HttpOnly; Secure",
         },
       })) as unknown as typeof fetch;
 
@@ -28,6 +29,7 @@ describe("google connect-start route", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("https://example.auth0.com/continue-connect");
+    expect(response.headers.get("set-cookie")).toContain("auth_verification=txn123");
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -42,6 +44,7 @@ describe("google connect-start route", () => {
           status: 401,
           headers: {
             "content-type": "application/json",
+            "set-cookie": "appSession=rotated; Path=/; HttpOnly; Secure",
           },
         },
       )) as unknown as typeof fetch;
@@ -55,6 +58,7 @@ describe("google connect-start route", () => {
     const location = response.headers.get("location") ?? "";
     expect(location).toContain("googleConnectFlow=bootstrap-token-failure");
     expect(location).toContain("googleConnectCode=access_token_error");
+    expect(response.headers.get("set-cookie")).toContain("appSession=rotated");
   });
 
   it("maps tenant/config failures", async () => {

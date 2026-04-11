@@ -28,6 +28,27 @@ function normalizeErrorCode(value: string | null): string | null {
   return /^[a-z0-9._:-]{1,100}$/.test(normalized) ? normalized : null;
 }
 
+function readSetCookieHeaders(headers: Headers): string[] {
+  const headersWithGetSetCookie = headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+
+  if (typeof headersWithGetSetCookie.getSetCookie === "function") {
+    return headersWithGetSetCookie.getSetCookie();
+  }
+
+  const setCookie = headers.get("set-cookie");
+  return setCookie ? [setCookie] : [];
+}
+
+function appendSetCookieHeaders(source: Headers, target: Headers): void {
+  const setCookies = readSetCookieHeaders(source);
+
+  setCookies.forEach((cookie) => {
+    target.append("set-cookie", cookie);
+  });
+}
+
 async function readConnectStartError(response: Response): Promise<{
   errorCode: string | null;
   errorMessage: string | null;
@@ -98,9 +119,12 @@ export async function GET(request: Request): Promise<NextResponse> {
       hasRedirectLocation: true,
     });
 
-    return NextResponse.redirect(new URL(redirectLocation, requestUrl.origin), {
+    const response = NextResponse.redirect(new URL(redirectLocation, requestUrl.origin), {
       status: 302,
     });
+    appendSetCookieHeaders(connectResponse.headers, response.headers);
+
+    return response;
   }
 
   const connectError = await readConnectStartError(connectResponse);
@@ -130,7 +154,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     errorDetail,
   });
 
-  return NextResponse.redirect(new URL(failureReturnTo, requestUrl.origin), {
+  const response = NextResponse.redirect(new URL(failureReturnTo, requestUrl.origin), {
     status: 302,
   });
+  appendSetCookieHeaders(connectResponse.headers, response.headers);
+
+  return response;
 }
