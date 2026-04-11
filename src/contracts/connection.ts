@@ -62,6 +62,7 @@ export interface ProviderConnectionDiagnostics {
   connectHref: string | null;
   connectStartHref: string | null;
   accountLabelSource: "override" | "session-email" | "none";
+  connectedAccountEvidence: "none" | "connect-callback-returned" | "delegated-token-ready";
   lifecycleState: ProviderConnectionLifecycleState;
   connectFlowState: ProviderConnectFlowState;
   connectFailureCode: string | null;
