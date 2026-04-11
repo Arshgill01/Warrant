@@ -143,6 +143,7 @@ function summarizeConnectionDiagnostics(connection: ProviderConnectionSnapshot):
     `connect_href=${diagnostics.connectHref ?? "n/a"}`,
     `connect_start_href=${diagnostics.connectStartHref ?? "n/a"}`,
     `account_label_source=${diagnostics.accountLabelSource}`,
+    `connected_account_evidence=${diagnostics.connectedAccountEvidence}`,
     `lifecycle_state=${diagnostics.lifecycleState}`,
     `connect_flow_state=${diagnostics.connectFlowState}`,
     diagnostics.connectFailureCode
