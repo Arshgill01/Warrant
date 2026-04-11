@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConnectAccountError, MyAccountApiError } from "@auth0/nextjs-auth0/errors";
 
 const originalFetch = global.fetch;
 
@@ -109,5 +110,69 @@ describe("google connect-start route", () => {
     expect(response.status).toBe(302);
     const location = response.headers.get("location") ?? "";
     expect(location).toContain("googleConnectFlow=callback-redirect-issue");
+  });
+
+  it("maps generic connect-initiation http_400 failures to tenant/config issue", async () => {
+    global.fetch = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          code: "failed_to_initiate",
+          message: "The request to initiate the connect account flow failed with status 400.",
+        }),
+        {
+          status: 400,
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+      )) as unknown as typeof fetch;
+
+    const { GET } = await import("@/app/api/connect/google/route");
+    const response = await GET(
+      new Request("http://localhost:3000/api/connect/google?returnTo=%2F"),
+    );
+
+    expect(response.status).toBe(302);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toContain("googleConnectFlow=tenant-config-issue");
+    expect(location).toContain("googleConnectCode=failed_to_initiate");
+  });
+
+  it("surfaces SDK connectAccount initiation errors before redirecting back", async () => {
+    const connectAccount = vi.fn(async () => {
+      throw new ConnectAccountError({
+        code: "failed_to_initiate",
+        message: "The request to initiate the connect account flow failed with status 400.",
+        cause: new MyAccountApiError({
+          type: "invalid_body",
+          title: "Validation error",
+          detail: "connection is not enabled for this application",
+          status: 400,
+          validationErrors: [{ detail: "connection must be enabled for client" }],
+        }),
+      });
+    });
+
+    vi.doMock("@/auth", async () => {
+      const actual = await vi.importActual<typeof import("@/auth")>("@/auth");
+      return {
+        ...actual,
+        auth0: {
+          connectAccount,
+        },
+      };
+    });
+
+    const { GET } = await import("@/app/api/connect/google/route");
+    const response = await GET(
+      new Request("http://localhost:3000/api/connect/google?returnTo=%2F"),
+    );
+
+    expect(connectAccount).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(302);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toContain("googleConnectFlow=tenant-config-issue");
+    expect(location).toContain("googleConnectCode=failed_to_initiate");
+    expect(location).toContain("connection+is+not+enabled+for+this+application");
   });
 });
