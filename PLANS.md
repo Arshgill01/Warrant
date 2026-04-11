@@ -4538,3 +4538,113 @@ Out of scope:
 - proving end-to-end “provider ready” may still depend on tenant/session conditions outside this repo; if so, blocker evidence must be captured explicitly.
 - Auth0 SDK behavior may still return coarse error envelopes for some bootstrap failures; classification may remain partially heuristic.
 - repeated retest discipline is required to avoid accepting partial UI-only fixes.
+
+## ExecPlan — Live Connect-Start Path Proof And Fix Loop (2026-04-11)
+
+### Objective
+
+Determine whether the local app is initiating the real Auth0 connected-account start path correctly from the `Connect Google with Auth0` CTA and either:
+
+- apply the smallest app-side fix needed to correct initiation, or
+- produce concrete evidence that the remaining block is external (Auth0 tenant/SDK-side) while app initiation is correct.
+
+### Demo relevance
+
+This secures the first two beats of the demo:
+
+1. user signs in
+2. user starts Google connection through Auth0 Token Vault
+
+If connect-start is wrong or ambiguous, the demo cannot credibly prove delegated access and two-layer enforcement.
+
+### Scope
+
+In scope:
+
+- inspect full connect-start path:
+  - CTA -> `/api/connect/google` -> `/auth/connect` -> Auth0/browser redirects
+- verify connect-start URL/options/params and ensure wrappers do not strip or mutate required values
+- inspect real browser network/redirect behavior against intended flow
+- classify the current `401` edge as:
+  - wrong path
+  - wrong options/state
+  - or external Auth0-side refusal despite correct initiation
+- implement smallest targeted app-side fix if initiation is incorrect
+- preserve truthful diagnostics (`connected_account_evidence`, bootstrap/token exchange attempted, connect failure fields)
+- repeat reproduction/fix/retest loop from clean browser state until app initiation is verified correct or external block is proven
+
+Out of scope:
+
+- broad auth architecture changes
+- reintroducing eager delegated token exchange
+- faking connection/delegated-ready state
+- Gemma runtime activation or unrelated demo-surface work
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/app/api/connect/google/route.ts`
+- `src/connections/google-connect-flow.ts`
+- `src/connections/google.ts`
+- `src/app/page.tsx` (query/context flow only if needed)
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/demo-fixtures/live-preflight.ts`
+- `tests/google-connect-start-route.test.ts`
+- `tests/google-connect-flow.test.ts`
+- `tests/google-connection-snapshot.test.ts`
+- `tests/auth-shell.test.ts`
+- `tests/live-preflight-route.test.ts`
+
+### Invariants to preserve
+
+- two-layer enforcement remains explicit
+- delegated token exchange is not attempted eagerly
+- signed-in identity/session email is not treated as delegated readiness proof
+- diagnostics remain truthful, explicit, and non-secret-bearing
+- real Auth0 connected-account handoff stays the source of truth for connection start
+
+### Implementation steps
+
+1. Reproduce baseline:
+   - run local app and capture current connect-start behavior + diagnostics
+   - collect browser/network evidence for CTA -> wrapper -> `/auth/connect` handling
+2. Verify initiation correctness:
+   - compare constructed start URL/options against intended connected-account flow
+   - verify no app-side mutation/loss of required params and cookies
+3. Apply smallest fix if app-side issue exists:
+   - patch only the failing edge in wrapper/helper/state mapping
+   - preserve current truthful gating/diagnostics behavior
+4. Retest loop:
+   - rerun from clean browser context
+   - capture before/after diagnostics and redirect evidence
+   - repeat until handoff succeeds or external blocker is proven
+5. Validate and finalize:
+   - run lint/typecheck/tests/build
+   - keep commits in small slices:
+     1. tracing/instrumentation (if needed)
+     2. connect-start route/helper fix
+     3. diagnostics/tests cleanup
+     4. final retest evidence
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- manual repeated retests with local server:
+  - sign in
+  - click `Connect Google with Auth0`
+  - verify redirect chain reaches real Auth0/Google handoff or classify exact external blocker
+  - compare diagnostics before/after:
+    - `connected_account_evidence`
+    - `bootstrap_attempted`
+    - `token_exchange_attempted`
+    - `connect_failure_code`
+    - `connect_failure_detail`
+
+### Risks
+
+- full handoff success depends on tenant/session/account prerequisites outside repo control
+- Auth0 SDK may return coarse error payloads that require careful classification
+- browser-auth flows may require manual step continuation during automated repro
