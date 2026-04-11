@@ -4428,3 +4428,113 @@ Out of scope:
 - live model output variability can produce semantically invalid plans; fallback handling must remain explicit and truthful.
 - live-provider verification depends on local Auth0 session + connected-account readiness and may remain blocked in non-configured environments.
 - preserving deterministic rehearsal presets while enabling live-by-default behavior can create UX confusion unless lane labeling is unambiguous.
+
+## ExecPlan — Live Connect Force-Handoff Truthfulness Fix (2026-04-11)
+
+### Objective
+
+Fix the Google/Auth0 connect decision path so signed-in identity or session-email labels never count as delegated Google readiness, and the app reliably starts real connected-account handoff when delegated access is not yet established.
+
+### Demo relevance
+
+This hardens the Milestone 1 flow used in every demo rehearsal:
+
+1. user signs in
+2. user clicks `Connect Google with Auth0`
+3. app starts real `/auth/connect` handoff when connection is needed
+4. app reports callback/bootstrap/token-readiness truthfully
+
+Without this, the app can dead-end on token exchange before handoff and mislead operators with identity-derived labels.
+
+### Scope
+
+In scope:
+
+- inspect and correct connect gating across:
+  - auth setup section
+  - provider connection panel
+  - `/api/connect/google`
+  - `/auth/connect` handoff initiation/callback markers
+  - live preflight delegated-readiness checks
+- remove/tighten logic that uses session identity (`session-email`) as delegated-readiness proof
+- add explicit separation between:
+  - signed-in identity
+  - account label visibility
+  - connected-account handoff state
+  - delegated token readiness
+  - provider-ready state
+- keep diagnostics explicit and machine-readable, including bootstrap/token exchange context
+- retest repeatedly from clean/incognito browser state after each fix
+
+Out of scope:
+
+- broad provider action feature work unrelated to connect initiation correctness
+- warrant-engine or agent-logic behavior changes
+- fake readiness states or silent fallback success
+
+### Files/modules likely affected
+
+- `PLANS.md`
+- `src/connections/google.ts`
+- `src/connections/google-connect-flow.ts`
+- `src/app/api/connect/google/route.ts`
+- `src/components/auth-shell/auth-shell.tsx`
+- `src/demo-fixtures/live-preflight.ts`
+- `src/app/page.tsx` (query/context handling only if needed)
+- `tests/google-connect-flow.test.ts`
+- `tests/google-connect-start-route.test.ts`
+- `tests/auth-shell.test.ts`
+- `tests/live-preflight-route.test.ts`
+
+### Invariants to preserve
+
+- two-layer enforcement remains explicit: local warrant allowance is separate from delegated provider capability
+- account label visibility is never treated as delegated token proof
+- connect uses real Auth0 connected-account handoff, not local simulation
+- diagnostics remain truthful, specific, and non-secret-bearing
+- no fake provider-ready state is introduced
+
+### Implementation steps
+
+1. Baseline + reproduce:
+   - run local app and reproduce current failure path
+   - capture shell diagnostics and redirect behavior for `Connect Google with Auth0`
+2. Tighten connect/token gating:
+   - prevent premature delegated token exchange when only weak identity evidence exists
+   - require stronger handoff-completion evidence before treating delegated access as exchange-eligible
+3. Update lifecycle and UI truthfulness:
+   - ensure lifecycle states cleanly distinguish signed-in vs connected vs delegated-ready
+   - ensure action labels/hrefs always drive to real handoff when connection is still needed
+4. Preserve/improve diagnostics:
+   - keep `token_exchange_oauth_code`, `lifecycle_state`, `account_label_source`, and connect-flow markers coherent
+   - ensure callback/bootstrap/token states are separately visible
+5. Iterative retest loop:
+   - retest in clean browser/incognito state
+   - inspect redirects/network and diagnostics
+   - apply smallest next fix until handoff behavior is corrected or only external blocker remains with proof
+6. Validation + commit slices:
+   - run lint/typecheck/tests/build
+   - commit in small slices:
+     1. connect-flow decision/gating fix
+     2. state-model/UI truthfulness fix
+     3. diagnostics/callback cleanup
+     4. tests + final retest cleanup
+
+### Validation plan
+
+- `npm run lint`
+- `npm run typecheck`
+- `npm run test`
+- `npm run build`
+- local manual retests (repeat after each iteration):
+  - `npm run dev`
+  - sign in
+  - click `Connect Google with Auth0`
+  - confirm whether real `/auth/connect` handoff is initiated when needed
+  - inspect connection/preflight diagnostics for lifecycle + token-exchange truthfulness
+
+### Risks
+
+- proving end-to-end “provider ready” may still depend on tenant/session conditions outside this repo; if so, blocker evidence must be captured explicitly.
+- Auth0 SDK behavior may still return coarse error envelopes for some bootstrap failures; classification may remain partially heuristic.
+- repeated retest discipline is required to avoid accepting partial UI-only fixes.
