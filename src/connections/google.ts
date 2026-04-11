@@ -161,16 +161,11 @@ function resolveFlowLifecycle(flowState: ProviderConnectFlowState): ProviderConn
 
 function resolveFailedExchangeLifecycle(input: {
   flowState: ProviderConnectFlowState;
-  accountLabel: string | null;
 }): ProviderConnectionLifecycleState {
   const fromFlow = resolveFlowLifecycle(input.flowState);
 
   if (fromFlow) {
     return fromFlow;
-  }
-
-  if (input.accountLabel) {
-    return "identity-visible-access-unusable";
   }
 
   return "connect-flow-not-started";
@@ -223,7 +218,7 @@ function buildFailedExchangeDetail(
     case "callback-redirect-issue":
       return "The connect callback or redirect path appears misconfigured, so completion cannot be verified.";
     case "connect-flow-started":
-      return "A connect attempt has started, but delegated token minting is not ready yet.";
+      return "The connect callback returned, but delegated token minting is still not ready.";
     case "identity-visible-access-unusable":
       return "Session identity is visible, but Auth0 still cannot mint a delegated Google token.";
     case "connect-flow-not-started":
@@ -258,6 +253,27 @@ function resolveConnectedAccountLabel(session: AuthSessionSnapshot): {
     label: null,
     source: "none",
   };
+}
+
+function hasConnectCallbackEvidence(
+  flow: GoogleConnectFlowContext | null | undefined,
+): boolean {
+  return flow?.source === "query" && flow.state === "started";
+}
+
+function resolveConnectedAccountEvidence(input: {
+  flow: GoogleConnectFlowContext | null | undefined;
+  tokenExchangeOutcome: ProviderConnectionDiagnostics["tokenExchange"]["outcome"];
+}): ProviderConnectionDiagnostics["connectedAccountEvidence"] {
+  if (input.tokenExchangeOutcome === "success") {
+    return "delegated-token-ready";
+  }
+
+  if (hasConnectCallbackEvidence(input.flow)) {
+    return "connect-callback-returned";
+  }
+
+  return "none";
 }
 
 function hideSessionFallbackAccountLabel(
@@ -348,6 +364,7 @@ function buildConnectionDiagnostics(input: {
   connectHref: string | null;
   connectStartHref: string | null;
   accountLabelSource: ProviderConnectionDiagnostics["accountLabelSource"];
+  connectFlow: GoogleConnectFlowContext | null | undefined;
   lifecycleState: ProviderConnectionLifecycleState;
   connectFlowState: ProviderConnectFlowState;
   connectFailureCode: string | null;
@@ -360,6 +377,10 @@ function buildConnectionDiagnostics(input: {
     connectHref: input.connectHref,
     connectStartHref: input.connectStartHref,
     accountLabelSource: input.accountLabelSource,
+    connectedAccountEvidence: resolveConnectedAccountEvidence({
+      flow: input.connectFlow,
+      tokenExchangeOutcome: input.tokenExchange.outcome,
+    }),
     lifecycleState: input.lifecycleState,
     connectFlowState: input.connectFlowState,
     connectFailureCode: input.connectFailureCode,
@@ -397,6 +418,7 @@ function buildOverrideSnapshot(input: {
     connectHref: input.connectHref,
     connectStartHref: input.connectStartHref,
     accountLabelSource: account.source,
+    connectFlow: null,
     lifecycleState,
     connectFlowState: "not-started",
     connectFailureCode: null,
@@ -492,6 +514,7 @@ function buildAuthUnavailableSnapshot(input: {
   connectHref: string | null;
   connectStartHref: string | null;
   accountLabelSource: ProviderConnectionDiagnostics["accountLabelSource"];
+  connectFlow: GoogleConnectFlowContext | null | undefined;
   connectFlowState: ProviderConnectFlowState;
   connectFailureCode: string | null;
   connectFailureDetail: string | null;
@@ -515,6 +538,7 @@ function buildAuthUnavailableSnapshot(input: {
       connectHref: input.connectHref,
       connectStartHref: input.connectStartHref,
       accountLabelSource: input.accountLabelSource,
+      connectFlow: input.connectFlow,
       lifecycleState,
       connectFlowState: input.connectFlowState,
       connectFailureCode: input.connectFailureCode,
@@ -528,6 +552,7 @@ function buildAuthUnavailableSnapshot(input: {
 
 export interface GoogleConnectionSnapshotOptions {
   connectFlow?: GoogleConnectFlowContext | null;
+  allowTokenExchangeProbe?: boolean;
 }
 
 export interface GoogleConnectionSnapshotWithToken {
@@ -638,6 +663,7 @@ export async function getGoogleConnectionSnapshot(
       connectHref,
       connectStartHref,
       accountLabelSource: account.source,
+      connectFlow: options.connectFlow,
       connectFlowState,
       connectFailureCode,
       connectFailureDetail,
@@ -675,6 +701,7 @@ export async function getGoogleConnectionSnapshot(
         connectHref,
         connectStartHref,
         accountLabelSource: account.source,
+        connectFlow: options.connectFlow,
         lifecycleState,
         connectFlowState,
         connectFailureCode,
@@ -696,6 +723,50 @@ export async function getGoogleConnectionSnapshot(
     });
 
     return snapshot;
+  }
+
+  if (!options.allowTokenExchangeProbe && !hasConnectCallbackEvidence(options.connectFlow)) {
+    const lifecycleState = resolveFlowLifecycle(connectFlowState) ?? "connect-flow-not-started";
+    const state: ProviderConnectionState =
+      lifecycleState === "connect-flow-started"
+        ? "pending"
+        : lifecycleState === "connect-flow-not-started"
+          ? "not-connected"
+          : "unavailable";
+
+    return {
+      provider: "google",
+      state,
+      lifecycleState,
+      lifecycleDetail: lifecycleDetail(lifecycleState),
+      headline:
+        lifecycleState === "connect-flow-not-started"
+          ? "Google still needs to be linked through Auth0."
+          : buildFailedExchangeHeadline(lifecycleState),
+      detail:
+        lifecycleState === "connect-flow-not-started"
+          ? "Signed-in identity is available, but delegated Google access is not established until the connected-account handoff returns."
+          : buildFailedExchangeDetail(lifecycleState),
+      actionLabel: "Connect Google with Auth0",
+      actionHref: connectStartHref,
+      accountLabel: hideSessionFallbackAccountLabel(account, false),
+      tokenExpiresAt: null,
+      via: "auth0-token-vault",
+      diagnostics: buildConnectionDiagnostics({
+        connectionName: authEnv.googleConnectionName,
+        connectHref,
+        connectStartHref,
+        accountLabelSource: account.source,
+        connectFlow: options.connectFlow,
+        lifecycleState,
+        connectFlowState,
+        connectFailureCode,
+        connectFailureDetail,
+        tokenExchange: createTokenExchangeNotAttemptedDiagnostics(
+          "Delegated token exchange is deferred until connected-account handoff returns.",
+        ),
+      }),
+    };
   }
 
   try {
@@ -727,6 +798,7 @@ export async function getGoogleConnectionSnapshot(
         connectHref,
         connectStartHref,
         accountLabelSource: account.source,
+        connectFlow: options.connectFlow,
         lifecycleState,
         connectFlowState,
         connectFailureCode,
@@ -786,6 +858,7 @@ export async function getGoogleConnectionSnapshot(
               connectHref,
               connectStartHref,
               accountLabelSource: account.source,
+              connectFlow: options.connectFlow,
               lifecycleState,
               connectFlowState,
               connectFailureCode,
@@ -816,6 +889,7 @@ export async function getGoogleConnectionSnapshot(
               connectHref,
               connectStartHref,
               accountLabelSource: account.source,
+              connectFlow: options.connectFlow,
               lifecycleState,
               connectFlowState,
               connectFailureCode,
@@ -830,7 +904,6 @@ export async function getGoogleConnectionSnapshot(
               ? "bootstrap-token-failure"
               : resolveFailedExchangeLifecycle({
                   flowState: connectFlowState,
-                  accountLabel: hideSessionFallbackAccountLabel(account, false),
                 });
 
           return {
@@ -851,6 +924,7 @@ export async function getGoogleConnectionSnapshot(
               connectHref,
               connectStartHref,
               accountLabelSource: account.source,
+              connectFlow: options.connectFlow,
               lifecycleState,
               connectFlowState,
               connectFailureCode,
@@ -864,7 +938,7 @@ export async function getGoogleConnectionSnapshot(
 
     const lifecycleState =
       resolveFlowLifecycle(connectFlowState) ??
-      (account.label ? "identity-visible-access-unusable" : "tenant-config-issue");
+      "connect-flow-not-started";
 
     return {
       provider: "google",
@@ -885,6 +959,7 @@ export async function getGoogleConnectionSnapshot(
         connectHref,
         connectStartHref,
         accountLabelSource: account.source,
+        connectFlow: options.connectFlow,
         lifecycleState,
         connectFlowState,
         connectFailureCode,
@@ -899,7 +974,10 @@ export async function getGoogleConnectionSnapshotWithToken(
   session: AuthSessionSnapshot,
   options: GoogleConnectionSnapshotOptions = {},
 ): Promise<GoogleConnectionSnapshotWithToken> {
-  const snapshot = await getGoogleConnectionSnapshot(session, options);
+  const snapshot = await getGoogleConnectionSnapshot(session, {
+    ...options,
+    allowTokenExchangeProbe: true,
+  });
 
   if (snapshot.state !== "connected") {
     return {

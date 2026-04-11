@@ -55,6 +55,7 @@ const connectedGoogle: ProviderConnectionSnapshot = {
     connectHref: "/auth/connect?connection=google-oauth2",
     connectStartHref: "/api/connect/google?returnTo=%2F",
     accountLabelSource: "session-email",
+    connectedAccountEvidence: "delegated-token-ready",
     lifecycleState: "delegated-ready",
     connectFlowState: "not-started",
     connectFailureCode: null,

@@ -272,6 +272,9 @@ export function AuthShell({ session, googleConnection, providerResults, googleSe
                   {googleConnection.diagnostics.accountLabelSource}
                 </p>
                 <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
+                  connected_account_evidence={googleConnection.diagnostics.connectedAccountEvidence}
+                </p>
+                <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
                   connect_href={googleConnection.diagnostics.connectHref ?? "n/a"}
                 </p>
                 <p className="break-all text-xs leading-relaxed text-[var(--muted)]">
